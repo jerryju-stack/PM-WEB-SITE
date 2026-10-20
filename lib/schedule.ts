@@ -1,0 +1,90 @@
+export type Task = {
+  id: string; projectId: string; parentId: string | null; order: number;
+  title: string; kind: 'summary' | 'task' | 'milestone'; owner: string;
+  start: string | null; end: string | null; duration: number; progress: number;
+  status: string; notes: string; predecessors: string[];
+};
+export const stages = ['Customer Mile Stone', 'RFQ Quotation', 'Project kick off', 'CV', 'DV', 'PV', 'PPAP', 'SOP'];
+export const DAY = 86400000;
+export function dateValue(value: string): number {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw Error('日期格式应为 YYYY-MM-DD');
+  const n = Date.parse(value + 'T00:00:00Z');
+  if (!Number.isFinite(n) || new Date(n).toISOString().slice(0, 10) !== value || value < '2000-01-01' || value > '2100-12-31') throw Error('日期应在 2000–2100 年内');
+  return n;
+}
+export const iso = (n: number) => new Date(n).toISOString().slice(0, 10);
+export const isWorkday = (n: number) => ![0, 6].includes(new Date(n).getUTCDay());
+export function nextWorkday(value: string, strictly = false): string {
+  let n = dateValue(value) + (strictly ? DAY : 0);
+  while (!isWorkday(n)) n += DAY;
+  const result = iso(n); dateValue(result); return result;
+}
+export function finish(start: string, duration: number): string {
+  let n = dateValue(nextWorkday(start));
+  for (let remaining = Math.max(0, duration - 1); remaining > 0;) { n += DAY; if (isWorkday(n)) remaining--; }
+  const result = iso(n); dateValue(result); return result;
+}
+export function workdays(start: string, end: string): number {
+  let n = dateValue(start), stop = dateValue(end), count = 0;
+  if (stop < n) throw Error('结束日期不能早于开始日期');
+  for (; n <= stop; n += DAY) if (isWorkday(n)) count++;
+  return count;
+}
+export function template(projectId: string): Task[] {
+  return stages.map((title, order) => ({ id: `${projectId}-stage-${order + 1}`, projectId, parentId: null, order, title, kind: 'summary', owner: '', start: null, end: null, duration: 0, progress: 0, status: '计划中', notes: '', predecessors: [] }));
+}
+export function schedule(input: Task[]): Task[] {
+  const tasks = structuredClone(input), byId = new Map(tasks.map(t => [t.id, t]));
+  const children = (id: string) => tasks.filter(t => t.parentId === id);
+  if (byId.size !== tasks.length) throw Error('任务编号重复');
+  for (const t of tasks) {
+    if (!t.title.trim() || t.title.length > 200) throw Error('任务名称不能为空且最多 200 字');
+    if (!['summary','task','milestone'].includes(t.kind)) throw Error('任务类型无效');
+    if (!Number.isInteger(t.duration) || t.duration < 0 || t.duration > 2600) throw Error('工期应为 0–2600 个工作日');
+    if (!Number.isFinite(t.progress) || t.progress < 0 || t.progress > 100) throw Error('进度应在 0–100 之间');
+    const seen = new Set([t.id]); let p = t.parentId;
+    while (p) { if (seen.has(p)) throw Error('任务层级不能循环'); seen.add(p); const parent = byId.get(p); if (!parent) throw Error('父任务不存在'); if (parent.projectId !== t.projectId) throw Error('父任务必须属于同一项目'); p = parent.parentId; }
+    if (children(t.id).length) t.kind = 'summary';
+    if (t.kind === 'summary' && t.predecessors.length) throw Error('请在子任务上设置前置任务，汇总阶段不设置依赖');
+    for (const id of t.predecessors) {
+      const predecessor = byId.get(id);
+      if (!predecessor || predecessor.projectId !== t.projectId) throw Error('前置任务不存在或不属于本项目');
+      if (predecessor.kind === 'summary' || children(id).length) throw Error('前置任务须为普通任务或里程碑');
+    }
+    if (t.start) t.start = nextWorkday(t.start);
+    if (t.kind === 'milestone') t.duration = 0;
+    else if (t.kind === 'task' && !t.duration) t.duration = 1;
+  }
+  const visiting = new Set<string>(), visited = new Set<string>();
+  function visit(t: Task) {
+    if (visiting.has(t.id)) throw Error('前置关系形成循环，请修改依赖');
+    if (visited.has(t.id)) return;
+    visiting.add(t.id);
+    for (const id of t.predecessors) {
+      const p = byId.get(id)!; visit(p);
+      if (!p.end) throw Error('请先为前置任务设置日期');
+      const earliest = nextWorkday(p.end, true);
+      if (!t.start || t.start < earliest) t.start = earliest;
+    }
+    if (t.kind !== 'summary') {
+      t.end = t.start ? finish(t.start, t.duration) : null;
+      t.status = t.progress === 100 ? '已完成' : t.status === '已暂停' ? '已暂停' : t.progress > 0 ? '进行中' : '计划中';
+    }
+    visiting.delete(t.id); visited.add(t.id);
+  }
+  tasks.filter(t => t.kind !== 'summary').forEach(visit);
+  function rollup(t: Task): number {
+    const items = children(t.id);
+    if (t.kind !== 'summary') return Math.max(1, t.duration);
+    const weights = items.map(rollup), dated = items.filter(x => x.start && x.end);
+    t.start = dated.length ? dated.map(x => x.start!).sort()[0] : null;
+    t.end = dated.length ? dated.map(x => x.end!).sort().at(-1)! : null;
+    t.duration = t.start && t.end ? workdays(t.start, t.end) : 0;
+    const weight = weights.reduce((a,b) => a+b, 0);
+    t.progress = weight ? Math.round(items.reduce((sum,x,i) => sum + x.progress * weights[i], 0) / weight) : 0;
+    t.status = t.progress === 100 ? '已完成' : t.progress > 0 ? '进行中' : '计划中';
+    return weight;
+  }
+  tasks.filter(t => !t.parentId).forEach(rollup);
+  return tasks;
+}

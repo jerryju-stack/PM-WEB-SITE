@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "strict": true,
+    "noImplicitAny": false,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "paths": {
+      "/timing.js": ["./src/timing.ts"],
+      "/schedule.js": ["./lib/schedule.ts"]
+    }
+  },
+  "include": ["server.ts", "lib/**/*.ts", "src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]
+}
