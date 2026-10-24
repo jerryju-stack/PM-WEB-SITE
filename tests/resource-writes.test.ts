@@ -42,3 +42,24 @@ test('long schedules persist repeatedly, survive metadata rename, reparent and d
  assert.equal(store.get('projects',p.id).progress,store.tasks(p.id).find(t=>t.id===p.id+'-stage-1')!.progress);
  }finally{store.db.close();}
 });
+
+test('project and root share leaf totals across regrouping, including undated leaves and milestones',()=>{
+ const store=setup();try{const writer=resourceWriter(store),p=writer.create('projects',{title:'progress'},'tester');const stage=store.tasks(p.id)[0];
+ const make=(id:string,progress=0)=>({...stage,id,parentId:stage.id,kind:'task' as const,duration:1,progress});
+ const group={...stage,id:'group',parentId:stage.id};
+ let tasks=[...store.tasks(p.id),group,{...make('a',1),parentId:'group'},{...make('b'),parentId:'group'},make('c')];
+ store.saveTasks(p.id,tasks,0);assert.equal(store.get('projects',p.id).progress,0);assert.equal(store.tasks(p.id)[0].progress,0);
+ tasks=store.tasks(p.id).filter(t=>t.id!=='group').map(t=>t.parentId==='group'?{...t,parentId:stage.id}:t);store.saveTasks(p.id,tasks,1);
+ assert.equal(store.get('projects',p.id).progress,0);assert.equal(store.tasks(p.id)[0].progress,0);
+ store.saveTasks(p.id,[...store.tasks(p.id).filter(t=>t.kind==='summary'),{...make('a',100),duration:3},{...make('m'),kind:'milestone',duration:0},make('b')],2);
+ assert.equal(store.get('projects',p.id).progress,60);assert.equal(store.tasks(p.id)[0].progress,60);
+ }finally{store.db.close();}
+});
+test('write failure after earlier SQL updates rolls back data and version together',()=>{
+ const store=setup();try{const p=resourceWriter(store).create('projects',{title:'rollback'},'tester');
+ store.db.exec(`CREATE TRIGGER fail_task_insert BEFORE INSERT ON tasks WHEN NEW.id='bad' BEGIN SELECT RAISE(ABORT,'injected write failure'); END`);
+ const stage=store.tasks(p.id)[0];assert.throws(()=>store.saveTasks(p.id,[...store.tasks(p.id),{...stage,id:'good',parentId:stage.id,kind:'task',duration:1},{...stage,id:'bad',parentId:stage.id,kind:'task',duration:1}],0),/injected/);
+ assert.equal(store.revision(p.id),0);assert.equal(store.tasks(p.id).length,8);assert.equal(store.get('projects',p.id).version,0);
+ store.db.exec('DROP TRIGGER fail_task_insert');assert.equal(store.saveTasks(p.id,store.tasks(p.id),0).length,8);
+ }finally{store.db.close();}
+});

@@ -33,16 +33,27 @@ export function workdays(start: string, end: string): number {
 export function template(projectId: string): Task[] {
   return stages.map((title, order) => ({ id: `${projectId}-stage-${order + 1}`, projectId, parentId: null, order, title, kind: 'summary', owner: '', start: null, end: null, duration: 0, progress: 0, status: '计划中', notes: '', predecessors: [] }));
 }
-export type ProgressTotals = { weighted: number; weight: number };
+// Decimal totals stay exact even for fractional input; no rounding at intermediate groups.
+// These BigInts are transient calculation values and are never persisted or sent as JSON.
+export type ProgressTotals = { weighted: bigint; weight: bigint; scale: number };
 export const leafTotals = (task: Task): ProgressTotals => {
-  const weight = Math.max(1, task.duration);
-  return { weight, weighted: task.progress * weight };
+  const weight = BigInt(Math.max(1, task.duration));
+  const [mantissa, exponent = '0'] = String(task.progress).split('e');
+  const decimalPlaces = mantissa.split('.')[1]?.length || 0;
+  const power = Number(exponent) - decimalPlaces;
+  const coefficient = BigInt(mantissa.replace('.', ''));
+  return { weight, weighted: coefficient * weight * 10n ** BigInt(Math.max(0,power)), scale: Math.max(0,-power) };
 };
-export const sumTotals = (values: ProgressTotals[]): ProgressTotals => values.reduce(
-  (sum, value) => ({ weight: sum.weight + value.weight, weighted: sum.weighted + value.weighted }),
-  { weight: 0, weighted: 0 },
-);
-export const progressPercent = (total: ProgressTotals): number => total.weight ? Math.round(total.weighted / total.weight) : 0;
+export const sumTotals = (values: ProgressTotals[]): ProgressTotals => values.reduce((sum, value) => {
+  const scale = Math.max(sum.scale, value.scale);
+  return { weight: sum.weight + value.weight, scale,
+    weighted: sum.weighted * 10n ** BigInt(scale-sum.scale) + value.weighted * 10n ** BigInt(scale-value.scale) };
+}, { weight: 0n, weighted: 0n, scale: 0 });
+export const progressPercent = (total: ProgressTotals): number => {
+  if (!total.weight) return 0;
+  const denominator = total.weight * 10n ** BigInt(total.scale);
+  return Number((2n * total.weighted + denominator) / (2n * denominator));
+};
 export const projectProgress = (tasks: Task[]): number => progressPercent(sumTotals(tasks.filter(t => t.kind !== 'summary').map(leafTotals)));
 
 export function schedule(input: Task[]): Task[] {
@@ -57,7 +68,6 @@ export function schedule(input: Task[]): Task[] {
     if (t.kind !== 'summary' && (!Number.isFinite(t.progress) || t.progress < 0 || t.progress > 100)) throw Error('进度应在 0–100 之间');
     const seen = new Set([t.id]); let p = t.parentId;
     while (p) { if (seen.has(p)) throw Error('任务层级不能循环'); seen.add(p); const parent = byId.get(p); if (!parent) throw Error('父任务不存在'); if (parent.projectId !== t.projectId) throw Error('父任务必须属于同一项目'); p = parent.parentId; }
-    if (children(t.id).length) t.kind = 'summary';
     if (t.kind === 'summary' && t.predecessors.length) throw Error('请在子任务上设置前置任务，汇总阶段不设置依赖');
     for (const id of t.predecessors) {
       const predecessor = byId.get(id);
@@ -100,4 +110,18 @@ export function schedule(input: Task[]): Task[] {
   }
   tasks.filter(t => !t.parentId).forEach(rollup);
   return tasks;
+}
+
+/** Local preview for a failed inline edit; server scheduling remains authoritative. */
+export function previewTaskEdit(task: Task, patch: Partial<Task>): Task {
+  const value = { ...structuredClone(task), ...patch };
+  if (value.kind === 'summary') return value;
+  if (value.kind === 'milestone') { value.duration = 0; if (patch.end) value.start = nextWorkday(patch.end); }
+  if (value.start) {
+    value.start = nextWorkday(value.start);
+    if (value.kind === 'task' && patch.end) value.duration = workdays(value.start, patch.end);
+    if (value.kind === 'task') value.duration = Math.max(1,value.duration);
+    value.end = finish(value.start,value.duration);
+  } else value.end = null;
+  return value;
 }
