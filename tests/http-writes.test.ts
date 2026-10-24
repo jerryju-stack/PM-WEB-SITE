@@ -9,11 +9,14 @@ for(const collection of ['projects','articles'] as const)test(collection+' HTTP 
  const replies=await Promise.all([call(collection+'/'+id,{...first,title:'A'},cookie,'PATCH'),call(collection+'/'+id,{...second,description:'B'},cookie,'PATCH')]);
  assert.deepEqual(replies.map(r=>r.status).sort(),[200,409]);
  const latest=(await call(collection+'/'+id,undefined,cookie)).data;assert.equal(latest.version,1);
+ const winner=replies[0].status===200;assert.equal(latest.title,winner?'A':'original');assert.equal(latest.description,winner?'before':'B');
+ const protectedWrite=await call(collection+'/'+id,{id:'replacement',version:1,taskRevision:999,progress:99,status:'已完成',title:'explicit update'},cookie,'PATCH');
+ assert.equal(protectedWrite.status,200);const protectedState=(await call(collection+'/'+id,undefined,cookie)).data;assert.equal(protectedState.id,id);assert.equal(protectedState.version,2);assert.equal(protectedState.progress,0);assert.equal(protectedState.status,'计划中');if(collection==='projects')assert.equal(protectedState.taskRevision,0);assert.equal((await call(collection+'/replacement',undefined,cookie)).status,404);
  assert.equal((await call(collection+'/'+id,{...body},cookie,'PATCH')).status,409);
  assert.equal((await call(collection+'/'+id,{version:0,taskRevision:0},cookie,'DELETE')).status,409);
  assert.equal((await call(collection+'/'+id,{},cookie,'DELETE')).status,409);
- const retry=await call(collection+'/'+id,{...latest,title:'manual retry',version:1},cookie,'PATCH');assert.equal(retry.status,200);assert.equal(retry.data.item.title,'manual retry');
- assert.equal((await call(collection+'/'+id,{version:2,taskRevision:0},cookie,'DELETE')).status,200);
+ const retry=await call(collection+'/'+id,{...latest,title:'manual retry',version:2},cookie,'PATCH');assert.equal(retry.status,200);assert.equal(retry.data.item.title,'manual retry');const saved=(await call(collection+'/'+id,undefined,cookie)).data;assert.equal(saved.title,'manual retry');assert.equal(saved.version,3);
+ assert.equal((await call(collection+'/'+id,{version:3,taskRevision:0},cookie,'DELETE')).status,200);
  assert.equal((await call(collection+'/'+id,{...first},cookie,'PATCH')).status,404);
  assert.equal((await call(collection,{...first},cookie)).status,404); // old POST-with-id must never create
  assert.equal((await call(collection+'/'+id,{version:2,taskRevision:0},cookie,'DELETE')).status,404);
@@ -29,8 +32,10 @@ test('HTTP task and metadata writes keep separate versions and stale aggregate f
  assert.equal((await call('projects/'+p.id,{version:1,taskRevision:0},cookie,'DELETE')).status,409);
  assert.equal((await call('projects/'+p.id+'/tasks/'+task.data.id,{revision:1,progress:0},cookie,'PATCH')).status,200);
  timing=(await call('projects/'+p.id+'/timing',undefined,cookie)).data;assert.equal(timing.project.title,'metadata change');assert.equal(timing.project.version,1);assert.equal(timing.revision,2);
- for(const body of [{revision:2,duration:'2'},{revision:2,progress:null},{revision:2,parentId:[]},{revision:2,duration:2601}])assert.equal((await call('projects/'+p.id+'/tasks/'+task.data.id,body,cookie,'PATCH')).status,400);
+ const protectedTask=await call('projects/'+p.id+'/tasks/'+task.data.id,{revision:2,id:'replacement',projectId:'elsewhere',version:999,taskRevision:999,owner:'',progress:0},cookie,'PATCH');assert.equal(protectedTask.status,200);
+ const finalTiming=(await call('projects/'+p.id+'/timing',undefined,cookie)).data;const finalTask=finalTiming.tasks.find((t:{id:string})=>t.id===task.data.id);assert.equal(finalTask.projectId,p.id);assert.equal(finalTask.owner,'');assert.equal(finalTask.progress,0);assert.equal(finalTiming.project.version,1);assert.equal(finalTiming.revision,3);assert.ok(!finalTiming.tasks.some((t:{id:string})=>t.id==='replacement'));
+ for(const body of [{revision:3,duration:'2'},{revision:3,progress:null},{revision:3,parentId:[]},{revision:3,duration:2601}])assert.equal((await call('projects/'+p.id+'/tasks/'+task.data.id,body,cookie,'PATCH')).status,400);
  assert.equal((await call('projects/'+p.id,{title:[],version:1},cookie,'PATCH')).status,400);
- assert.equal((await call('projects/'+p.id+'/timing',undefined,cookie)).data.revision,2);
+ assert.equal((await call('projects/'+p.id+'/timing',undefined,cookie)).data.revision,3);
  }finally{await f.stop();}
 });

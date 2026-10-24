@@ -1,5 +1,5 @@
 import { DAY, iso, dateValue, nextWorkday, finish, workdays, isWorkday, previewTaskEdit } from '/schedule.js';
-import { EditDraft } from '/drafts.js';
+import { EditDraft, ReadGuard } from '/drafts.js';
 import type { Task } from '../lib/schedule.ts';
 type Options={projectId:string;user:any;settings:any;login:()=>void;editProject:()=>void};
 type Row={task:Task;wbs:string;depth:number};
@@ -19,6 +19,7 @@ export async function mountTiming(options:Options){
  let edit=editors.get(editKey);
  let snapshot:any, busy=false,selected:string|null=edit?.value.id||null;
  const setEdit=(value:TaskDraft|undefined)=>{edit=value;if(value)editors.set(editKey,value);else editors.delete(editKey);};
+ const reads=new ReadGuard();
  let attachmentBusy=false, scroll={left:0,right:0,top:0};
  const state=viewStates.get(projectId)||{collapsed:new Set<string>(),zoom:'week',start:null};viewStates.set(projectId,state);
  const notify=(message:string)=>{const node=document.querySelector('#toast')!;node.textContent=message;node.classList.add('show');setTimeout(()=>node.classList.remove('show'),3500);};
@@ -29,7 +30,7 @@ export async function mountTiming(options:Options){
   const response=await fetch('/api/'+path,body?{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal}:{signal});
   const result=await response.json();if(!response.ok)throw Object.assign(Error(result.error),{status:response.status});return result;
  }
- async function load(){snapshot=await request(`projects/${projectId}/timing`);if(signal.aborted)return;
+ async function load(){const current=reads.begin(()=>!signal.aborted);const latest=await request(`projects/${projectId}/timing`);if(!current())return;snapshot=latest;
    if(edit&&!edit.dirty&&edit.value.id){const latest=snapshot.tasks.find((t:Task)=>t.id===edit!.value.id);if(latest)setEdit(new EditDraft(latest,snapshot.revision));}
    render();
  }
@@ -45,9 +46,10 @@ export async function mountTiming(options:Options){
  async function mutate(taskId:string|undefined,body:any,method='PATCH',source:'inline'|'drawer'='inline'){
   if(busy){notify('正在保存。本次操作未提交，请等待后重试。');return false;}
   const expected=source==='drawer'&&edit?edit.version:snapshot.revision;
-  busy=true;rememberScroll();lockEditing();document.querySelector('.save-state')!.textContent='正在保存…';
+  busy=true;reads.invalidate();rememberScroll();lockEditing();document.querySelector('.save-state')!.textContent='正在保存…';
   try{
    const result=await request(`projects/${projectId}/tasks${taskId?'/'+taskId:''}`,{...body,revision:expected},method);
+   if(signal.aborted)return false;
    snapshot={...snapshot,tasks:result.tasks,revision:result.revision,project:result.project||snapshot.project};
    if(source==='drawer'){selected=method==='DELETE'?null:result.id||selected;setEdit(undefined);}
    try{await load();}catch{notify('排期已保存，但重新读取失败；可点击刷新确认。');return true;}
@@ -149,7 +151,7 @@ export async function mountTiming(options:Options){
   left.addEventListener('scroll',()=>{if(right.scrollTop!==left.scrollTop)right.scrollTop=left.scrollTop;},{signal});right.addEventListener('scroll',()=>{if(left.scrollTop!==right.scrollTop)left.scrollTop=right.scrollTop;},{signal});
   on('.drawer-close,.drawer-backdrop','click',()=>{if(!leaveEditor())return;selected=null;render();});
   on('#task-form','input',captureDraft);on('#task-form','change',captureDraft);
-  on('#task-latest','click',async()=>{captureDraft();try{const latest=await request(`projects/${projectId}/timing`);const task=latest.tasks.find((t:Task)=>t.id===edit?.value.id);if(!task)throw Error('任务已删除，草稿仍保留，不能重新创建替代记录');snapshot=latest;edit?.review(task,latest.revision);render();}catch(error:any){edit?.fail(error.message);notify(error.message);render();}});
+  on('#task-latest','click',async()=>{captureDraft();const pending=edit;if(!pending)return;const current=reads.begin(()=>!signal.aborted&&!busy&&edit===pending);try{const latest=await request(`projects/${projectId}/timing`);if(!current())return;const task=latest.tasks.find((t:Task)=>t.id===pending.value.id);if(!task)throw Error('任务已删除，草稿仍保留，不能重新创建替代记录');snapshot=latest;pending.review(task,latest.revision);render();}catch(error:any){if(!current())return;pending.fail(error.message);notify(error.message);render();}});
   on('#task-retry','click',()=>{if(!edit)return;edit.useReviewedVersion();render();});
   on('#task-form','submit',async e=>{
    e.preventDefault();if(busy){notify('正在保存，请等待结果');return;}captureDraft();if(!edit)return;

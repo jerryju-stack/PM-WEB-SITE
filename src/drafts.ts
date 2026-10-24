@@ -15,3 +15,13 @@ export class EditDraft<T extends object> {
     this.version=this.latest.version;this.latest=undefined;this.message='已选择最新版本。请核对草稿后再次保存。';
   }
 }
+
+/** Discard superseded reads; the caller also supplies its editor/mount lifetime. */
+export class ReadGuard {
+  private sequence = 0;
+  invalidate() { this.sequence++; }
+  begin(active: () => boolean = () => true) {
+    const sequence = ++this.sequence;
+    return () => sequence === this.sequence && active();
+  }
+}
