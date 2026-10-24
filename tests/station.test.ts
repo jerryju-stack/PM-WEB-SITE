@@ -48,7 +48,7 @@ test('JSON 迁移、八阶段、权限、完整排期、附件、重启持久化
  timing=(await getTiming()).data;assert.equal(timing.tasks.length,11);assert.equal(timing.attachments.length,1);assert.equal(timing.tasks.find((t:any)=>t.id===b).start,'2026-10-28');assert.equal(await readFile(join(directory,'uploads',file.id),'utf8'),'attachment-content');
  assert.equal((await call(`projects/legacy-project/tasks/${b}`,{revision:timing.revision},admin,'DELETE')).status,200);timing=(await getTiming()).data;assert.equal(timing.attachments.length,0);assert.deepEqual(timing.tasks.find((t:any)=>t.id===c).predecessors,[]);assert.ok(!(await readdir(join(directory,'uploads'))).includes(file.id));
  const milestoneEdit=await call(`projects/legacy-project/tasks/${c}`,{end:'2026-11-04',revision:timing.revision},admin,'PATCH');assert.equal(milestoneEdit.status,200);assert.equal(milestoneEdit.data.tasks.find((t:any)=>t.id===c).start,'2026-11-04');assert.equal(milestoneEdit.data.tasks.find((t:any)=>t.id===c).duration,0);
- assert.equal((await call('users',{id:'admin'},admin,'DELETE')).status,400);assert.equal((await call('projects',{id:newProject},admin,'DELETE')).status,200);
+ assert.equal((await call('users',{id:'admin'},admin,'DELETE')).status,400);assert.equal((await call('projects',{id:newProject,version:0,taskRevision:0},admin,'DELETE')).status,200);
  assert.equal((await call('password',{current:'Admin-Password-2026',password:'Changed-Password-2026'},admin)).status,200);assert.equal((await call('login',{id:'admin',password:'Changed-Password-2026'})).status,200);
  assert.equal((await call('logout',{},admin)).status,200);assert.equal((await call('projects/legacy-project/timing',undefined,admin)).status,401);
  }finally{await stop();}

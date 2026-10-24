@@ -90,3 +90,9 @@ npm test
 使用支持 Node.js 24+ 和持久磁盘的服务器，运行 `npm start`。通过 `PORT` 指定端口，通过 `DATA_DIR` 指定数据库与附件目录。服务监听 `127.0.0.1`，可在同机通过 Nginx/Caddy 反向代理并启用 HTTPS；生产环境设置 `COOKIE_SECURE=1`，反向代理需转发原始 Host，并允许大于 20 MB 的请求体。
 
 当前适合单进程部署；多实例应迁移为共享数据库、附件和会话存储。基础 SEO 提供标题、描述、Open Graph 与 robots.txt；私有 Timing 页面不供搜索引擎抓取。
+
+## 写入版本与工程检查
+
+项目和文章的更新、删除需要资源版本；项目删除同时检查任务版本。任务派生进度不由项目表单写回。数据库通过编号迁移升级，旧 SQLite 和 JSON 导入继续支持。接口、草稿冲突处理、迁移与代码/数据回退限制见 [写入契约](docs/write-contract.md)。
+
+统一验证入口为 `pnpm check`（或 `node --experimental-strip-types scripts/check.ts`），GitHub CI 使用相同入口。

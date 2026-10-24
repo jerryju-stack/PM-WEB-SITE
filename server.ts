@@ -7,12 +7,13 @@ import { stripTypeScriptTypes } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openStore, passwordHash } from './lib/database.ts';
-import { template, dateValue, workdays, nextWorkday } from './lib/schedule.ts';
-import type { Task } from './lib/schedule.ts';
+import { resourceWriter } from './lib/resources.ts';
+import { writeTasks } from './lib/task-writes.ts';
 
 const root=dirname(fileURLToPath(import.meta.url));
 const store=openStore(resolve(process.env.DATA_DIR || join(root,'data')));
 const uploads=join(store.directory,'uploads'); await mkdir(uploads,{recursive:true});
+const resources=resourceWriter(store);
 const sessions=new Map<string,{id:string;expires:number}>();
 const attempts=new Map<string,{count:number;until:number}>();
 const id=()=>randomBytes(16).toString('hex');
@@ -76,6 +77,9 @@ const server=http.createServer(async(req,res)=>{
         const project=store.get('projects',parts[2]);if(!project)fail('项目不存在',404);
         return json(200,{project,tasks:store.tasks(project.id),attachments:attached(project.id),revision:store.revision(project.id),members:store.all('users').map(safeUser)});
       }
+      if((parts[1]==='projects'||parts[1]==='articles')&&parts.length===3&&method==='GET') {
+        const item=store.get(parts[1],parts[2]);if(!item)fail('记录已删除或不存在',404);return json(200,item);
+      }
       if(url.pathname==='/api/password'&&method==='POST') {
         if(!verify(user,body.current))fail('当前密码不正确');if(typeof body.password!=='string'||body.password.length<10||body.password.length>1024)fail('新密码需为 10–1024 位');
         user.salt=randomBytes(16).toString('hex');user.hash=passwordHash(body.password,user.salt);store.put('users',user);for(const [key,s] of sessions)if(s.id===user.id&&key!==token)sessions.delete(key);return json(200,{ok:true});
@@ -86,30 +90,8 @@ const server=http.createServer(async(req,res)=>{
         store.db.prepare('DELETE FROM attachments WHERE id=?').run(row.id);await eraseFiles([row]);return json(200,{ok:true});
       }
       if(parts[1]==='projects'&&parts[2]&&parts[3]==='tasks') {
-        const project=store.get('projects',parts[2]);if(!project)fail('项目不存在',404);
-        if(!Number.isInteger(body.revision))fail('缺少排期版本，请刷新后重试',409);
-        let tasks=store.tasks(project.id);const taskId=parts[4];let target=taskId?tasks.find(t=>t.id===taskId):undefined;let removed:any[]=[];
-        if(taskId&&!target)fail('任务不存在',404);
-        if(method==='DELETE') {
-          if(!target)fail('请选择任务');const doomed=new Set([target!.id]);let count=-1;while(count!==doomed.size){count=doomed.size;for(const t of tasks)if(t.parentId&&doomed.has(t.parentId))doomed.add(t.id);}
-          removed=(attached(project.id) as any[]).filter(a=>doomed.has(a.task_id));tasks=tasks.filter(t=>!doomed.has(t.id)).map(t=>({...t,predecessors:t.predecessors.filter(p=>!doomed.has(p))}));
-        }else {
-          if(!target){if(method!=='POST')fail('任务不存在',404);target={id:id(),projectId:project.id,parentId:body.parentId||null,order:tasks.filter(t=>t.parentId===(body.parentId||null)).length,title:'新任务',kind:'task',owner:'',start:null,end:null,duration:1,progress:0,status:'计划中',notes:'',predecessors:[]};tasks.push(target);}
-          if(body.parentId!==undefined){if(body.parentId!==null&&typeof body.parentId!=='string')fail('父任务无效');target.parentId=body.parentId;}
-          if(target.parentId){const parent=tasks.find(t=>t.id===target!.parentId);if(!parent)fail('父任务不存在');if(parent!.kind==='milestone')fail('里程碑不能包含子任务');if(parent!.predecessors.length||tasks.some(t=>t.predecessors.includes(parent!.id)))fail('请先清除父任务的依赖关系，再添加子任务');}
-          const isSummary=target.kind==='summary'||tasks.some(t=>t.parentId===target!.id);
-          for(const key of ['title','owner','notes','status'] as const)if(body[key]!==undefined)target[key]=text(body[key],key==='notes'?20000:key==='title'?200:100);
-          if(body.kind!==undefined){if(!['summary','task','milestone'].includes(body.kind))fail('任务类型无效');if(isSummary&&body.kind!=='summary')fail('汇总阶段不能直接改为普通任务');target.kind=body.kind;}
-          if(body.order!==undefined){if(!Number.isInteger(body.order)||body.order<0)fail('排序值无效');target.order=body.order;}
-          if(!isSummary&&target.kind!=='summary') {
-            if(body.start!==undefined){if(body.start!==null&&typeof body.start!=='string')fail('开始日期无效');target.start=body.start?nextWorkday(body.start):null;}
-            if(body.duration!==undefined)target.duration=Number(body.duration);
-            if(body.end!==undefined&&body.end){dateValue(body.end);if(target.kind==='milestone')target.start=nextWorkday(body.end);else if(target.start)target.duration=workdays(target.start,body.end);}
-            if(body.progress!==undefined)target.progress=Number(body.progress);
-            if(body.predecessors!==undefined){if(!Array.isArray(body.predecessors)||!body.predecessors.every((x:any)=>typeof x==='string'))fail('前置任务格式无效');target.predecessors=[...new Set<string>(body.predecessors)];}
-          }
-        }
-        const updated=store.saveTasks(project.id,tasks,body.revision);await eraseFiles(removed);return json(200,{tasks:updated,revision:store.revision(project.id),id:target?.id});
+        const result=writeTasks(store,parts[2],parts[4],method,body);
+        await eraseFiles(result.removed);const {removed,...response}=result;return json(200,response);
       }
       const collection=parts[1];
       if(collection==='settings') {
@@ -118,16 +100,18 @@ const server=http.createServer(async(req,res)=>{
         if(user.role!=='admin')fail('仅管理员可管理用户',403);
         if(method==='DELETE'){if(body.id==='admin')fail('不能删除管理员');store.remove('users',String(body.id));for(const [key,s]of sessions)if(s.id===body.id)sessions.delete(key);}
         else {if(!/^[a-zA-Z0-9_-]{3,32}$/.test(body.id)||!['editor','viewer'].includes(body.role)||typeof body.password!=='string'||body.password.length<10||body.password.length>1024)fail('账号为 3–32 位英文数字，密码至少 10 位');if(store.get('users',body.id))fail('账号已存在');const salt=randomBytes(16).toString('hex');store.put('users',{id:body.id,name:text(body.name||body.id,100),role:body.role,salt,hash:passwordHash(body.password,salt)});}
-      }else if(['projects','articles'].includes(collection)&&parts.length===2) {
-        if(method==='DELETE'){const rows=collection==='projects'?attached(String(body.id)):[];store.remove(collection,String(body.id));await eraseFiles(rows as any[]);}
-        else {
-          if(typeof body.title!=='string'||!body.title.trim())fail('请填写标题');if(collection==='articles'&&typeof body.content!=='string')fail('请填写 Markdown 内容');
-          const existing=body.id?store.get(collection,String(body.id)):null;
-          const item={...existing,id:existing?.id||id(),title:text(body.title,200),description:text(body.description,1000),category:text(body.category||'未分类',100),date:text(body.date,10),startDate:text(body.startDate||existing?.startDate,10),content:text(body.content??existing?.content,500000),owner:text(body.owner||user.name,100),status:['进行中','已完成','计划中','已暂停'].includes(body.status)?body.status:'计划中',progress:Math.max(0,Math.min(100,Number(body.progress)||0))};
-          if(item.date)dateValue(item.date);if(item.startDate)dateValue(item.startDate);if(item.date&&item.startDate&&item.date<item.startDate)fail('结束日期不能早于开始日期');
-          if(existing&&collection==='projects'&&store.tasks(item.id).some(t=>t.kind!=='summary')){item.progress=existing.progress;item.status=existing.status;}
-          store.transaction(()=>{store.put(collection,item);if(collection==='projects'&&!existing)for(const task of template(item.id))store.db.prepare('INSERT INTO tasks VALUES(?,?,?,?)').run(task.id,item.id,null,JSON.stringify(task));});return json(200,{ok:true,id:item.id});
-        }
+      }else if((collection==='projects'||collection==='articles')&&parts.length<=3) {
+        const resourceId=parts[2]??body.id;
+        if(resourceId!==undefined&&typeof resourceId!=='string')fail('资源 ID 无效');
+        if(method==='DELETE') {
+          if(!resourceId)fail('请选择记录');
+          const rows=collection==='projects'?attached(resourceId):[];
+          resources.remove(collection,resourceId,body);await eraseFiles(rows as any[]);
+        } else if((method==='PATCH'||method==='PUT'||method==='POST')&&resourceId!==undefined) {
+          const item=resources.update(collection,resourceId,body);return json(200,{ok:true,id:item.id,version:item.version,item});
+        } else if(method==='POST'&&!resourceId) {
+          const item=resources.create(collection,body,user.name);return json(200,{ok:true,id:item.id,version:item.version,item});
+        } else fail('请使用 POST 创建或 PATCH 更新指定记录',405);
       }else fail('接口不存在',404);
       return json(200,{ok:true});
     }
@@ -141,4 +125,4 @@ const server=http.createServer(async(req,res)=>{
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'"});res.end(html);
   }catch(e:any){if(res.headersSent){res.destroy();return;}const status=e.status||((e.code==='ENOENT')?404:400);if(status>=500)console.error(e);json(status,{error:e.message||'操作失败，请稍后重试'});}
 });
-const port=Number(process.env.PORT||3000);server.listen(port,'127.0.0.1',()=>console.log(`Local: http://127.0.0.1:${port}`));
+const port=Number(process.env.PORT||3000);server.listen(port,'127.0.0.1',()=>{const address=server.address();console.log(`Local: http://127.0.0.1:${typeof address==='object'&&address?address.port:port}`);});

@@ -7,8 +7,14 @@
     "dev": "node --experimental-strip-types server.ts",
     "start": "node --experimental-strip-types server.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "check": "node --experimental-strip-types scripts/check.ts"
   },
-  "engines": { "node": ">=24" },
-  "devDependencies": { "@types/node": "^26.6.5", "typescript": "^7.0.2" }
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
 }
