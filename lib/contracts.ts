@@ -7,7 +7,7 @@ export type ResourceWrite = { title?: string; description?: string; category?: s
 export type DeleteWrite = { version: number; taskRevision?: number };
 export type ResourceResult = { ok: true; id: string; version: number; item: Project | Article };
 export type TaskWrite = Partial<Pick<Task, 'title' | 'owner' | 'notes' | 'status' | 'parentId' | 'kind' | 'order' | 'start' | 'end' | 'duration' | 'progress' | 'predecessors'>> & { revision: number };
-export type TaskResult = { tasks: Task[]; revision: number; id?: string };
+export type TaskResult = { tasks: Task[]; revision: number; id?: string; project: Project };
 export const invalid = (message: string, status = 400): never => { throw Object.assign(Error(message), { status }); };
 export function objectInput(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) invalid('请求内容应为对象');

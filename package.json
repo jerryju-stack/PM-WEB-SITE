@@ -16,5 +16,6 @@
   "devDependencies": {
     "@types/node": "^26.6.5",
     "typescript": "^7.0.2"
-  }
+  },
+  "packageManager": "pnpm@11.25.0"
 }

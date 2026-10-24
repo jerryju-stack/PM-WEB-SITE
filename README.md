@@ -96,3 +96,5 @@ npm test
 项目和文章的更新、删除需要资源版本；项目删除同时检查任务版本。任务派生进度不由项目表单写回。数据库通过编号迁移升级，旧 SQLite 和 JSON 导入继续支持。接口、草稿冲突处理、迁移与代码/数据回退限制见 [写入契约](docs/write-contract.md)。
 
 统一验证入口为 `pnpm check`（或 `node --experimental-strip-types scripts/check.ts`），GitHub CI 使用相同入口。
+
+A 批次的实际检查、浏览器场景与未执行范围见 [实施验证记录](docs/batch-a-validation.md)。

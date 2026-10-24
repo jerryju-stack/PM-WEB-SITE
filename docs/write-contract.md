@@ -37,4 +37,14 @@ lib/migrations.ts 管理 schema_migrations。001 resource_versions 增加 projec
 
 pnpm install --frozen-lockfile 后运行 pnpm check；本机也可 node --experimental-strip-types scripts/check.ts。入口执行类型检查、全部 Node 隔离测试、工作区/暂存区及当前提交差异检查。项目无独立构建命令，浏览器脚本仍由服务端移除类型提供。
 
-Git origin 为 GitHub，.github/workflows/check.yml 使用 Node 24、pnpm 10、锁文件安装后调用同一入口。本地通过不等于远程 CI 通过；未推送/未运行远程任务时需分别说明。
+Git origin 为 GitHub，.github/workflows/check.yml 使用 Node 24、pnpm 11.25.0、锁文件安装后调用同一入口。本地通过不等于远程 CI 通过；未推送/未运行远程任务时需分别说明。
+
+## 本地草稿的实现边界
+
+src/drafts.ts 的 EditDraft 保存独立副本、读取时版本、dirty 状态与最新值候选。review 仅展示候选，useReviewedVersion 仅在用户点击明确按钮时改变下一次提交版本；仍需再次点击保存，不自动发送旧数据。再次冲突后必须重新查看新值。
+
+项目/文章表单在提交期间禁用相关输入，失败保持原始 DOM 输入。Timing 的任务草稿按当前用户与项目保存在页面内存，原始表单值另行保留，避免把暂时为空的数字字段重绘成 0。附件重新加载、视图重绘以及同页重新挂载不会直接替换 dirty 草稿。离开编辑对象有舍弃确认；刷新/离开页面使用 beforeunload 提示，明确选择离开后不承诺恢复。草稿不写入服务器、不跨设备，亦非浏览器永久存储。
+
+Timing 保存中统一锁定编辑；未获接受的操作有明确等待反馈。失败的表格修改进入可恢复抽屉；拖动失败预览保持开始、结束和工期一致。完成度按持久化数值的十进制表示精确累积（内部临时 BigInt），最终取整为普通数字；不会把 BigInt 写入 JSON 或数据库，不引入新依赖。
+
+项目暂停与进度关系、任务转父级历史处理沿用原逻辑，仍是后续业务确认事项。附件文件/数据库崩溃一致性、团队授权、创建幂等及完整恢复平台均未在本批实现。
