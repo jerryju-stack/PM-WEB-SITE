@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { existsSync, mkdirSync, readFileSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes, scryptSync } from 'node:crypto';
-import { template, schedule } from './schedule.ts';
+import { template, schedule, projectProgress } from './schedule.ts';
 import type { Task } from './schedule.ts';
 export const passwordHash = (value: string, salt: string) => scryptSync(value, salt, 64).toString('hex');
 export function openStore(directory: string) {
@@ -39,7 +39,7 @@ export function openStore(directory: string) {
       for (const t of normalized) for (const predecessor of t.predecessors) db.prepare('INSERT INTO dependencies VALUES(?,?)').run(t.id,predecessor);
       db.prepare('UPDATE projects SET revision=revision+1 WHERE id=?').run(projectId);
       const project = get('projects',projectId), leaves=normalized.filter(t=>t.kind!=='summary');
-      if (leaves.length) { const total = leaves.reduce((sum,t)=>sum+Math.max(t.duration,1),0); project.progress=Math.round(leaves.reduce((sum,t)=>sum+t.progress*Math.max(t.duration,1),0)/total); project.status=project.progress===100?'已完成':project.progress>0?'进行中':'计划中'; put('projects',project); }
+      if (leaves.length) { project.progress=projectProgress(normalized); project.status=project.progress===100?'已完成':project.progress>0?'进行中':'计划中'; put('projects',project); }
       else if (hadLeaves) { project.progress=0;project.status='计划中';put('projects',project); }
       return normalized;
     });

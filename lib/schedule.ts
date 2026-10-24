@@ -33,6 +33,18 @@ export function workdays(start: string, end: string): number {
 export function template(projectId: string): Task[] {
   return stages.map((title, order) => ({ id: `${projectId}-stage-${order + 1}`, projectId, parentId: null, order, title, kind: 'summary', owner: '', start: null, end: null, duration: 0, progress: 0, status: '计划中', notes: '', predecessors: [] }));
 }
+export type ProgressTotals = { weighted: number; weight: number };
+export const leafTotals = (task: Task): ProgressTotals => {
+  const weight = Math.max(1, task.duration);
+  return { weight, weighted: task.progress * weight };
+};
+export const sumTotals = (values: ProgressTotals[]): ProgressTotals => values.reduce(
+  (sum, value) => ({ weight: sum.weight + value.weight, weighted: sum.weighted + value.weighted }),
+  { weight: 0, weighted: 0 },
+);
+export const progressPercent = (total: ProgressTotals): number => total.weight ? Math.round(total.weighted / total.weight) : 0;
+export const projectProgress = (tasks: Task[]): number => progressPercent(sumTotals(tasks.filter(t => t.kind !== 'summary').map(leafTotals)));
+
 export function schedule(input: Task[]): Task[] {
   const tasks = structuredClone(input), byId = new Map(tasks.map(t => [t.id, t]));
   const children = (id: string) => tasks.filter(t => t.parentId === id);
@@ -40,8 +52,9 @@ export function schedule(input: Task[]): Task[] {
   for (const t of tasks) {
     if (!t.title.trim() || t.title.length > 200) throw Error('任务名称不能为空且最多 200 字');
     if (!['summary','task','milestone'].includes(t.kind)) throw Error('任务类型无效');
-    if (!Number.isInteger(t.duration) || t.duration < 0 || t.duration > 2600) throw Error('工期应为 0–2600 个工作日');
-    if (!Number.isFinite(t.progress) || t.progress < 0 || t.progress > 100) throw Error('进度应在 0–100 之间');
+    if (children(t.id).length) t.kind = 'summary';
+    if (t.kind !== 'summary' && (!Number.isInteger(t.duration) || t.duration < 0 || t.duration > 2600)) throw Error('工期应为 0–2600 个工作日');
+    if (t.kind !== 'summary' && (!Number.isFinite(t.progress) || t.progress < 0 || t.progress > 100)) throw Error('进度应在 0–100 之间');
     const seen = new Set([t.id]); let p = t.parentId;
     while (p) { if (seen.has(p)) throw Error('任务层级不能循环'); seen.add(p); const parent = byId.get(p); if (!parent) throw Error('父任务不存在'); if (parent.projectId !== t.projectId) throw Error('父任务必须属于同一项目'); p = parent.parentId; }
     if (children(t.id).length) t.kind = 'summary';
@@ -51,7 +64,7 @@ export function schedule(input: Task[]): Task[] {
       if (!predecessor || predecessor.projectId !== t.projectId) throw Error('前置任务不存在或不属于本项目');
       if (predecessor.kind === 'summary' || children(id).length) throw Error('前置任务须为普通任务或里程碑');
     }
-    if (t.start) t.start = nextWorkday(t.start);
+    if (t.kind !== 'summary' && t.start) t.start = nextWorkday(t.start);
     if (t.kind === 'milestone') t.duration = 0;
     else if (t.kind === 'task' && !t.duration) t.duration = 1;
   }
@@ -73,17 +86,17 @@ export function schedule(input: Task[]): Task[] {
     visiting.delete(t.id); visited.add(t.id);
   }
   tasks.filter(t => t.kind !== 'summary').forEach(visit);
-  function rollup(t: Task): number {
+  function rollup(t: Task): ProgressTotals {
     const items = children(t.id);
-    if (t.kind !== 'summary') return Math.max(1, t.duration);
-    const weights = items.map(rollup), dated = items.filter(x => x.start && x.end);
+    if (t.kind !== 'summary') return leafTotals(t);
+    const totals = items.map(rollup), dated = items.filter(x => x.start && x.end);
     t.start = dated.length ? dated.map(x => x.start!).sort()[0] : null;
     t.end = dated.length ? dated.map(x => x.end!).sort().at(-1)! : null;
     t.duration = t.start && t.end ? workdays(t.start, t.end) : 0;
-    const weight = weights.reduce((a,b) => a+b, 0);
-    t.progress = weight ? Math.round(items.reduce((sum,x,i) => sum + x.progress * weights[i], 0) / weight) : 0;
+    const total = sumTotals(totals);
+    t.progress = progressPercent(total);
     t.status = t.progress === 100 ? '已完成' : t.progress > 0 ? '进行中' : '计划中';
-    return weight;
+    return total;
   }
   tasks.filter(t => !t.parentId).forEach(rollup);
   return tasks;
