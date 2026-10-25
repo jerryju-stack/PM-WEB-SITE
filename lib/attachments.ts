@@ -12,7 +12,7 @@ export type FileBoundary=(point:string)=>Promise<void>;
 const noBoundary:FileBoundary=async()=>{};
 export function attachmentService(store:Store, boundary:FileBoundary=noBoundary) {
   const uploads=join(store.directory,'uploads');
-  async function upload(taskId:string,name:string,chunks:AsyncIterable<Uint8Array>,context:WriteContext) {
+  async function upload(taskId:string,name:string,chunks:AsyncIterable<Uint8Array>,context:WriteContext,authorize?:()=>WriteContext) {
     const id=randomBytes(16).toString('hex'), part=join(uploads,id+'.part'), final=join(uploads,id);
     store.db.prepare('INSERT INTO file_jobs(id,kind,created_at) VALUES(?,?,?)').run(id,'upload',new Date().toISOString());
     await boundary('upload-intent');
@@ -24,6 +24,9 @@ export function attachmentService(store:Store, boundary:FileBoundary=noBoundary)
       await handle.sync();await handle.close();handle=undefined;await boundary('upload-part');
       await rename(part,final);await boundary('upload-rename');const sha256=hash.digest('hex');
       store.transaction(()=>{
+        // Synchronous final authorization shares the registration transaction. No await may
+        // separate this check from attachment registration and its success audit.
+        if(authorize)context=authorize();
         const task=store.db.prepare('SELECT project_id FROM tasks WHERE id=?').get(taskId);if(!task)invalid('任务不存在',404);
         store.db.prepare('INSERT INTO attachments(id,task_id,name,size,uploaded_by,created_at,sha256) VALUES(?,?,?,?,?,?,?)').run(id,taskId,name,size,context.actorId,new Date().toISOString(),sha256);
         const project=store.get('projects',String(task!.project_id));

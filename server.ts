@@ -12,6 +12,7 @@ import { writeTasks } from './lib/task-writes.ts';
 import { attachmentService, fileId } from './lib/attachments.ts';
 import { dataLock } from './lib/data-lock.ts';
 import { requestId, errorResponse, diagnostic } from './lib/http-errors.ts';
+import { clientAddress, trustedProxies, loginLimiter } from './lib/login-security.ts';
 
 const root=dirname(fileURLToPath(import.meta.url));
 const directory=resolve(process.env.DATA_DIR || join(root,'data'));
@@ -24,7 +25,8 @@ const files=attachmentService(store);
 const recovery=await files.retry();
 if(recovery.some(row=>!row.ok))console.error(JSON.stringify({event:'attachment-recovery-pending',count:recovery.filter(row=>!row.ok).length}));
 const sessions=new Map<string,{id:string;expires:number}>();
-const attempts=new Map<string,{count:number;until:number}>();
+const attempts=loginLimiter();
+const proxies=trustedProxies(process.env.TRUSTED_PROXIES);
 const id=()=>randomBytes(16).toString('hex');
 const safeUser=(user:any)=>user?{id:user.id,name:user.name,role:user.role}:null;
 const fail=(message:string,status=400):never=>{throw Object.assign(Error(message),{status});};
@@ -40,17 +42,19 @@ const server=http.createServer(async(req,res)=>{
   try {
     const url=new URL(req.url||'/','http://localhost'), method=req.method||'GET';
     const token=/(?:^|;\s*)session=([^;]+)/.exec(req.headers.cookie||'')?.[1];
-    const session=token?sessions.get(token):null;
-    const user=session&&session.expires>Date.now()?store.get('users',session.id):null;
+    const currentUser=()=>{const session=token?sessions.get(token):null;const found=session&&session.expires>Date.now()?store.get('users',session.id):null;return found&&['admin','editor','viewer'].includes(found.role)?found:null;};
+    let user=currentUser();
     const context={actorId:user?.id??'anonymous',actorName:user?.name??'',requestId:trace};
+    const recheck=()=>{user=currentUser();context.actorId=user?.id??'anonymous';context.actorName=user?.name??'';};
     const requireUser=()=>{if(!user)fail('请先登录以查看项目详情和附件',401);};
-    const requireEdit=()=>{requireUser();if(user.role==='viewer')fail('只读成员不能修改内容',403);};
+    const requireEdit=()=>{requireUser();if(!['admin','editor'].includes(user.role))fail('只读成员不能修改内容',403);};
     if(url.pathname.startsWith('/api/')) {
       if(!['GET','HEAD'].includes(method)&&req.headers.origin&&![`http://${req.headers.host}`,`https://${req.headers.host}`].includes(req.headers.origin))fail('请求来源无效',403);
       const parts=url.pathname.split('/').filter(Boolean);
       if(parts[1]==='attachments'&&parts[2]&&method==='GET') {
         requireUser();const row=store.db.prepare('SELECT * FROM attachments WHERE id=?').get(parts[2]) as any;if(!row)fail('附件不存在',404);
         const handle=await open(join(uploads,fileId(row.id)),'r');await handle.close();
+        recheck();requireUser();
         res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Length':row.size,'Content-Disposition':`attachment; filename="attachment"; filename*=UTF-8''${encodeURIComponent(row.name).replaceAll("'",'%27')}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});
         await pipeline(createReadStream(join(uploads,row.id)),res);return;
       }
@@ -58,19 +62,22 @@ const server=http.createServer(async(req,res)=>{
         requireEdit();const task=store.tasks(parts[2]).find(t=>t.id===parts[4]);if(!task)fail('任务不存在',404);
         const rawName=String(req.headers['x-file-name']||'');let name:string;try{name=decodeURIComponent(rawName);}catch{fail('文件名无效');}
         name=name!.replace(/[\\/\x00-\x1f\x7f]/g,'_').slice(0,200).trim();if(!name)fail('缺少文件名');
-        return json(201,await files.upload(task!.id,name!,req,context));
+        return json(201,await files.upload(task!.id,name!,req,context,()=>{recheck();requireEdit();return context;}));
       }
       let body:any={};
       if(['POST','PUT','DELETE','PATCH'].includes(method)) {
         const chunks:Buffer[]=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>1024*1024)fail('请求内容不能超过 1 MB',413);chunks.push(chunk);}
         if(bytes){try{body=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{fail('JSON 格式无效');}if(!body||typeof body!=='object'||Array.isArray(body))fail('请求内容无效');}
       }
+      // The body can take arbitrarily long. Resolve the live session and account only
+      // after it is consumed; all following authorization/business SQL is synchronous.
+      recheck();
       if(url.pathname==='/api/login'&&method==='POST') {
-        const ip=req.socket.remoteAddress||'',attempt=attempts.get(ip);
-        if(attempt&&attempt.until>Date.now()&&attempt.count>=10)fail('尝试过于频繁，请 15 分钟后重试',429);
+        const ip=clientAddress(req.socket.remoteAddress||'',req.headers['x-forwarded-for'],proxies);
+        if(!attempts.check(ip,body.id))fail('尝试过于频繁，请稍后重试',429);
         const found=typeof body.id==='string'?store.get('users',body.id):null;
-        if(!verify(found,body.password)){attempts.set(ip,{count:attempt&&attempt.until>Date.now()?attempt.count+1:1,until:Date.now()+900000});fail('账号或密码错误',401);}
-        attempts.delete(ip);for(const [key,value] of sessions)if(value.expires<Date.now())sessions.delete(key);
+        if(!verify(found,body.password)){attempts.failure(ip,body.id);fail('账号或密码错误',401);}
+        for(const [key,value] of sessions)if(value.expires<Date.now())sessions.delete(key);
         const key=id()+id();sessions.set(key,{id:found.id,expires:Date.now()+86400000});
         res.setHeader('Set-Cookie',`session=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${process.env.COOKIE_SECURE==='1'?'; Secure':''}`);return json(200,safeUser(found));
       }

@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createConnection } from 'node:net';
-export async function httpFixture(options:{directory?:string;password?:string}={}) {
+export async function httpFixture(options:{directory?:string;password?:string;trustedProxies?:string}={}) {
  const directory=options.directory??await mkdtemp(join(tmpdir(),'station-http-test-'));
  const password=options.password??'Isolated-Http-Test-2026';
- const child=spawn(process.execPath,['--experimental-strip-types',fileURLToPath(new URL('../server.ts',import.meta.url))],{env:{...process.env,DATA_DIR:directory,PORT:'0',ADMIN_PASSWORD:password},stdio:['ignore','pipe','pipe']});
+ const child=spawn(process.execPath,['--experimental-strip-types',fileURLToPath(new URL('../server.ts',import.meta.url))],{env:{...process.env,DATA_DIR:directory,PORT:'0',ADMIN_PASSWORD:password,TRUSTED_PROXIES:options.trustedProxies??''},stdio:['ignore','pipe','pipe']});
  let base='';
  const stop=async()=>{
    if(child.pid&&child.exitCode===null&&child.signalCode===null&&!child.killed)await new Promise<void>(resolve=>{child.once('exit',()=>resolve());child.kill();});
