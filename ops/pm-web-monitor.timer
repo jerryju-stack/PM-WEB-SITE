@@ -1,0 +1,10 @@
+[Unit]
+Description=Project Station recovery point and availability monitoring
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Unit=pm-web-monitor.service
+
+[Install]
+WantedBy=timers.target

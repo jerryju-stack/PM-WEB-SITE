@@ -1,0 +1,12 @@
+[Unit]
+Description=Project Station Shanghai twice-daily backup
+
+[Timer]
+OnCalendar=*-*-* 00:30:00 Asia/Shanghai
+OnCalendar=*-*-* 12:30:00 Asia/Shanghai
+Persistent=true
+AccuracySec=1min
+Unit=pm-web-backup.service
+
+[Install]
+WantedBy=timers.target

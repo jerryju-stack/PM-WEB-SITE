@@ -1,0 +1,10 @@
+[Unit]
+Description=Project Station availability disk and recovery point check
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/bin/bash /WWW/pm-web-current/ops/monitor.sh
+TimeoutStartSec=60

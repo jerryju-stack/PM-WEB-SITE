@@ -1,0 +1,12 @@
+[Unit]
+Description=Project Station consistent stopped-writer backup
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/bin/bash /WWW/pm-web-current/ops/backup.sh
+TimeoutStartSec=290
+StandardOutput=journal
+StandardError=journal
