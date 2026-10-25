@@ -5,6 +5,8 @@ import { mkdtemp, readFile, writeFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
+import { unlockDeadProcess } from '../lib/data-lock.ts';
 import { passwordHash } from '../lib/database.ts';
 test('JSON 迁移、八阶段、权限、完整排期、附件、重启持久化',async()=>{
  const directory=await mkdtemp(join(tmpdir(),'project-station-test-')),port=String(19000+Math.floor(Math.random()*10000));
@@ -44,7 +46,7 @@ test('JSON 迁移、八阶段、权限、完整排期、附件、重启持久化
  assert.equal((await fetch(base+'/api/settings',{method:'POST',headers:{Cookie:admin,Origin:'https://foreign.example'},body:'{}'})).status,403);
  const html=await fetch(base+'/projects/legacy-project/timing');assert.equal(html.status,200);assert.ok((await html.text()).includes('Project Station'));
  for(const asset of ['/app.js','/timing.js','/schedule.js','/timing.css'])assert.equal((await fetch(base+asset)).status,200);
- await stop();await start();assert.equal((await call('projects/legacy-project/timing',undefined,admin)).status,401);admin=(await call('login',{id:'admin',password:'Admin-Password-2026'})).cookie;
+ await stop();if(existsSync(join(directory,'.station-lock')))unlockDeadProcess(directory);await start();assert.equal((await call('projects/legacy-project/timing',undefined,admin)).status,401);admin=(await call('login',{id:'admin',password:'Admin-Password-2026'})).cookie;
  timing=(await getTiming()).data;assert.equal(timing.tasks.length,11);assert.equal(timing.attachments.length,1);assert.equal(timing.tasks.find((t:any)=>t.id===b).start,'2026-10-28');assert.equal(await readFile(join(directory,'uploads',file.id),'utf8'),'attachment-content');
  assert.equal((await call(`projects/legacy-project/tasks/${b}`,{revision:timing.revision},admin,'DELETE')).status,200);timing=(await getTiming()).data;assert.equal(timing.attachments.length,0);assert.deepEqual(timing.tasks.find((t:any)=>t.id===c).predecessors,[]);assert.ok(!(await readdir(join(directory,'uploads'))).includes(file.id));
  const milestoneEdit=await call(`projects/legacy-project/tasks/${c}`,{end:'2026-11-04',revision:timing.revision},admin,'PATCH');assert.equal(milestoneEdit.status,200);assert.equal(milestoneEdit.data.tasks.find((t:any)=>t.id===c).start,'2026-11-04');assert.equal(milestoneEdit.data.tasks.find((t:any)=>t.id===c).duration,0);

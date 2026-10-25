@@ -4,8 +4,9 @@ import { dateValue, workdays, nextWorkday } from './schedule.ts';
 import type { Task } from './schedule.ts';
 import type { TaskResult } from './contracts.ts';
 import { taskInput, invalid as fail } from './contracts.ts';
+import type { WriteContext } from './audit.ts';
 export type Attachment = { id: string; task_id: string; [key: string]: unknown };
-export function writeTasks(store: Store, projectId: string, taskId: string | undefined, method: string, value: unknown): TaskResult & { removed: Attachment[] } {
+export function writeTasks(store: Store, projectId: string, taskId: string | undefined, method: string, value: unknown, context?: WriteContext): TaskResult & { removed: Attachment[] } {
  const project=store.get('projects',projectId);if(!project)fail('项目不存在',404);
  const body=taskInput(value),id=()=>randomBytes(16).toString('hex');
  const attached=(projectId:string)=>store.db.prepare('SELECT a.* FROM attachments a JOIN tasks t ON a.task_id=t.id WHERE t.project_id=?').all(projectId) as Attachment[];
@@ -30,5 +31,5 @@ export function writeTasks(store: Store, projectId: string, taskId: string | und
             if(body.predecessors!==undefined){if(!Array.isArray(body.predecessors)||!body.predecessors.every((x:any)=>typeof x==='string'))fail('前置任务格式无效');target.predecessors=[...new Set<string>(body.predecessors)];}
           }
         }
-        const updated=store.saveTasks(project.id,tasks,body.revision);return {tasks:updated,revision:store.revision(project.id),id:target?.id,project:store.get('projects',project.id),removed};
+        const updated=store.saveTasks(project.id,tasks,body.revision,context);return {tasks:updated,revision:store.revision(project.id),id:target?.id,project:store.get('projects',project.id),removed};
 }

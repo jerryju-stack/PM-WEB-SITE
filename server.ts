@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile, mkdir, open, unlink, rename } from 'node:fs/promises';
+import { readFile, mkdir, open } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
@@ -9,11 +9,20 @@ import { fileURLToPath } from 'node:url';
 import { openStore, passwordHash } from './lib/database.ts';
 import { resourceWriter } from './lib/resources.ts';
 import { writeTasks } from './lib/task-writes.ts';
+import { attachmentService, fileId } from './lib/attachments.ts';
+import { dataLock } from './lib/data-lock.ts';
+import { requestId, errorResponse, diagnostic } from './lib/http-errors.ts';
 
 const root=dirname(fileURLToPath(import.meta.url));
-const store=openStore(resolve(process.env.DATA_DIR || join(root,'data')));
+const directory=resolve(process.env.DATA_DIR || join(root,'data'));
+const lock=dataLock(directory,'server');
+process.on('exit',()=>lock.release());
+const store=openStore(directory);
 const uploads=join(store.directory,'uploads'); await mkdir(uploads,{recursive:true});
 const resources=resourceWriter(store);
+const files=attachmentService(store);
+const recovery=await files.retry();
+if(recovery.some(row=>!row.ok))console.error(JSON.stringify({event:'attachment-recovery-pending',count:recovery.filter(row=>!row.ok).length}));
 const sessions=new Map<string,{id:string;expires:number}>();
 const attempts=new Map<string,{count:number;until:number}>();
 const id=()=>randomBytes(16).toString('hex');
@@ -22,16 +31,18 @@ const fail=(message:string,status=400):never=>{throw Object.assign(Error(message
 const text=(v:any,max=5000)=>String(v??'').slice(0,max);
 const verify=(u:any,p:any)=>u&&typeof p==='string'&&p.length<=1024&&timingSafeEqual(Buffer.from(u.hash,'hex'),Buffer.from(passwordHash(p,u.salt),'hex'));
 const attached=(projectId:string)=>store.db.prepare('SELECT a.* FROM attachments a JOIN tasks t ON a.task_id=t.id WHERE t.project_id=? ORDER BY a.created_at DESC').all(projectId);
-const eraseFiles=async(rows:any[])=>{for(const row of rows)try{await unlink(join(uploads,row.id));}catch(e:any){if(e.code!=='ENOENT')console.error('附件清理失败',row.id);}};
+const eraseFiles=async(rows:any[])=>{const results=await files.retry(rows.map(row=>row.id));if(results.some(row=>!row.ok))console.error(JSON.stringify({event:'attachment-cleanup-pending',count:results.filter(row=>!row.ok).length}));};
 const esc=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 
 const server=http.createServer(async(req,res)=>{
+  const trace=requestId();res.setHeader('X-Request-Id',trace);
   const json=(status:number,value:any)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
   try {
     const url=new URL(req.url||'/','http://localhost'), method=req.method||'GET';
     const token=/(?:^|;\s*)session=([^;]+)/.exec(req.headers.cookie||'')?.[1];
     const session=token?sessions.get(token):null;
     const user=session&&session.expires>Date.now()?store.get('users',session.id):null;
+    const context={actorId:user?.id??'anonymous',actorName:user?.name??'',requestId:trace};
     const requireUser=()=>{if(!user)fail('请先登录以查看项目详情和附件',401);};
     const requireEdit=()=>{requireUser();if(user.role==='viewer')fail('只读成员不能修改内容',403);};
     if(url.pathname.startsWith('/api/')) {
@@ -39,7 +50,7 @@ const server=http.createServer(async(req,res)=>{
       const parts=url.pathname.split('/').filter(Boolean);
       if(parts[1]==='attachments'&&parts[2]&&method==='GET') {
         requireUser();const row=store.db.prepare('SELECT * FROM attachments WHERE id=?').get(parts[2]) as any;if(!row)fail('附件不存在',404);
-        const handle=await open(join(uploads,row.id),'r');await handle.close();
+        const handle=await open(join(uploads,fileId(row.id)),'r');await handle.close();
         res.writeHead(200,{'Content-Type':'application/octet-stream','Content-Length':row.size,'Content-Disposition':`attachment; filename="attachment"; filename*=UTF-8''${encodeURIComponent(row.name).replaceAll("'",'%27')}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});
         await pipeline(createReadStream(join(uploads,row.id)),res);return;
       }
@@ -47,14 +58,7 @@ const server=http.createServer(async(req,res)=>{
         requireEdit();const task=store.tasks(parts[2]).find(t=>t.id===parts[4]);if(!task)fail('任务不存在',404);
         const rawName=String(req.headers['x-file-name']||'');let name:string;try{name=decodeURIComponent(rawName);}catch{fail('文件名无效');}
         name=name!.replace(/[\\/\x00-\x1f\x7f]/g,'_').slice(0,200).trim();if(!name)fail('缺少文件名');
-        const fileId=id(), temporary=join(uploads,fileId+'.part'), destination=join(uploads,fileId);let size=0;
-        const handle=await open(temporary,'wx');
-        try {
-          for await(const chunk of req){size+=chunk.length;if(size>20*1024*1024)fail('单个附件不能超过 20 MB',413);await handle.write(chunk);}
-          if(!size)fail('不能上传空文件');await handle.close();await rename(temporary,destination);
-          store.db.prepare('INSERT INTO attachments VALUES(?,?,?,?,?,?)').run(fileId,task!.id,name,size,user.id,new Date().toISOString());
-          return json(201,{id:fileId,name,size});
-        }catch(e){await handle.close().catch(()=>{});await unlink(temporary).catch(()=>{});await unlink(destination).catch(()=>{});throw e;}
+        return json(201,await files.upload(task!.id,name!,req,context));
       }
       let body:any={};
       if(['POST','PUT','DELETE','PATCH'].includes(method)) {
@@ -87,10 +91,10 @@ const server=http.createServer(async(req,res)=>{
       if(!['POST','PUT','DELETE','PATCH'].includes(method))fail('不支持此方法',405);requireEdit();
       if(parts[1]==='attachments'&&parts[2]&&method==='DELETE') {
         const row=store.db.prepare('SELECT * FROM attachments WHERE id=?').get(parts[2]) as any;if(!row)fail('附件不存在',404);
-        store.db.prepare('DELETE FROM attachments WHERE id=?').run(row.id);await eraseFiles([row]);return json(200,{ok:true});
+        files.remove(row.id,context);await eraseFiles([row]);return json(200,{ok:true});
       }
       if(parts[1]==='projects'&&parts[2]&&parts[3]==='tasks') {
-        const result=writeTasks(store,parts[2],parts[4],method,body);
+        const result=writeTasks(store,parts[2],parts[4],method,body,context);
         await eraseFiles(result.removed);const {removed,...response}=result;return json(200,response);
       }
       const collection=parts[1];
@@ -106,11 +110,11 @@ const server=http.createServer(async(req,res)=>{
         if(method==='DELETE') {
           if(!resourceId)fail('请选择记录');
           const rows=collection==='projects'?attached(resourceId):[];
-          resources.remove(collection,resourceId,body);await eraseFiles(rows as any[]);
+          resources.remove(collection,resourceId,body,context);await eraseFiles(rows as any[]);
         } else if((method==='PATCH'||method==='PUT'||method==='POST')&&resourceId!==undefined) {
-          const item=resources.update(collection,resourceId,body);return json(200,{ok:true,id:item.id,version:item.version,item});
+          const item=resources.update(collection,resourceId,body,context);return json(200,{ok:true,id:item.id,version:item.version,item});
         } else if(method==='POST'&&!resourceId) {
-          const item=resources.create(collection,body,user.name);return json(200,{ok:true,id:item.id,version:item.version,item});
+          const item=resources.create(collection,body,user.name,context);return json(200,{ok:true,id:item.id,version:item.version,item});
         } else fail('请使用 POST 创建或 PATCH 更新指定记录',405);
       }else fail('接口不存在',404);
       return json(200,{ok:true});
@@ -123,6 +127,7 @@ const server=http.createServer(async(req,res)=>{
     if(url.pathname!=='/'&&!/^\/projects\/[a-zA-Z0-9_-]+\/timing$/.test(url.pathname))fail('页面不存在',404);
     const settings=store.get('settings','site');let html=await readFile(join(root,'src/index.html'),'utf8');html=html.replaceAll('__TITLE__',esc(settings.title)).replaceAll('__DESCRIPTION__',esc(settings.description));
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'"});res.end(html);
-  }catch(e:any){if(res.headersSent){res.destroy();return;}const status=e.status||((e.code==='ENOENT')?404:400);if(status>=500)console.error(e);json(status,{error:e.message||'操作失败，请稍后重试'});}
+  }catch(e:any){const failure=errorResponse(e,trace);if(failure.status>=500)console.error(diagnostic(e,trace,req.method));if(res.headersSent){res.destroy();return;}json(failure.status,failure.body);}
 });
 const port=Number(process.env.PORT||3000);server.listen(port,'127.0.0.1',()=>{const address=server.address();console.log(`Local: http://127.0.0.1:${typeof address==='object'&&address?address.port:port}`);});
+for(const signal of ['SIGINT','SIGTERM'] as const)process.on(signal,()=>{server.close(()=>process.exit(0));server.closeAllConnections();});

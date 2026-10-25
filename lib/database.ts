@@ -5,6 +5,8 @@ import { randomBytes, scryptSync } from 'node:crypto';
 import { template, schedule, projectProgress } from './schedule.ts';
 import { applyMigrations } from './migrations.ts';
 import type { Task } from './schedule.ts';
+import { audit } from './audit.ts';
+import type { WriteContext } from './audit.ts';
 export const passwordHash = (value: string, salt: string) => scryptSync(value, salt, 64).toString('hex');
 export function openStore(directory: string) {
   mkdirSync(directory, { recursive: true });
@@ -36,12 +38,14 @@ export function openStore(directory: string) {
   const remove = (table: string, id: string) => db.prepare(`DELETE FROM ${checked(table)} WHERE id=?`).run(id);
   const tasks = (projectId: string): Task[] => db.prepare('SELECT data FROM tasks WHERE project_id=? ORDER BY rowid').all(projectId).map((row: any) => JSON.parse(row.data));
   const revision = (id: string): number => Number((db.prepare('SELECT revision FROM projects WHERE id=?').get(id) as any)?.revision || 0);
-  function saveTasks(projectId: string, values: Task[], expected?: number) {
+  function saveTasks(projectId: string, values: Task[], expected?: number, context?: WriteContext) {
     return transaction(() => {
       if (!get('projects',projectId)) throw Object.assign(Error('项目不存在'), { status: 404 });
       if (values.some(t => t.projectId !== projectId)) throw Error('任务必须属于本项目');
       if (expected !== undefined && revision(projectId) !== expected) throw Object.assign(Error('项目已被其他操作更新，请刷新后重试'), { status: 409 });
-      const hadLeaves = tasks(projectId).some(t => t.kind !== 'summary');
+      const beforeTasks = tasks(projectId), beforeRevision = revision(projectId);
+      const beforeAttachments = db.prepare('SELECT a.* FROM attachments a JOIN tasks t ON a.task_id=t.id WHERE t.project_id=?').all(projectId) as any[];
+      const hadLeaves = beforeTasks.some(t => t.kind !== 'summary');
       const normalized = schedule(values), ids = new Set(normalized.map(t => t.id));
       for (const t of normalized) db.prepare('INSERT INTO tasks(id,project_id,parent_id,data) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET parent_id=excluded.parent_id,data=excluded.data').run(t.id,projectId,t.parentId,JSON.stringify(t));
       for (const old of tasks(projectId)) if (!ids.has(old.id)) db.prepare('DELETE FROM tasks WHERE id=?').run(old.id);
@@ -51,6 +55,13 @@ export function openStore(directory: string) {
       const project = get('projects',projectId), leaves=normalized.filter(t=>t.kind!=='summary');
       if (leaves.length) { project.progress=projectProgress(normalized); project.status=project.progress===100?'已完成':project.progress>0?'进行中':'计划中'; put('projects',project); }
       else if (hadLeaves) { project.progress=0;project.status='计划中';put('projects',project); }
+      const versions = { projectId, revisionBefore: beforeRevision, revisionAfter: revision(projectId) };
+      for (const task of normalized) {
+        const before = beforeTasks.find(t => t.id === task.id);
+        if (JSON.stringify(before) !== JSON.stringify(task)) audit(db,context,'tasks',task.id,before,task,versions);
+      }
+      for (const task of beforeTasks) if (!ids.has(task.id)) audit(db,context,'tasks',task.id,task,null,versions);
+      for (const row of beforeAttachments) if (!db.prepare('SELECT 1 FROM attachments WHERE id=?').get(row.id)) audit(db,context,'attachments',row.id,row,null,versions);
       return normalized;
     });
   }

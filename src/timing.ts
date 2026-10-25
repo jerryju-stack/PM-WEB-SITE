@@ -28,7 +28,7 @@ export async function mountTiming(options:Options){
  root.innerHTML=shell('<main class="timing-gate"><p>正在载入项目排期…</p></main>');
  async function request(path:string,body?:any,method='POST'){
   const response=await fetch('/api/'+path,body?{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal}:{signal});
-  const result=await response.json();if(!response.ok)throw Object.assign(Error(result.error),{status:response.status});return result;
+  const result=await response.json();if(!response.ok)throw Object.assign(Error(result.error+(result.requestId?`（请求 ${result.requestId}）`:"")),{status:response.status});return result;
  }
  async function load(){const current=reads.begin(()=>!signal.aborted);const latest=await request(`projects/${projectId}/timing`);if(!current())return;snapshot=latest;
    if(edit&&!edit.dirty&&edit.value.id){const latest=snapshot.tasks.find((t:Task)=>t.id===edit!.value.id);if(latest)setEdit(new EditDraft(latest,snapshot.revision));}
@@ -177,7 +177,7 @@ export async function mountTiming(options:Options){
   on('#task-upload','change',async e=>{
    const files=Array.from((e.target as HTMLInputElement).files||[]);if(!files.length||attachmentBusy)return;const taskId=selected!;attachmentBusy=true;
    const status=document.querySelector('#upload-status')!;let count=0;
-   try{for(const file of files){if(file.size>20*1024*1024)throw Error(`${file.name} 超过 20 MB`);status.textContent=`上传中 ${count+1}/${files.length}：${file.name}`;const response=await fetch(`/api/projects/${projectId}/tasks/${taskId}/attachments`,{method:'POST',headers:{'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(file.name)},body:file,signal});const result=await response.json();if(!response.ok)throw Error(result.error);count++;}notify(`${count} 个附件已上传`);}catch(error:any){notify(error.message);}finally{attachmentBusy=false;try{await load();}catch(error:any){notify('附件请求已结束，但刷新失败：'+error.message);render();}}
+   try{for(const file of files){if(file.size>20*1024*1024)throw Error(`${file.name} 超过 20 MB`);status.textContent=`上传中 ${count+1}/${files.length}：${file.name}`;const response=await fetch(`/api/projects/${projectId}/tasks/${taskId}/attachments`,{method:'POST',headers:{'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(file.name)},body:file,signal});const result=await response.json();if(!response.ok)throw Error(result.error+(result.requestId?`（请求 ${result.requestId}）`:""));count++;}notify(`${count} 个附件已上传`);}catch(error:any){notify(error.message);}finally{attachmentBusy=false;try{await load();}catch(error:any){notify('附件请求已结束，但刷新失败：'+error.message);render();}}
   });
   on('[data-file-delete]','click',async e=>{if(!confirm('确定删除此附件？'))return;try{await request('attachments/'+e.currentTarget.dataset.fileDelete,{},'DELETE');await load();notify('附件已删除');}catch(error:any){notify(error.message);}});
   on('[data-bar]','keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openTask(e.currentTarget.dataset.bar);}});
