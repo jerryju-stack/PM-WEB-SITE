@@ -1,0 +1,72 @@
+{
+  "kind": "batch-c-local-whole-snapshot-drill",
+  "createdAt": "2026-10-25T13:52:23.358Z",
+  "approvedPolicy": {
+    "format": 1,
+    "rpoMinutes": 1440,
+    "rtoMinutes": 480,
+    "maxDowntimeMinutes": 5,
+    "retentionDays": 30,
+    "timezone": "Asia/Shanghai",
+    "windows": [
+      "00:30",
+      "12:30"
+    ],
+    "rtoClock": "elapsed-24x7"
+  },
+  "sourcePort": "7440",
+  "backupMs": 58,
+  "codeVersion": "d6dee19762a56379e9058ca60e272dea64bb23bb",
+  "migrations": [
+    {
+      "version": 1,
+      "name": "resource_versions"
+    },
+    {
+      "version": 2,
+      "name": "audit_and_attachment_recovery"
+    },
+    {
+      "version": 3,
+      "name": "permanent_account_identity"
+    },
+    {
+      "version": 4,
+      "name": "project_capability_groups"
+    }
+  ],
+  "counts": {
+    "schema_migrations": 4,
+    "meta": 1,
+    "settings": 1,
+    "users": 3,
+    "projects": 2,
+    "articles": 1,
+    "tasks": 18,
+    "dependencies": 1,
+    "attachments": 1,
+    "audit_events": 31,
+    "file_jobs": 0,
+    "identities": 3,
+    "permission_groups": 4,
+    "project_members": 3,
+    "project_access": 2
+  },
+  "verifyMs": 11,
+  "plannedStopThroughLoginAndProjectMs": 509,
+  "mistakenDeletionConfirmed": true,
+  "restoreCopyVerifyMs": 29,
+  "restoredPort": "7452",
+  "stableIdentityLoginPassed": true,
+  "restoredEngineeringAndIsolationPassed": true,
+  "restoredProjectLessonsPassed": true,
+  "restoredAttachmentIdentityAndBytesPassed": true,
+  "restoreThroughLoginProjectDownloadMs": 505,
+  "localMeasuredTargetsPassed": true,
+  "retentionPreviewPassed": true,
+  "databaseAndFilesVerified": true,
+  "loginProjectPageAndDownloadPassed": true,
+  "repeatRetryPassed": true,
+  "allFixturePortsClosed": true,
+  "totalMs": 1898
+}
