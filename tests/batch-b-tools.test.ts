@@ -34,7 +34,9 @@ test('offline CLI reports legacy/missing/corrupt/orphan/pending; quarantines onl
   for(const name of readdirSync(parent).filter(name=>name.startsWith('.incomplete-')))assert.throws(()=>verifySnapshot(join(parent,name)),/Incomplete/);
 });
 test('manifest traversal and missing completion marker cannot restore',()=>{
-  const parent=mkdtempSync(join(tmpdir(),'station-manifest-')),source=join(parent,'source'),snapshot=join(parent,'snapshot');process.env.ADMIN_PASSWORD='Isolated-Manifest-Test-2026';const store=openStore(source);store.db.close();
+  const parent=mkdtempSync(join(tmpdir(),'station-manifest-')),source=join(parent,'source'),snapshot=join(parent,'snapshot');process.env.ADMIN_PASSWORD='Isolated-Manifest-Test-2026';const store=openStore(source),admin=store.get('users','admin');store.put('users',{...admin,hash:''});store.db.close();
+  assert.throws(()=>backupSnapshot(source,join(parent,'unusable-account'),'fixture'),/usable login/);assert.ok(!existsSync(join(parent,'unusable-account','COMPLETE')));
+  const repaired=openStore(source);repaired.put('users',admin);repaired.db.close();
   backupSnapshot(source,snapshot,'fixture');const original=readFileSync(join(snapshot,'manifest.json'),'utf8');
   const manifest=JSON.parse(original);manifest.files.push({path:'../outside',size:0,sha256:'x'});const encoded=JSON.stringify(manifest);writeFileSync(join(snapshot,'manifest.json'),encoded);writeFileSync(join(snapshot,'COMPLETE'),digest(Buffer.from(encoded)));
   assert.throws(()=>restoreSnapshot(snapshot,join(parent,'restored')),/Unsafe/);assert.ok(!existsSync(join(parent,'restored')));

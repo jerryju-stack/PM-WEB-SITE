@@ -26,6 +26,11 @@ export function inspectData(directory:string) {
     const integrity=db.prepare('PRAGMA integrity_check').all();
     if(integrity.length!==1||integrity[0].integrity_check!=='ok')throw Error('Database integrity check failed');
     if(db.prepare('PRAGMA foreign_key_check').all().length)throw Error('Database foreign key check failed');
+    if(db.prepare("SELECT value FROM meta WHERE key='initialized'").get()?.value!=='1'||!db.prepare("SELECT 1 FROM settings WHERE id='site'").get())throw Error('Missing initialized application state');
+    const usableAccount=db.prepare('SELECT id,data FROM users').all().some(row=>{
+      const user=JSON.parse(String(row.data));return user.id===row.id&&typeof user.salt==='string'&&user.salt.length>0&&typeof user.hash==='string'&&/^[a-f0-9]{128}$/i.test(user.hash)&&['admin','editor','viewer'].includes(user.role);
+    });
+    if(!usableAccount)throw Error('No usable login account in snapshot');
     const migrations=db.prepare('SELECT version,name FROM schema_migrations ORDER BY version').all().map(row=>({version:Number(row.version),name:String(row.name)}));
     const versions=JSON.stringify(migrations.map(row=>row.version));
     if(!['[1]','[1,2]'].includes(versions))throw Error('Unsupported snapshot migration version');

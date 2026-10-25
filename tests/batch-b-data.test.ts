@@ -56,6 +56,7 @@ test('attachment rename/registration errors retain recoverable bytes; durable cl
     await assert.rejects(injected.upload(task.id,'file.txt',chunks(),actor),/injected/);
     assert.equal(store.db.prepare('SELECT count(*) AS n FROM attachments').get()!.n,0);assert.equal(reconcile(store).orphan.length,0);
     const files=attachmentService(store),good=await files.upload(task.id,'normal.txt',chunks(),actor);
+    const versions=JSON.parse(String(store.db.prepare("SELECT versions FROM audit_events WHERE resource='attachments' AND resource_id=?").get(good.id)!.versions));assert.equal(versions.projectId,project.id);assert.equal(versions.projectVersion,0);assert.equal(versions.taskRevision,0);
     store.db.exec("CREATE TRIGGER fail_registration BEFORE INSERT ON attachments BEGIN SELECT RAISE(ABORT,'injected SQL failure'); END");
     await assert.rejects(files.upload(task.id,'bad.txt',chunks(),actor),/injected SQL/);store.db.exec('DROP TRIGGER fail_registration');
     files.remove(good.id,actor);

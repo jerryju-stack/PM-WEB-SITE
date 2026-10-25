@@ -24,9 +24,10 @@ export function attachmentService(store:Store, boundary:FileBoundary=noBoundary)
       await handle.sync();await handle.close();handle=undefined;await boundary('upload-part');
       await rename(part,final);await boundary('upload-rename');const sha256=hash.digest('hex');
       store.transaction(()=>{
-        if(!store.db.prepare('SELECT 1 FROM tasks WHERE id=?').get(taskId))invalid('任务不存在',404);
+        const task=store.db.prepare('SELECT project_id FROM tasks WHERE id=?').get(taskId);if(!task)invalid('任务不存在',404);
         store.db.prepare('INSERT INTO attachments(id,task_id,name,size,uploaded_by,created_at,sha256) VALUES(?,?,?,?,?,?,?)').run(id,taskId,name,size,context.actorId,new Date().toISOString(),sha256);
-        audit(store.db,context,'attachments',id,null,{id,task_id:taskId,name,size,sha256});
+        const project=store.get('projects',String(task!.project_id));
+        audit(store.db,context,'attachments',id,null,{id,task_id:taskId,name,size,sha256},{projectId:project.id,projectVersion:project.version,taskRevision:project.taskRevision});
         store.db.prepare('DELETE FROM file_jobs WHERE id=?').run(id);
       });
       await boundary('upload-commit');return {id,name,size};
@@ -39,8 +40,9 @@ export function attachmentService(store:Store, boundary:FileBoundary=noBoundary)
   function remove(id:string,context:WriteContext) {
     store.transaction(()=>{
       const row=store.db.prepare('SELECT * FROM attachments WHERE id=?').get(id);if(!row)invalid('附件不存在',404);
+      const task=store.db.prepare('SELECT project_id FROM tasks WHERE id=?').get(row!.task_id);const project=store.get('projects',String(task!.project_id));
       store.db.prepare('DELETE FROM attachments WHERE id=?').run(id);
-      audit(store.db,context,'attachments',id,row,null);
+      audit(store.db,context,'attachments',id,row,null,{projectId:project.id,projectVersion:project.version,taskRevision:project.taskRevision});
     });
   }
   /** Only call for known completed requests, or under the exclusive offline/startup lock. */
