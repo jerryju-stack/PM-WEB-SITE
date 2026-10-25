@@ -10,6 +10,7 @@ import { dataLock, unlockDeadProcess } from '../lib/data-lock.ts';
 import { attachmentService, reconcile } from '../lib/attachments.ts';
 import { defaultPolicyPath } from '../lib/backup-policy.ts';
 import { committedRuntimeVersion } from '../lib/runtime-version.ts';
+import { migrations } from '../lib/migrations.ts';
 const [command,...args]=process.argv.slice(2),options=new Map<string,string>();
 for(let i=0;i<args.length;i+=2){if(!args[i].startsWith('--')||!args[i+1]||args[i+1].startsWith('--'))throw Error('Options require explicit values');options.set(args[i].slice(2),args[i+1]);}
 const required=(key:string)=>{const value=options.get(key);if(!value)throw Error('Missing --'+key);return value;};
@@ -37,14 +38,21 @@ async function main() {
   const lock=dataLock(data,command);
   try {
     const db=new DatabaseSync(join(data,'project-station.sqlite'),{readOnly:true});
-    try {if(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()?.v!==2||!db.prepare("SELECT 1 FROM meta WHERE key='initialized'").get())throw Error('Use matching application migration before maintenance');}finally{db.close();}
+    try {if(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()?.v!==migrations.at(-1)!.version||!db.prepare("SELECT 1 FROM meta WHERE key='initialized'").get())throw Error('Use matching application migration before maintenance');}finally{db.close();}
     const store=openStore(data);
     try {
+      if(command==='identity-report')return {
+        unconfirmedAudit:store.db.prepare("SELECT COUNT(*) AS n FROM audit_events WHERE actor_uid IS NULL AND actor_id NOT LIKE 'system:%'").get()!.n,
+        unconfirmedUploads:store.db.prepare('SELECT id,uploaded_by,created_at FROM attachments WHERE uploaded_uid IS NULL').all(),
+        unassignedProjects:store.db.prepare('SELECT p.id FROM projects p WHERE NOT EXISTS(SELECT 1 FROM project_members m WHERE m.project_id=p.id)').all(),
+        invalidAccounts:store.all('users').filter(u=>!['admin','editor','viewer'].includes(u.role)||!['active','disabled'].includes(u.status)).map(u=>({uid:u.uid,loginName:u.id,role:u.role,status:u.status})),
+        note:'历史登录名/姓名不是已确认身份关联；仅经独立证据核对后人工处理，不推定成员关系',
+      };
       if(command==='reconcile')return reconcile(store);
       if(command==='retry'){const results=await attachmentService(store).retry();if(results.some(row=>!row.ok))process.exitCode=2;return {results,report:reconcile(store)};}
       if(command==='audit') {
         const id=required('resource-id'),resource=required('resource');
-        if(!['projects','tasks','articles','attachments'].includes(resource))throw Error('Unknown audit resource');
+        if(!['projects','tasks','articles','attachments','accounts','password','groups','members','project-access','offline-recovery'].includes(resource))throw Error('Unknown audit resource');
         const limit=Number(options.get('limit')??100);if(!Number.isInteger(limit)||limit<1||limit>1000)throw Error('limit must be 1..1000');
         return store.db.prepare('SELECT * FROM audit_events WHERE resource=? AND resource_id=? ORDER BY sequence DESC LIMIT ?').all(resource,id,limit);
       }
@@ -65,7 +73,7 @@ async function main() {
         for(const name of readdirSync(source)){const path=join(source,name);const info=lstatSync(path);if(!info.isFile()||info.isSymbolicLink())throw Error('Unsafe quarantine entry');copyFileSync(path,join(target,name));}
         return {exported:target};
       }
-      throw Error('Commands: backup verify restore unlock reconcile retry audit quarantine export-quarantine');
+      throw Error('Commands: backup verify restore unlock reconcile retry audit identity-report quarantine export-quarantine');
     }finally{store.db.close();}
   }finally{lock.release();}
 }

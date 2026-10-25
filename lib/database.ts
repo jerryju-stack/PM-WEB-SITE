@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync, mkdirSync, readFileSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { randomBytes, scryptSync } from 'node:crypto';
+import { randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import { template, schedule, projectProgress } from './schedule.ts';
 import { applyMigrations } from './migrations.ts';
 import type { Task } from './schedule.ts';
@@ -26,16 +26,31 @@ export function openStore(directory: string) {
   function transaction<T>(operation: () => T): T { db.exec('BEGIN IMMEDIATE'); try { const value = operation(); db.exec('COMMIT'); return value; } catch(e) { db.exec('ROLLBACK'); throw e; } }
   const tables = new Set(['settings','users','projects','articles']);
   const checked = (table: string) => { if (!tables.has(table)) throw Error('无效数据表'); return table; };
-  const columns = (table: string) => table === 'projects' ? 'data,version,revision' : table === 'articles' ? 'data,version' : 'data';
-  const decode = (table: string, row: any): any => ({ ...JSON.parse(row.data), ...(['projects','articles'].includes(table) ? { version: Number(row.version) } : {}), ...(table === 'projects' ? { taskRevision: Number(row.revision) } : {}) });
+  const columns = (table: string) => table === 'projects' ? 'data,version,revision' : table === 'articles' ? 'data,version,project_id,created_uid' : 'data';
+  const decode = (table: string, row: any): any => ({ ...JSON.parse(row.data), ...(['projects','articles'].includes(table) ? { version: Number(row.version) } : {}), ...(table === 'projects' ? { taskRevision: Number(row.revision) } : {}),...(table==='articles'?{projectId:row.project_id??null,createdUid:row.created_uid??null}:{}) });
   const all = (table: string): any[] => db.prepare(`SELECT ${columns(table)} FROM ${checked(table)} ORDER BY rowid`).all().map((row: any) => decode(table,row));
   const get = (table: string, id: string): any => { const row = db.prepare(`SELECT ${columns(table)} FROM ${checked(table)} WHERE id=?`).get(id) as any; return row ? decode(table,row) : null; };
   // Internal fixture/initialization and derived-field writer; HTTP resources use resourceWriter.
   const put = (table: string, item: any) => {
+    if(table==='users') {
+      const identity=db.prepare('SELECT uid FROM identities WHERE login_name=? AND retired_at IS NULL').get(item.id);
+      if(identity) {
+        if(item.uid&&item.uid!==identity.uid)throw Error('Account identity mismatch');
+        item={...item,uid:identity.uid};
+      } else {
+        const uid=randomUUID();
+        db.prepare('INSERT INTO identities(uid,login_name,original_login,created_at) VALUES(?,?,?,?)').run(uid,item.id,item.id,new Date().toISOString());
+        item={...item,uid};
+      }
+      item={status:'active',authEpoch:0,...item};
+    }
     const { version, taskRevision, ...data } = item;
     return db.prepare(`INSERT INTO ${checked(table)} (id,data) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data`).run(item.id, JSON.stringify(['projects','articles'].includes(table) ? data : item));
   };
-  const remove = (table: string, id: string) => db.prepare(`DELETE FROM ${checked(table)} WHERE id=?`).run(id);
+  const remove = (table: string, id: string) => {
+    if(table==='users')db.prepare('UPDATE identities SET login_name=NULL,retired_at=? WHERE login_name=?').run(new Date().toISOString(),id);
+    return db.prepare(`DELETE FROM ${checked(table)} WHERE id=?`).run(id);
+  };
   const tasks = (projectId: string): Task[] => db.prepare('SELECT data FROM tasks WHERE project_id=? ORDER BY rowid').all(projectId).map((row: any) => JSON.parse(row.data));
   const revision = (id: string): number => Number((db.prepare('SELECT revision FROM projects WHERE id=?').get(id) as any)?.revision || 0);
   function saveTasks(projectId: string, values: Task[], expected?: number, context?: WriteContext) {

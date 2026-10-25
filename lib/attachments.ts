@@ -28,7 +28,7 @@ export function attachmentService(store:Store, boundary:FileBoundary=noBoundary)
         // separate this check from attachment registration and its success audit.
         if(authorize)context=authorize();
         const task=store.db.prepare('SELECT project_id FROM tasks WHERE id=?').get(taskId);if(!task)invalid('任务不存在',404);
-        store.db.prepare('INSERT INTO attachments(id,task_id,name,size,uploaded_by,created_at,sha256) VALUES(?,?,?,?,?,?,?)').run(id,taskId,name,size,context.actorId,new Date().toISOString(),sha256);
+        store.db.prepare('INSERT INTO attachments(id,task_id,name,size,uploaded_by,created_at,sha256,uploaded_uid) VALUES(?,?,?,?,?,?,?,?)').run(id,taskId,name,size,context.actorId,new Date().toISOString(),sha256,context.actorUid??null);
         const project=store.get('projects',String(task!.project_id));
         audit(store.db,context,'attachments',id,null,{id,task_id:taskId,name,size,sha256},{projectId:project.id,projectVersion:project.version,taskRevision:project.taskRevision});
         store.db.prepare('DELETE FROM file_jobs WHERE id=?').run(id);

@@ -4,8 +4,9 @@ import { join, resolve, relative, dirname, basename, isAbsolute, sep } from 'nod
 import { randomUUID } from 'node:crypto';
 import { digest, fileId } from './attachments.ts';
 import { dataLock } from './data-lock.ts';
+import { capabilities } from './policy.ts';
 const dbName='project-station.sqlite';
-const tables=['schema_migrations','meta','settings','users','projects','articles','tasks','dependencies','attachments','audit_events','file_jobs'];
+const tables=['schema_migrations','meta','settings','users','projects','articles','tasks','dependencies','attachments','audit_events','file_jobs','identities','permission_groups','project_members','project_access'];
 type Entry={path:string;size:number;sha256:string};
 export type RecoveryTargets={rpoMinutes:number|null;rtoMinutes:number|null;maxDowntimeMinutes:number|null;retentionDays:number|null};
 export type Manifest={format:1;createdAt:string;codeVersion:string;producerCodeVersion:string;targets:RecoveryTargets;database:ReturnType<typeof inspectData>;files:Entry[]};
@@ -27,15 +28,32 @@ export function inspectData(directory:string) {
     if(integrity.length!==1||integrity[0].integrity_check!=='ok')throw Error('Database integrity check failed');
     if(db.prepare('PRAGMA foreign_key_check').all().length)throw Error('Database foreign key check failed');
     if(db.prepare("SELECT value FROM meta WHERE key='initialized'").get()?.value!=='1'||!db.prepare("SELECT 1 FROM settings WHERE id='site'").get())throw Error('Missing initialized application state');
-    const usableAccount=db.prepare('SELECT id,data FROM users').all().some(row=>{
-      const user=JSON.parse(String(row.data));return user.id===row.id&&typeof user.salt==='string'&&user.salt.length>0&&typeof user.hash==='string'&&/^[a-f0-9]{128}$/i.test(user.hash)&&['admin','editor','viewer'].includes(user.role);
-    });
-    if(!usableAccount)throw Error('No usable login account in snapshot');
     const migrations=db.prepare('SELECT version,name FROM schema_migrations ORDER BY version').all().map(row=>({version:Number(row.version),name:String(row.name)}));
     const versions=JSON.stringify(migrations.map(row=>row.version));
-    if(!['[1]','[1,2]'].includes(versions))throw Error('Unsupported snapshot migration version');
+    if(!['[1]','[1,2]','[1,2,3]','[1,2,3,4]'].includes(versions))throw Error('Unsupported snapshot migration version');
+    const latest=migrations.at(-1)!.version;
+    const usableAccount=db.prepare('SELECT id,data FROM users').all().some(row=>{
+      const user=JSON.parse(String(row.data));
+      const identityOK=latest<3||(user.status==='active'&&Number.isSafeInteger(user.authEpoch)&&db.prepare('SELECT 1 FROM identities WHERE uid=? AND login_name=? AND retired_at IS NULL').get(user.uid??'',String(row.id)));
+      return identityOK&&user.id===row.id&&typeof user.salt==='string'&&user.salt.length>0&&typeof user.hash==='string'&&/^[a-f0-9]{128}$/i.test(user.hash)&&(latest>=3?user.role==='admin':['admin','editor','viewer'].includes(user.role));
+    });
+    if(!usableAccount)throw Error('No usable login account in snapshot');
+    if(latest>=3)for(const row of db.prepare('SELECT id,data FROM users').all()){
+      const user=JSON.parse(String(row.data));if(user.id!==row.id||typeof user.uid!=='string'||!Number.isSafeInteger(user.authEpoch)||user.authEpoch<0||!['active','disabled'].includes(user.status)||!db.prepare('SELECT 1 FROM identities WHERE uid=? AND login_name=? AND retired_at IS NULL').get(user.uid,String(row.id)))throw Error('Account identity mismatch');
+    }
+    if(latest>=3)for(const row of db.prepare('SELECT * FROM identities').all()){
+      if(row.retired_at!==null){if(row.login_name!==null)throw Error('Retired identity has login');continue;}
+      const account=db.prepare('SELECT data FROM users WHERE id=?').get(row.login_name??'');
+      if(!account||JSON.parse(String(account.data)).uid!==row.uid)throw Error('Identity account mismatch');
+    }
+    if(latest>=3&&(db.prepare('SELECT 1 FROM audit_events WHERE actor_uid IS NOT NULL AND actor_id<>actor_uid').get()||db.prepare('SELECT 1 FROM attachments WHERE uploaded_uid IS NOT NULL AND uploaded_by<>uploaded_uid').get()))throw Error('Identity evidence mismatch');
+    if(latest>=4){
+      if(db.prepare('SELECT 1 FROM projects p LEFT JOIN project_access a ON p.id=a.project_id WHERE a.project_id IS NULL').get())throw Error('Missing project access policy');
+      for(const row of db.prepare('SELECT capabilities FROM permission_groups').all()){const caps=JSON.parse(String(row.capabilities));if(!Array.isArray(caps)||!caps.every(cap=>capabilities.includes(cap)))throw Error('Invalid permission group');}
+      if(db.prepare('SELECT 1 FROM project_members m JOIN identities i ON i.uid=m.user_uid WHERE i.retired_at IS NOT NULL OR i.login_name IS NULL').get())throw Error('Retired project identity');
+    }
     const state:Record<string,{count:number;sha256:string}>={};
-    for(const table of tables.filter(table=>versions==='[1,2]'||!['audit_events','file_jobs'].includes(table))) {
+    for(const table of tables.filter(table=>!((latest<2&&['audit_events','file_jobs'].includes(table))||(latest<3&&table==='identities')||(latest<4&&['permission_groups','project_members','project_access'].includes(table))))) {
       const rows=db.prepare('SELECT * FROM '+table).all();state[table]={count:rows.length,sha256:digest(Buffer.from(rows.map(row=>JSON.stringify(row)).sort().join('\n')))};
     }
     for(const table of ['projects','articles'])for(const row of db.prepare('SELECT * FROM '+table).all() as any[]) {

@@ -17,6 +17,7 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "paths": {
+      "/access-ui.js": ["./src/access-ui.ts"],
       "/timing.js": [
         "./src/timing.ts"
       ],

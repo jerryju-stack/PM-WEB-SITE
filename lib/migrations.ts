@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { randomUUID } from 'node:crypto';
 export type Migration = { version: number; name: string; up: (db: DatabaseSync) => void };
 export const migrations: Migration[] = [{
   version: 1, name: 'resource_versions',
@@ -26,6 +27,42 @@ export const migrations: Migration[] = [{
       END;
       CREATE INDEX attachments_task ON attachments(task_id);
     `);
+  },
+}, {
+  version: 3, name: 'permanent_account_identity',
+  up(db) {
+    db.exec(`CREATE TABLE identities (
+      uid TEXT PRIMARY KEY, login_name TEXT UNIQUE, original_login TEXT NOT NULL,
+      created_at TEXT NOT NULL, retired_at TEXT
+    );
+    CREATE TRIGGER immutable_identity BEFORE UPDATE OF uid ON identities BEGIN SELECT RAISE(ABORT,'Identity is immutable'); END;
+    ALTER TABLE audit_events ADD COLUMN actor_uid TEXT REFERENCES identities(uid);
+    ALTER TABLE attachments ADD COLUMN uploaded_uid TEXT REFERENCES identities(uid);`);
+    const rows=db.prepare('SELECT id,data FROM users').all();
+    for(const row of rows) {
+      const user=JSON.parse(String(row.data));
+      if(user.id!==row.id)throw Error('Identity migration rejected inconsistent user key');
+      const uid=randomUUID();
+      db.prepare('INSERT INTO identities(uid,login_name,original_login,created_at) VALUES(?,?,?,?)').run(uid,String(row.id),String(row.id),new Date().toISOString());
+      db.prepare('UPDATE users SET data=? WHERE id=?').run(JSON.stringify({...user,uid,status:user.status===undefined?'active':user.status,authEpoch:0}),String(row.id));
+    }
+    // No historical login-name -> identity guess: old actor/upload evidence stays
+    // untouched and the new identity columns intentionally remain NULL.
+  },
+}, {
+  version:4,name:'project_capability_groups',
+  up(db) {
+    db.exec(`CREATE TABLE permission_groups(id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,capabilities TEXT NOT NULL);
+      CREATE TABLE project_members(project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,user_uid TEXT NOT NULL REFERENCES identities(uid),group_id TEXT NOT NULL REFERENCES permission_groups(id),PRIMARY KEY(project_id,user_uid));
+      CREATE INDEX members_user ON project_members(user_uid);
+      CREATE TABLE project_access(project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,cards TEXT NOT NULL CHECK(cards IN ('public','members')),timing TEXT NOT NULL CHECK(timing IN ('authenticated','members')),lessons TEXT NOT NULL CHECK(lessons IN ('authenticated','members')));
+      INSERT INTO project_access SELECT id,'public','authenticated','authenticated' FROM projects;
+      CREATE TRIGGER project_default_access AFTER INSERT ON projects BEGIN INSERT INTO project_access VALUES(NEW.id,'public','authenticated','authenticated'); END;
+      ALTER TABLE articles ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE RESTRICT;
+      ALTER TABLE articles ADD COLUMN created_uid TEXT REFERENCES identities(uid);`);
+    const read=['timingRead','lessonsRead','membersRead'];
+    const editor=[...read,'projectEdit','timingEdit','attachmentUpload','attachmentDelete','lessonCreate','lessonEdit','lessonDelete'];
+    for(const [id,name,caps] of [['manager','Manager',[...editor,'projectCreate','projectDelete','membersManage']],['editor','Editor',editor],['viewer','Viewer',read],['engineering','Engineering',[...read,'attachmentUpload','lessonCreate','lessonEdit']]] as [string,string,string[]][])db.prepare('INSERT INTO permission_groups VALUES(?,?,?)').run(id,name,JSON.stringify(caps));
   },
 }];
 /** Each migration and its marker commit together. Failed migrations can be retried on next open. */

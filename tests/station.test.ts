@@ -24,6 +24,8 @@ test('JSON 迁移、八阶段、权限、完整排期、附件、重启持久化
  let admin=(await call('login',{id:'admin',password:'Admin-Password-2026'})).cookie;assert.ok(admin);
  for(const role of ['editor','viewer'])assert.equal((await call('users',{id:role,name:role,role,password:'Member-Password-2026'},admin)).status,200);
  const editor=(await call('login',{id:'editor',password:'Member-Password-2026'})).cookie,viewer=(await call('login',{id:'viewer',password:'Member-Password-2026'})).cookie;
+ const accounts=(await call('data',undefined,admin)).data.users;const editorUid=accounts.find((u:any)=>u.loginName==='editor').id;
+ assert.equal((await call('projects/legacy-project/members',{userUid:editorUid,groupId:'manager'},admin)).status,200);
  const getTiming=()=>call('projects/legacy-project/timing',undefined,admin);
  let timing=(await getTiming()).data;assert.equal(timing.tasks.length,8);assert.equal(timing.project.content,'保留正文');assert.equal(timing.tasks[7].title,'SOP');
  assert.equal((await call('projects/legacy-project/tasks',{title:'forbidden',revision:0},viewer)).status,403);
@@ -50,7 +52,7 @@ test('JSON 迁移、八阶段、权限、完整排期、附件、重启持久化
  timing=(await getTiming()).data;assert.equal(timing.tasks.length,11);assert.equal(timing.attachments.length,1);assert.equal(timing.tasks.find((t:any)=>t.id===b).start,'2026-10-28');assert.equal(await readFile(join(directory,'uploads',file.id),'utf8'),'attachment-content');
  assert.equal((await call(`projects/legacy-project/tasks/${b}`,{revision:timing.revision},admin,'DELETE')).status,200);timing=(await getTiming()).data;assert.equal(timing.attachments.length,0);assert.deepEqual(timing.tasks.find((t:any)=>t.id===c).predecessors,[]);assert.ok(!(await readdir(join(directory,'uploads'))).includes(file.id));
  const milestoneEdit=await call(`projects/legacy-project/tasks/${c}`,{end:'2026-11-04',revision:timing.revision},admin,'PATCH');assert.equal(milestoneEdit.status,200);assert.equal(milestoneEdit.data.tasks.find((t:any)=>t.id===c).start,'2026-11-04');assert.equal(milestoneEdit.data.tasks.find((t:any)=>t.id===c).duration,0);
- assert.equal((await call('users',{id:'admin'},admin,'DELETE')).status,400);assert.equal((await call('projects',{id:newProject,version:0,taskRevision:0},admin,'DELETE')).status,200);
+ assert.equal((await call('users/'+accounts.find((u:any)=>u.loginName==='admin').id,{},admin,'DELETE')).status,409);assert.equal((await call('projects',{id:newProject,version:0,taskRevision:0},admin,'DELETE')).status,200);
  assert.equal((await call('password',{current:'Admin-Password-2026',password:'Changed-Password-2026'},admin)).status,200);assert.equal((await call('login',{id:'admin',password:'Changed-Password-2026'})).status,200);
  assert.equal((await call('logout',{},admin)).status,200);assert.equal((await call('projects/legacy-project/timing',undefined,admin)).status,401);
  }finally{await stop();}

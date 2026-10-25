@@ -9,13 +9,14 @@ import type { WriteContext } from './audit.ts';
 type ResourceMap = { projects: Project; articles: Article };
 export function resourceWriter(store: Store) {
   const find = <C extends Collection>(collection: C, id: string): ResourceMap[C] => store.get(collection,id) || invalid('记录已删除或不存在',404);
-  function create<C extends Collection>(collection: C, value: unknown, owner: string, context?: WriteContext): ResourceMap[C] {
+  function create<C extends Collection>(collection: C, value: unknown, owner: string, context?: WriteContext,created?:(id:string)=>void): ResourceMap[C] {
     const raw=objectInput(value);if (raw.id !== undefined) invalid('创建不能指定已有 ID，请刷新客户端后重试');
     const input=resourceInput(collection,raw);
     const item={id:randomBytes(16).toString('hex'),title:input.title!,description:input.description??'',category:input.category||'未分类',date:input.date??'',startDate:input.startDate??'',content:input.content??'',owner:input.owner||owner,status:'计划中',progress:0};
     dates(item);
     return store.transaction(()=>{
       store.db.prepare('INSERT INTO '+collection+'(id,data) VALUES(?,?)').run(item.id,JSON.stringify(item));
+      created?.(item.id);
       if(collection==='projects')for(const task of template(item.id))store.db.prepare('INSERT INTO tasks VALUES(?,?,?,?)').run(task.id,item.id,null,JSON.stringify(task));
       const result=find(collection,item.id);
       audit(store.db,context,collection,item.id,null,result,{after:result.version});
