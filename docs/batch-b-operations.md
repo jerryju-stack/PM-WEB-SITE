@@ -28,7 +28,7 @@
 2. 若有崩溃遗留锁，执行 `unlock --data DATA_DIR`。同机 PID 存活时拒绝；无法识别的锁须人工核实，工具不会自动抢占或 kill 任何进程。
 3. B 日常维护先 `reconcile` 查看，按需要 `retry` 处理已登记意图，再次对账，再做快照。先留一个故障现场快照也可以：快照完整保存 file_jobs、uploads（包括 .part）及 quarantine，恢复启动后按相同规则处理。缺失/损坏的被引用附件必须先查明，备份检查会拒绝，不可将其称为完好恢复点。无法解释的文件默认只报告，明确选择后才隔离。
 4. `backup` 持锁整个 checkpoint/文件复制/校验阶段。SQLite checkpoint(TRUNCATE) 必须无 busy；数据库关闭后复制，再将副本规范为独立 DELETE journal 数据库，不依赖 WAL/SHM。源 WAL/SHM 由 SQLite 处理，不能手工删掉未 checkpoint 的 WAL。服务与 uploads 均停写，所以数据库与文件属于同一静止状态。
-5. 工具生成 `.incomplete-UUID`，写入数据库、uploads、quarantine，再做完整性、外键、JSON/关系表示、依赖、版本、引用/摘要检查；记录全表行数与内容摘要、文件大小/SHA-256、格式/时间/配套代码/生成工具代码/迁移版本。最后移到目标并写 COMPLETE。无 COMPLETE、清单不匹配或 `.incomplete-*` 不可恢复。失败保留现场供检查，不能将残留目录重命名当作成功备份。
+5. 工具生成 `.incomplete-UUID`，写入数据库、uploads、quarantine，再做完整性、外键、初始化/网站配置/可用登录账号、JSON/关系表示、依赖、版本、引用/摘要检查；记录全表行数与内容摘要、文件大小/SHA-256、格式/时间/配套代码/生成工具代码/迁移版本。最后移到目标并写 COMPLETE。可用账号结构检查不替代恢复后的实际登录。无 COMPLETE、清单不匹配或 `.incomplete-*` 不可恢复。失败保留现场供检查，不能将残留目录重命名当作成功备份。
 
 ```powershell
 node --experimental-strip-types scripts/data-maintenance.ts reconcile --data 'D:\isolated\source' --offline-confirmed yes
