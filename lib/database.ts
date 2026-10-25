@@ -43,7 +43,7 @@ export function openStore(directory: string) {
       if (!get('projects',projectId)) throw Object.assign(Error('项目不存在'), { status: 404 });
       if (values.some(t => t.projectId !== projectId)) throw Error('任务必须属于本项目');
       if (expected !== undefined && revision(projectId) !== expected) throw Object.assign(Error('项目已被其他操作更新，请刷新后重试'), { status: 409 });
-      const beforeTasks = tasks(projectId), beforeRevision = revision(projectId);
+      const beforeProject=get('projects',projectId),beforeTasks = tasks(projectId), beforeRevision = revision(projectId);
       const beforeAttachments = db.prepare('SELECT a.* FROM attachments a JOIN tasks t ON a.task_id=t.id WHERE t.project_id=?').all(projectId) as any[];
       const hadLeaves = beforeTasks.some(t => t.kind !== 'summary');
       const normalized = schedule(values), ids = new Set(normalized.map(t => t.id));
@@ -56,6 +56,7 @@ export function openStore(directory: string) {
       if (leaves.length) { project.progress=projectProgress(normalized); project.status=project.progress===100?'已完成':project.progress>0?'进行中':'计划中'; put('projects',project); }
       else if (hadLeaves) { project.progress=0;project.status='计划中';put('projects',project); }
       const versions = { projectId, revisionBefore: beforeRevision, revisionAfter: revision(projectId) };
+      audit(db,context,'projects',projectId,beforeProject,get('projects',projectId),{...versions,version:beforeProject.version});
       for (const task of normalized) {
         const before = beforeTasks.find(t => t.id === task.id);
         if (JSON.stringify(before) !== JSON.stringify(task)) audit(db,context,'tasks',task.id,before,task,versions);
@@ -69,7 +70,7 @@ export function openStore(directory: string) {
     const legacy = join(directory, 'store.json');
     let seed: any;
     if (existsSync(legacy)) { copyFileSync(legacy, join(directory, `store.pre-sqlite-${Date.now()}.json`)); seed=JSON.parse(readFileSync(legacy,'utf8')); }
-    else { const password=process.env.ADMIN_PASSWORD || randomBytes(16).toString('base64url'), salt=randomBytes(16).toString('hex'); seed={settings:{title:'Project Station',description:'连接目标、计划与交付。',name:'项目经理',intro:'用清晰的方法连接想法与成果。',team:'透明沟通，共同负责，持续改进。'},users:[{id:'admin',name:'管理员',role:'admin',salt,hash:passwordHash(password,salt)}],projects:[],articles:[]};console.log(`首次管理员账号：admin；初始密码：${password}`); }
+    else { const password=process.env.ADMIN_PASSWORD, salt=randomBytes(16).toString('hex');if(!password||password.length<10||password.length>1024){db.close();throw Error('新建数据库须通过 ADMIN_PASSWORD 设置 10–1024 位初始密码');}seed={settings:{title:'Project Station',description:'连接目标、计划与交付。',name:'项目经理',intro:'用清晰的方法连接想法与成果。',team:'透明沟通，共同负责，持续改进。'},users:[{id:'admin',name:'管理员',role:'admin',salt,hash:passwordHash(password,salt)}],projects:[],articles:[]};console.log('首次管理员账号已初始化：admin'); }
     transaction(() => {
       put('settings',{...seed.settings,id:'site',title:'Project Station'});
       for (const table of ['users','projects','articles']) for (const item of seed[table] || []) put(table,item);

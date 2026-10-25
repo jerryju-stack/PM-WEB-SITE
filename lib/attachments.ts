@@ -1,4 +1,4 @@
-import { mkdir, open, rename, stat, readFile } from 'node:fs/promises';
+import { mkdir, open, rename, stat, lstat } from 'node:fs/promises';
 import { readdirSync, lstatSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash, randomBytes } from 'node:crypto';
@@ -58,7 +58,7 @@ export function attachmentService(store:Store, boundary:FileBoundary=noBoundary)
         for(const suffix of ['.part','']) {
           const source=join(uploads,job.id+suffix),destination=join(quarantine,suffix?'partial':'file');
           try {
-            const info=await stat(source);if(!info.isFile())throw Object.assign(Error('Not a regular file'),{code:'UNSAFE_FILE'});
+            const info=await lstat(source);if(!info.isFile()||info.isSymbolicLink())throw Object.assign(Error('Not a regular file'),{code:'UNSAFE_FILE'});
             try { await stat(destination);throw Object.assign(Error('Destination already exists'),{code:'QUARANTINE_EXISTS'}); } catch(error:any) {if(error.code!=='ENOENT')throw error;}
             await rename(source,destination);await boundary('cleanup-rename');
           } catch(error:any){if(error.code!=='ENOENT')throw error;}

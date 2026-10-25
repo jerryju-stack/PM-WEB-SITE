@@ -1,0 +1,47 @@
+// Repeatable local-only acceptance drill. No DATA_DIR or production account inputs accepted.
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, existsSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { httpFixture } from '../tests/http-fixture.ts';
+import { unlockDeadProcess } from '../lib/data-lock.ts';
+import { digest } from '../lib/attachments.ts';
+const parent=mkdtempSync(join(tmpdir(),'station-b-drill-')),source=join(parent,'source'),snapshot=join(parent,'snapshot'),restored=join(parent,'restored');
+const cli=fileURLToPath(new URL('./data-maintenance.ts',import.meta.url));
+const command=(operation:string,args:string[])=>JSON.parse(execFileSync(process.execPath,['--experimental-strip-types',cli,operation,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']}));
+const offline=['--offline-confirmed','yes'];
+const stopped=async(f:Awaited<ReturnType<typeof httpFixture>>)=>{await f.stop();if(existsSync(join(f.directory,'.station-lock')))unlockDeadProcess(f.directory);};
+const totalStart=performance.now(),evidence:Record<string,unknown>={kind:'local-whole-snapshot-drill',createdAt:new Date().toISOString()};
+let service:Awaited<ReturnType<typeof httpFixture>>|undefined;
+try {
+  service=await httpFixture({directory:source});
+  const project=(await service.call('projects',{title:'isolated recovery drill'},service.cookie)).data.id;
+  let timing=(await service.call('projects/'+project+'/timing',undefined,service.cookie)).data;
+  const first=await service.call('projects/'+project+'/tasks',{revision:timing.revision,title:'first',start:'2026-10-26',duration:1},service.cookie);
+  timing=(await service.call('projects/'+project+'/timing',undefined,service.cookie)).data;
+  assert.equal((await service.call('projects/'+project+'/tasks',{revision:timing.revision,title:'dependent',duration:1,predecessors:[first.data.id]},service.cookie)).status,200);
+  const bytes=Buffer.from('isolated-byte-checked-recovery-drill');
+  const uploaded=await fetch(service.base+'/api/projects/'+project+'/tasks/'+first.data.id+'/attachments',{method:'POST',headers:{Cookie:service.cookie,'X-File-Name':'drill.txt'},body:bytes});assert.equal(uploaded.status,201);const file=(await uploaded.json()).id;
+  evidence.sourcePort=new URL(service.base).port;
+  await stopped(service);service=undefined;
+  const backup=command('backup',['--data',source,'--target',snapshot,...offline]);evidence.backupMs=backup.elapsedMs;evidence.codeVersion=backup.result.codeVersion;evidence.migrations=backup.result.database.migrations;evidence.counts=Object.fromEntries(Object.entries(backup.result.database.tables).map(([key,value]:any)=>[key,value.count]));
+  evidence.verifyMs=command('verify',['--snapshot',snapshot]).elapsedMs;
+  service=await httpFixture({directory:source});timing=(await service.call('projects/'+project+'/timing',undefined,service.cookie)).data;
+  assert.equal((await service.call('projects/'+project,{version:timing.project.version,taskRevision:timing.revision},service.cookie,'DELETE')).status,200);
+  assert.equal((await service.call('projects/'+project+'/timing',undefined,service.cookie)).status,404);evidence.mistakenDeletionConfirmed=true;
+  await stopped(service);service=undefined;
+  const recoveryStart=performance.now();const restoredResult=command('restore',['--snapshot',snapshot,'--target',restored]);evidence.restoreCopyVerifyMs=restoredResult.elapsedMs;
+  service=await httpFixture({directory:restored});evidence.restoredPort=new URL(service.base).port;
+  const timingResult=await service.call('projects/'+project+'/timing',undefined,service.cookie);assert.equal(timingResult.status,200);assert.equal(timingResult.data.tasks.length,10);assert.equal(timingResult.data.attachments.length,1);assert.equal(timingResult.data.revision,2);
+  const dependent=timingResult.data.tasks.find((row:any)=>row.title==='dependent');assert.deepEqual(dependent.predecessors,[first.data.id]);
+  assert.equal((await fetch(service.base+'/projects/'+project+'/timing')).status,200);
+  const downloaded=await fetch(service.base+'/api/attachments/'+file,{headers:{Cookie:service.cookie}});assert.equal(downloaded.status,200);assert.equal(digest(Buffer.from(await downloaded.arrayBuffer())),digest(bytes));
+  evidence.restoreThroughLoginProjectDownloadMs=Math.round(performance.now()-recoveryStart);
+  await stopped(service);service=undefined;
+  const report=command('reconcile',['--data',restored,...offline]).result;assert.equal(report.normal.length,1);for(const key of ['missing','corrupt','orphan','pending'])assert.equal(report[key].length,0);
+  command('retry',['--data',restored,...offline]);command('retry',['--data',restored,...offline]);
+  evidence.databaseAndFilesVerified=true;evidence.loginProjectPageAndDownloadPassed=true;evidence.repeatRetryPassed=true;evidence.allFixturePortsClosed=true;evidence.totalMs=Math.round(performance.now()-totalStart);
+  const reportFile=join(parent,'drill-result.json');writeFileSync(reportFile,JSON.stringify(evidence,null,2)+'\n');console.log(JSON.stringify({...evidence,reportFile},null,2));
+}finally{if(service)await stopped(service);}

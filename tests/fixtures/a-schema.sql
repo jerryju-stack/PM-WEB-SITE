@@ -1,0 +1,14 @@
+-- A (001) schema fixture; no production records or credentials.
+PRAGMA foreign_keys=ON;
+CREATE TABLE meta (key TEXT PRIMARY KEY,value TEXT NOT NULL);
+CREATE TABLE settings (id TEXT PRIMARY KEY,data TEXT NOT NULL);
+CREATE TABLE users (id TEXT PRIMARY KEY,data TEXT NOT NULL);
+CREATE TABLE projects (id TEXT PRIMARY KEY,data TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 0,version INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE articles (id TEXT PRIMARY KEY,data TEXT NOT NULL,version INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE tasks (id TEXT PRIMARY KEY,project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,parent_id TEXT REFERENCES tasks(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED,data TEXT NOT NULL);
+CREATE INDEX tasks_project ON tasks(project_id);
+CREATE TABLE dependencies (task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,predecessor_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,PRIMARY KEY(task_id,predecessor_id));
+CREATE TABLE attachments (id TEXT PRIMARY KEY,task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,name TEXT NOT NULL,size INTEGER NOT NULL,uploaded_by TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY,name TEXT NOT NULL,applied_at TEXT NOT NULL);
+INSERT INTO meta VALUES('initialized','1');
+INSERT INTO schema_migrations VALUES(1,'resource_versions','2026-10-24T00:00:00.000Z');

@@ -29,14 +29,19 @@ test('A schema fixture upgrades to B; failure halfway rolls back all B DDL and m
 test('audit failure rolls back resource/task data, versions, successful history and cleanup intent atomically',()=>{
   const store=setup();try{
     const writer=resourceWriter(store),project=writer.create('projects',{title:'original'},'tester',actor);
+    store.db.prepare('INSERT INTO attachments(id,task_id,name,size,uploaded_by,created_at) VALUES(?,?,?,?,?,?)').run('rollback-file',store.tasks(project.id)[0].id,'fixture.txt',3,'isolated','2026-10-25');
     const before=store.db.prepare('SELECT * FROM audit_events').all();
     store.db.exec("CREATE TRIGGER fail_audit BEFORE INSERT ON audit_events BEGIN SELECT RAISE(ABORT,'injected audit failure'); END;");
     assert.throws(()=>writer.update('projects',project.id,{title:'lost',version:0},actor),/injected/);
     assert.equal(store.get('projects',project.id).title,'original');assert.equal(store.get('projects',project.id).version,0);
     const tasks=store.tasks(project.id);tasks[0].title='lost';assert.throws(()=>store.saveTasks(project.id,tasks,0,actor),/injected/);
     assert.equal(store.revision(project.id),0);assert.notEqual(store.tasks(project.id)[0].title,'lost');
+    assert.throws(()=>store.saveTasks(project.id,store.tasks(project.id).slice(1),0,actor),/injected/);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM attachments').get()!.n,1);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM file_jobs').get()!.n,0);
     assert.throws(()=>writer.remove('projects',project.id,{version:0,taskRevision:0},actor),/injected/);
     assert.ok(store.get('projects',project.id));assert.deepEqual(store.db.prepare('SELECT * FROM audit_events').all(),before);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM attachments').get()!.n,1);assert.equal(store.db.prepare('SELECT count(*) AS n FROM file_jobs').get()!.n,0);
     store.db.exec('DROP TRIGGER fail_audit');writer.remove('projects',project.id,{version:0,taskRevision:0},actor);
     assert.equal(store.db.prepare("SELECT actor_id FROM audit_events WHERE resource='projects' AND operation='delete'").get()!.actor_id,'isolated');
     assert.ok(store.db.prepare("SELECT * FROM audit_events WHERE resource='tasks' AND operation='delete'").all().length===8);
