@@ -16,7 +16,7 @@
 
 上传状态：持久化 upload 意图 → .part 写入并 sync → rename → 附件登记+审计+删除意图同事务。登记前崩溃会留下意图；启动重试移入 quarantine/jobs/ID。登记后崩溃保留正常附件。删除状态：业务删除+审计+触发器登记 delete 意图同事务 → 文件隔离 → 完成意图。隔离失败记录 attempts/last_error，重启或离线工具重试。返回删除成功意味着数据库删除成功，可能仍有待隔离字节。
 
-隔离采用确定目标，rename 后崩溃可重入；目标冲突保留源并报告，不覆盖。无默认永久删除，磁盘占用需运营监控。正常服务仅在启动时处理遗留任务、请求完成后处理本次任务，不扫描其他在途上传。全量重试、对账及孤立文件隔离只能在独占离线锁下执行。旧 sha256=NULL 附件按字节数检查，备份另对全部文件计算摘要；不能证明旧记录在首次备份之前未被等长篡改。
+隔离采用确定目标，rename 后崩溃可重入；目标冲突保留源并报告，不覆盖。附件隔离区无默认永久删除，磁盘占用需运营监控；30 天备份保留命令只管理独立备份根的已登记快照，不清空附件隔离区。正常服务仅在启动时处理遗留任务、请求完成后处理本次任务，不扫描其他在途上传。全量重试、对账及孤立文件隔离只能在独占离线锁下执行。旧 sha256=NULL 附件按字节数检查，备份另对全部文件计算摘要；不能证明旧记录在首次备份之前未被等长篡改。
 
 服务持有 DATA_DIR/.station-lock。维护工具使用同一锁，服务运行时拒绝执行。崩溃锁不自动抢占，unlock 仅在同主机且 PID 确认不存在时移除，PID 重用会保守拒绝。锁不防不遵守协议的旧程序、手工 SQL 或网络共享写入；首次从 A 切换必须由运维确认所有旧写入者已停止，并确保仅新服务/工具有写权限。
 
@@ -68,13 +68,26 @@ node --experimental-strip-types scripts/data-maintenance.ts audit --data 'D:\iso
 
 ## 策略配置与限制
 
-使用 `backup ... --policy PATH_TO_JSON` 配置目标元数据；示例不是已批准指标：
+2026-10-25 用户已确认策略，默认读取纳入 Git 的 config/backup-policy.json；不是待定项：
 
 ```json
-{"rpoMinutes":null,"rtoMinutes":null,"maxDowntimeMinutes":null,"retentionDays":null}
+{"format":1,"rpoMinutes":1440,"rtoMinutes":480,"maxDowntimeMinutes":5,"retentionDays":30,"timezone":"Asia/Shanghai","windows":["00:30","12:30"],"rtoClock":"elapsed-24x7"}
 ```
 
-每项可为非负整数或 null。当前四项均经用户确认为待定。工具输出实测 elapsedMs 并随清单保存目标，**不会调度备份、承诺 RPO/RTO、自动停服、自动到期删除或清空隔离区**。确定指标后还需确定执行频率、保留/隔离恢复窗口、容量告警、责任人及独立副本保管；本批不接第三方平台。RTO 应包含配套代码、依赖、启动、业务核验与切换全流程，不能用一次小夹具复制耗时替代。
+RPO 24h；RTO 全天 8h（实际经过时间，包含发现、响应、准备代码/机器、恢复、核验及恢复使用）；每次计划停服总额 5min；每天北京时间 00:30、12:30 两窗口；完整快照至少保留 30 天。12h 间隔给失败告警/补跑留余量，不保证连续漏跑仍满足 RPO。没有接入第三方平台、外部通知或生产定时任务。旧 backup 的 --policy 仍兼容四个目标字段；日常受管备份推荐使用以下入口，以记录运行状态与受管清单。
+
+```powershell
+node --experimental-strip-types scripts/backup-policy.ts schedule
+node --experimental-strip-types scripts/backup-policy.ts run --data 'D:\isolated\source' --root 'D:\snapshots\managed' --offline-confirmed yes --manual yes
+node --experimental-strip-types scripts/backup-policy.ts status --root 'D:\snapshots\managed'
+node --experimental-strip-types scripts/backup-policy.ts retention --data 'D:\isolated\source' --root 'D:\snapshots\managed'
+# Review the preview first; only expired managed snapshots qualify for this explicit permanent deletion:
+node --experimental-strip-types scripts/backup-policy.ts retention --data 'D:\isolated\source' --root 'D:\snapshots\managed' --apply yes --delete-expired-confirmed yes
+```
+
+受管根必须在数据目录外，只初始化空目录，不能自动接管旧备份杂目录；catalog 绑定源目录，防止混用。状态失败持久化到 state.json，不推进 lastSuccessAt，status 对失败/中断/损坏/错过窗口/超过 RPO 返回非零（健康判定 exit=2），调用方必须接入持久日志和实际告警通道。当前没有短信/邮件送达或值守证明。备份阶段预算 4min，预留 1min 给外部停服/重启/健康检查；代码在阶段边界拒绝超时成功，无法强制中断单次阻塞 I/O，不能由此宣称生产总停服必定小于 5min。清理默认预览，仅显式确认后删除超过 30×24h 的登记且校验完好快照；恰好 30 天、最新恢复点、未知文件均保留；缺少新鲜恢复点/最近失败/清单损坏则拒绝执行。中断清理的残留必须人工排查。附件隔离区仍不默认永久清空。
+
+完整调度接入、finally 恢复服务和告警责任见 [备份任务接入契约](../ops/backup-job-contract.md)，提供未启用的 timer 示例。激活生产前仍需核对实际服务单元、路径、磁盘/独立副本、值守责任人及通知通道，并在目标 OS 和真实规模副本验证。**本轮只交付并验证本地策略，没有安装/启用任何定时任务，也没有执行生产停服。** RTO 应包含完整处置流程，不能用小夹具复制耗时替代。
 
 快照摘要用于发现损坏和缺失，不是签名或加密；需限制目录权限并保护清单与数据。当前按本机进程崩溃验证，不承诺操作系统/电源/硬件故障的落盘保障或远端共享盘安全。所有文件逐个摘要校验可能延长停服；大数据规模、磁盘耗尽、备份调度/保留执行、正式数据迁移和生产恢复尚须上线前验收。旧 SQLite 以前的 store.json/历史导入归档不进入规范快照，当前 SQLite 才是业务权威数据。
 

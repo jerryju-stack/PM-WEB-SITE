@@ -1,0 +1,39 @@
+{
+  "kind": "local-whole-snapshot-drill",
+  "createdAt": "2026-10-25T12:00:07.192Z",
+  "approvedPolicy": {
+    "format": 1,
+    "rpoMinutes": 1440,
+    "rtoMinutes": 480,
+    "maxDowntimeMinutes": 5,
+    "retentionDays": 30,
+    "timezone": "Asia/Shanghai",
+    "windows": ["00:30", "12:30"],
+    "rtoClock": "elapsed-24x7"
+  },
+  "sourcePort": "5419",
+  "backupMs": 41,
+  "codeVersion": "fbf79654a443b7b6b3dbaf5cd6dc1b0b390b5eef",
+  "migrations": [
+    {"version": 1, "name": "resource_versions"},
+    {"version": 2, "name": "audit_and_attachment_recovery"}
+  ],
+  "counts": {
+    "schema_migrations": 2, "meta": 1, "settings": 1, "users": 1,
+    "projects": 1, "articles": 0, "tasks": 10, "dependencies": 1,
+    "attachments": 1, "audit_events": 14, "file_jobs": 0
+  },
+  "verifyMs": 5,
+  "plannedStopThroughLoginAndProjectMs": 386,
+  "mistakenDeletionConfirmed": true,
+  "restoreCopyVerifyMs": 17,
+  "restoredPort": "10584",
+  "restoreThroughLoginProjectDownloadMs": 221,
+  "localMeasuredTargetsPassed": true,
+  "retentionPreviewPassed": true,
+  "databaseAndFilesVerified": true,
+  "loginProjectPageAndDownloadPassed": true,
+  "repeatRetryPassed": true,
+  "allFixturePortsClosed": true,
+  "totalMs": 1201
+}
