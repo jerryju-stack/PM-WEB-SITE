@@ -1,0 +1,15 @@
+# Template only: not installed or enabled by this repository.
+[Unit]
+Description=Project Station approved backup windows
+
+[Timer]
+OnCalendar=*-*-* 00:30:00 Asia/Shanghai
+OnCalendar=*-*-* 12:30:00 Asia/Shanghai
+AccuracySec=1s
+RandomizedDelaySec=0
+# Catch-up must not cause an unapproved daytime stop; missed slots are reported by status.
+Persistent=false
+Unit=project-station-backup.service
+
+[Install]
+WantedBy=timers.target

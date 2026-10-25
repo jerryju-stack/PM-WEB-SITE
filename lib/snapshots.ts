@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync, lstatSync, readdirSync, readFileSync, mkdirSync, copyFileSync, writeFileSync, renameSync, realpathSync } from 'node:fs';
-import { join, resolve, relative, dirname, basename } from 'node:path';
+import { join, resolve, relative, dirname, basename, isAbsolute, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { digest, fileId } from './attachments.ts';
 import { dataLock } from './data-lock.ts';
@@ -59,16 +59,19 @@ export function inspectData(directory:string) {
 function newDestination(source:string,target:string) {
   const from=realpathSync(source),to=join(realpathSync(dirname(resolve(target))),basename(target));
   const rel=relative(from,to);
-  if(!rel||(!rel.startsWith('..')&&!rel.includes(':')))throw Error('Destination must be outside source');
+  if(!rel||(rel!=='..'&&!rel.startsWith('..'+sep)&&!isAbsolute(rel)))throw Error('Destination must be outside source');
   if(existsSync(to))throw Error('Destination already exists; overwrite is forbidden');
   return to;
 }
 /** Caller must supply the explicit stopped-writers acknowledgement and matching source revision. */
-export function backupSnapshot(directory:string,target:string,codeVersion:string,targets:RecoveryTargets=pendingTargets,producerCodeVersion=codeVersion) {
+export function backupSnapshot(directory:string,target:string,codeVersion:string,targets:RecoveryTargets=pendingTargets,producerCodeVersion=codeVersion,limits:{deadlineMs?:number}={}) {
   if(!existsSync(join(directory,dbName)))throw Error('Database missing');
   const destination=newDestination(directory,target),lock=dataLock(directory,'backup');
   const stage=join(dirname(destination),'.incomplete-'+randomUUID());
+  const snapshotAt=new Date().toISOString();
+  const budget=()=>{if(limits.deadlineMs!==undefined&&Date.now()>=limits.deadlineMs)throw Object.assign(Error('Backup budget exceeded'),{code:'BACKUP_BUDGET_EXCEEDED'});};
   try {
+    budget();
     mkdirSync(stage);mkdirSync(join(stage,'uploads'));mkdirSync(join(stage,'quarantine'));
     // Lock excludes the server for the entire DB/files operation, not just the SQL checkpoint.
     const db=new DatabaseSync(join(directory,dbName));
@@ -77,11 +80,12 @@ export function backupSnapshot(directory:string,target:string,codeVersion:string
     // Canonical standalone snapshot has no dependency on source WAL/SHM.
     const copied=new DatabaseSync(join(stage,dbName));try{copied.exec('PRAGMA journal_mode=DELETE');}finally{copied.close();}
     for(const folder of ['uploads','quarantine'])if(existsSync(join(directory,folder)))for(const entry of walk(join(directory,folder),folder)) {
+      budget();
       const path=join(stage,entry.path);mkdirSync(dirname(path),{recursive:true});copyFileSync(join(directory,entry.path),path);
     }
-    const manifest:Manifest={format:1,createdAt:new Date().toISOString(),codeVersion,producerCodeVersion,targets,database:inspectData(stage),files:walk(stage)};
+    const manifest:Manifest={format:1,createdAt:snapshotAt,codeVersion,producerCodeVersion,targets,database:inspectData(stage),files:walk(stage)};
     const encoded=JSON.stringify(manifest,null,2)+'\n';writeFileSync(join(stage,'manifest.json'),encoded,{flag:'wx'});
-    renameSync(stage,destination);
+    budget();renameSync(stage,destination);
     // A failed/killed operation before this final marker is never accepted by verify/restore.
     writeFileSync(join(destination,'COMPLETE'),digest(Buffer.from(encoded))+'\n',{flag:'wx'});
     return verifySnapshot(destination);

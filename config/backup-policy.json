@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "rpoMinutes": 1440,
+  "rtoMinutes": 480,
+  "maxDowntimeMinutes": 5,
+  "retentionDays": 30,
+  "timezone": "Asia/Shanghai",
+  "windows": ["00:30", "12:30"],
+  "rtoClock": "elapsed-24x7"
+}

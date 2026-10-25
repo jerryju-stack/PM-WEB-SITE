@@ -8,6 +8,8 @@ import { backupSnapshot, verifySnapshot, restoreSnapshot, pendingTargets } from 
 import { openStore } from '../lib/database.ts';
 import { dataLock, unlockDeadProcess } from '../lib/data-lock.ts';
 import { attachmentService, reconcile } from '../lib/attachments.ts';
+import { defaultPolicyPath } from '../lib/backup-policy.ts';
+import { committedRuntimeVersion } from '../lib/runtime-version.ts';
 const [command,...args]=process.argv.slice(2),options=new Map<string,string>();
 for(let i=0;i<args.length;i+=2){if(!args[i].startsWith('--')||!args[i+1]||args[i+1].startsWith('--'))throw Error('Options require explicit values');options.set(args[i].slice(2),args[i+1]);}
 const required=(key:string)=>{const value=options.get(key);if(!value)throw Error('Missing --'+key);return value;};
@@ -22,13 +24,11 @@ async function main() {
   if(command==='backup') {
     // A reproducible backup must identify committed runtime code, not an unrecorded worktree.
     const gitArgs=['-c','safe.directory='+root];
-    const paths=['server.ts','lib','src','scripts','package.json','pnpm-lock.yaml'];
-    if(execFileSync('git',[...gitArgs,'status','--porcelain','--',...paths],{cwd:root,encoding:'utf8'}).trim())throw Error('Commit runtime/tool changes before backup');
-    const code=execFileSync('git',[...gitArgs,'rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
+    const code=committedRuntimeVersion();
     const pair=options.has('paired-code')?execFileSync('git',[...gitArgs,'rev-parse','--verify',required('paired-code')+'^{commit}'],{cwd:root,encoding:'utf8'}).trim():code;
     const check=new DatabaseSync(join(directory(),'project-station.sqlite'),{readOnly:true});
     try{if(check.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()?.v===1&&!options.has('paired-code'))throw Error('A snapshot requires --paired-code pointing to the stopped A code revision');}finally{check.close();}
-    const raw=options.has('policy')?JSON.parse(readFileSync(resolve(required('policy')),'utf8')):pendingTargets;
+    const raw=JSON.parse(readFileSync(options.has('policy')?resolve(required('policy')):defaultPolicyPath,'utf8'));
     const policy={...pendingTargets};
     for(const key of Object.keys(pendingTargets) as (keyof typeof pendingTargets)[]){if(!(key in raw)||(raw[key]!==null&&(!Number.isSafeInteger(raw[key])||raw[key]<0)))throw Error('Invalid recovery policy');policy[key]=raw[key];}
     return backupSnapshot(directory(),resolve(required('target')),pair,policy,code);
