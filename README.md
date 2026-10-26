@@ -89,6 +89,8 @@ npm test
 
 ## 部署
 
+当前 D1–D3 上线版本、迁移保留检查及恢复点见 [2026-10-27 正式部署记录](docs/production-deployment-2026-10-27.md)。
+
 使用支持 Node.js 24+ 和持久磁盘的服务器，运行 `npm start`。通过 `PORT` 指定端口，通过 `DATA_DIR` 指定数据库与附件目录。服务监听 `127.0.0.1`，可在同机通过 Nginx/Caddy 反向代理并启用 HTTPS；生产环境设置 `COOKIE_SECURE=1`，反向代理需转发原始 Host，并允许大于 20 MB 的请求体。
 
 当前适合单进程部署；多实例应迁移为共享数据库、附件和会话存储。基础 SEO 提供标题、描述、Open Graph 与 robots.txt；私有 Timing 页面不供搜索引擎抓取。
