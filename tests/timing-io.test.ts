@@ -32,6 +32,7 @@ export function editWorkbook(buffer:Buffer,values:Record<string,string|number>,t
 
 test('D2 preserves template package features and calculates all caches; saved data is unchanged after current edits',async()=>{
  const {store,plans,io,saved}=fixture();try{
+  assert.equal(store.db.prepare("SELECT value FROM meta WHERE key='timing-workbook-key'").get(),undefined,'service initialization must not modify restored data');
   const history=plans.get('p',saved.version.id),out=await io.exportPlan('p',saved.version.id,'xlsx').buffer,parts=unpack(out),original=unpack(TEMPLATE),ss=strings(parts);
   for(const name of ['xl/styles.xml','xl/theme/theme1.xml','xl/printerSettings/printerSettings1.bin','xl/printerSettings/printerSettings2.bin'])assert.deepEqual(parts[name],original[name],name);
   for(let i=1;i<=3;i++)for(const tag of ['sheetViews','sheetFormatPr','cols','mergeCells','sheetProtection','pageMargins','pageSetup']){

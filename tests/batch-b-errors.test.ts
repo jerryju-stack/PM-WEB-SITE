@@ -9,9 +9,10 @@ import { openStore } from '../lib/database.ts';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { backupSnapshot } from '../lib/snapshots.ts';
+import { migrations } from '../lib/migrations.ts';
 test('new initialization refuses missing password instead of leaking a generated credential; later explicit initialization is retryable',()=>{
   const directory=mkdtempSync(join(tmpdir(),'station-init-b-')),previous=process.env.ADMIN_PASSWORD;delete process.env.ADMIN_PASSWORD;
-  try {assert.throws(()=>openStore(directory),/ADMIN_PASSWORD/);assert.throws(()=>backupSnapshot(directory,directory+'-invalid-snapshot','fixture'),/initialized/);process.env.ADMIN_PASSWORD='Isolated-Retry-Init-2026';const store=openStore(directory);try{assert.equal(store.all('users').length,1);assert.equal(store.db.prepare('SELECT count(*) AS n FROM schema_migrations').get()!.n,5);}finally{store.db.close();}}
+  try {assert.throws(()=>openStore(directory),/ADMIN_PASSWORD/);assert.throws(()=>backupSnapshot(directory,directory+'-invalid-snapshot','fixture'),/initialized/);process.env.ADMIN_PASSWORD='Isolated-Retry-Init-2026';const store=openStore(directory);try{assert.equal(store.all('users').length,1);assert.equal(store.db.prepare('SELECT count(*) AS n FROM schema_migrations').get()!.n,migrations.length);}finally{store.db.close();}}
   finally{if(previous===undefined)delete process.env.ADMIN_PASSWORD;else process.env.ADMIN_PASSWORD=previous;}
 });
 test('error classes retain A HTTP status contract; unknown faults are generic and diagnostics omit multiline secrets',()=>{

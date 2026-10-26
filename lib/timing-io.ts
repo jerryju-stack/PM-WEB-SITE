@@ -9,17 +9,24 @@ import { exportWorkbook,readWorkbook,orderedTasks } from './timing-workbook.ts';
 import type { InputIssue } from './timing-workbook.ts';
 import { exportTimingPdf } from './timing-pdf.ts';
 export function timingIO(store:Store){
- store.db.prepare('INSERT OR IGNORE INTO meta(key,value) VALUES(?,?)').run('timing-workbook-key',randomBytes(32).toString('hex'));
- const key=String(store.db.prepare('SELECT value FROM meta WHERE key=?').get('timing-workbook-key')!.value),plans=timingVersions(store);
+ const plans=timingVersions(store);
+ // Starting a server on a restored snapshot must not change its data digest.
+ // Initialize this internal key only when Excel is actually exported/imported.
+ function signingKey(){
+  const existing=store.db.prepare('SELECT value FROM meta WHERE key=?').get('timing-workbook-key');
+  if(existing)return String(existing.value);
+  store.db.prepare('INSERT OR IGNORE INTO meta(key,value) VALUES(?,?)').run('timing-workbook-key',randomBytes(32).toString('hex'));
+  return String(store.db.prepare('SELECT value FROM meta WHERE key=?').get('timing-workbook-key')!.value);
+ }
  function exportPlan(projectId:string,versionId:string,format:string){
   const {plan,version}=versionId==='current'?{plan:plans.current(projectId),version:null}:plans.get(projectId,versionId);
   const label=version?`${version.kind==='version'?'V'+version.sequence:version.kind==='baseline'?'基线':'最终版本'}-${version.name}-r${version.revision}`:`当前-r${plan.project.taskRevision}`;
-  return {filename:`${plan.project.title}-${label}.${format}`.replace(/[\\/:*?"<>|\x00-\x1f]/g,'_'),buffer:format==='xlsx'?exportWorkbook(plan,version,key).buffer:exportTimingPdf(plan,version)};
+  return {filename:`${plan.project.title}-${label}.${format}`.replace(/[\\/:*?"<>|\x00-\x1f]/g,'_'),buffer:format==='xlsx'?exportWorkbook(plan,version,signingKey()).buffer:exportTimingPdf(plan,version)};
  }
  function preview(projectId:string,value:unknown,context:WriteContext){
   const body=objectInput(value);if(typeof body.file!=='string'||body.file.length>12*1024*1024||!/^[a-zA-Z0-9+/]*={0,2}$/.test(body.file))invalid('请上传原框架 .xlsx 文件（最大 8 MB）');
   if(body.mode!==undefined&&!['update','new'].includes(String(body.mode)))invalid('导入模式无效');
-  const parsed=readWorkbook(Buffer.from(body.file as string,'base64'),key),before=plans.current(projectId),old=before.tasks,byId=new Map(old.map(t=>[t.id,t])),issues:InputIssue[]=[...parsed.issues],isNew=body.mode==='new';
+  const parsed=readWorkbook(Buffer.from(body.file as string,'base64'),signingKey()),before=plans.current(projectId),old=before.tasks,byId=new Map(old.map(t=>[t.id,t])),issues:InputIssue[]=[...parsed.issues],isNew=body.mode==='new';
   if(isNew&&old.length&&JSON.stringify(old)!==JSON.stringify(template(projectId)))invalid('建立新计划仅适用于空计划或未编辑的默认八阶段；请选择更新现有计划');
   const issue=(row:number,field:string,message:string)=>issues.push({sheet:'任务编辑',row,field,message});
   const mapping=body.mapping===undefined?{}:objectInput(body.mapping),matches:{row:number;wbs:string;title:string;id:string|null;trusted:boolean;choiceRequired:boolean}[]=[],ids=new Set<string>();
