@@ -13,6 +13,7 @@ import { audit } from './lib/audit.ts';
 import type { WriteContext } from './lib/audit.ts';
 import { resourceWriter } from './lib/resources.ts';
 import { writeTasks } from './lib/task-writes.ts';
+import { timingVersions } from './lib/timing-versions.ts';
 import { attachmentService, fileId } from './lib/attachments.ts';
 import { dataLock } from './lib/data-lock.ts';
 import { requestId, errorResponse, diagnostic } from './lib/http-errors.ts';
@@ -25,6 +26,7 @@ process.on('exit',()=>lock.release());
 const store=openStore(directory);
 const uploads=join(store.directory,'uploads'); await mkdir(uploads,{recursive:true});
 const resources=resourceWriter(store);
+const plans=timingVersions(store);
 const accounts=accountService(store),permissions=policy(store);
 const files=attachmentService(store);
 const recovery=await files.retry();
@@ -88,7 +90,21 @@ const server=http.createServer(async(req,res)=>{
       }
       if(url.pathname==='/api/logout'&&method==='POST'){if(token)sessions.delete(token);res.setHeader('Set-Cookie','session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return json(200,{ok:true});}
       if(url.pathname==='/api/data'&&method==='GET')return json(200,{settings:store.get('settings','site'),projects:store.all('projects').filter(p=>permissions.card(user,p.id)).map(p=>Object.fromEntries(['id','title','description','category','date','startDate','owner','status','progress','version','taskRevision'].map(key=>[key,p[key]]).concat([['capabilities',capabilities.filter(cap=>permissions.can(user,cap,p.id))]]))),articles:store.all('articles').filter(item=>permissions.articleRead(user,item)).map(item=>({...item,canEdit:permissions.can(user,'lessonEdit',item.projectId??undefined),canDelete:permissions.can(user,'lessonDelete',item.projectId??undefined)})),users:user?.role==='admin'?store.all('users').map(safeUser):[],user:safeUser(user)});
-      if(parts[1]==='projects'&&parts[2]&&parts[3]==='timing'&&method==='GET') {
+      if(parts[1]==='projects'&&parts[2]&&parts[3]==='timing'&&parts[4]) {
+        const projectId=parts[2];permissions.requireRead(user,projectId);
+        if(parts[4]==='versions') {
+          if(method==='GET'&&parts.length===5)return json(200,{versions:plans.list(projectId)});
+          if(method==='GET'&&parts.length===6)return json(200,plans.get(projectId,parts[5]));
+          if(method==='POST'&&parts.length===5){permissions.requireCap(user,'timingEdit',projectId);const result=plans.save(projectId,body,context);return json(result.replayed?200:201,result);}
+          fail('已保存版本只读，不支持此方法',405);
+        }
+        if(parts[4]==='compare'&&parts.length===5&&method==='GET') {
+          const from=url.searchParams.get('from'),to=url.searchParams.get('to');if(!from||!to)fail('请选择来源和目标计划');
+          return json(200,plans.compare(projectId,from!,to!));
+        }
+        fail('接口不存在',404);
+      }
+      if(parts[1]==='projects'&&parts[2]&&parts[3]==='timing'&&parts.length===4&&method==='GET') {
         permissions.requireRead(user,parts[2]);
         const project=store.get('projects',parts[2]);if(!project)fail('项目不存在',404);
         return json(200,{project,tasks:store.tasks(project.id),attachments:attached(project.id),revision:store.revision(project.id),members:permissions.can(user,'membersRead',project.id)?permissions.members(user,project.id):[],capabilities:capabilities.filter(cap=>permissions.can(user,cap,project.id))});
@@ -170,7 +186,7 @@ const server=http.createServer(async(req,res)=>{
       return json(200,{ok:true});
     }
     if(method!=='GET')fail('不支持此方法',405);
-    const scripts:Record<string,string>={'/app.js':'src/app.ts','/timing.js':'src/timing.ts','/schedule.js':'lib/schedule.ts','/drafts.js':'src/drafts.ts','/access-ui.js':'src/access-ui.ts'};
+    const scripts:Record<string,string>={'/app.js':'src/app.ts','/timing.js':'src/timing.ts','/timing-history.js':'src/timing-history.ts','/schedule.js':'lib/schedule.ts','/drafts.js':'src/drafts.ts','/access-ui.js':'src/access-ui.ts'};
     if(scripts[url.pathname]){res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-cache'});return res.end(stripTypeScriptTypes(await readFile(join(root,scripts[url.pathname]),'utf8')));}
     if(['/styles.css','/timing.css'].includes(url.pathname)){res.writeHead(200,{'Content-Type':'text/css; charset=utf-8','Cache-Control':'no-cache'});return res.end(await readFile(join(root,'src',url.pathname.slice(1))));}
     if(url.pathname==='/robots.txt'){res.writeHead(200,{'Content-Type':'text/plain'});return res.end('User-agent: *\nAllow: /\nDisallow: /projects/\nDisallow: /api/\n');}

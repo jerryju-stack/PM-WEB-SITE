@@ -17,6 +17,7 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "paths": {
+      "/timing-history.js": ["./src/timing-history.ts"],
       "/access-ui.js": ["./src/access-ui.ts"],
       "/timing.js": [
         "./src/timing.ts"

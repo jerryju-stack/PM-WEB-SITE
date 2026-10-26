@@ -64,6 +64,24 @@ export const migrations: Migration[] = [{
     const editor=[...read,'projectEdit','timingEdit','attachmentUpload','attachmentDelete','lessonCreate','lessonEdit','lessonDelete'];
     for(const [id,name,caps] of [['manager','Manager',[...editor,'projectCreate','projectDelete','membersManage']],['editor','Editor',editor],['viewer','Viewer',read],['engineering','Engineering',[...read,'attachmentUpload','lessonCreate','lessonEdit']]] as [string,string,string[]][])db.prepare('INSERT INTO permission_groups VALUES(?,?,?)').run(id,name,JSON.stringify(caps));
   },
+}, {
+  version:5,name:'timing_plan_versions',
+  up(db) {
+    db.exec(`CREATE TABLE timing_versions (
+      id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK(kind IN ('baseline','version','final')), sequence INTEGER,
+      name TEXT NOT NULL, reason TEXT NOT NULL, saved_at TEXT NOT NULL,
+      actor_uid TEXT NOT NULL REFERENCES identities(uid), actor_name TEXT NOT NULL,
+      revision INTEGER NOT NULL, project_version INTEGER NOT NULL,
+      request_key TEXT NOT NULL, request_data TEXT NOT NULL, snapshot TEXT NOT NULL,
+      UNIQUE(project_id,request_key), UNIQUE(project_id,sequence),
+      CHECK((kind='version' AND sequence IS NOT NULL AND sequence>0) OR (kind<>'version' AND sequence IS NULL))
+    );
+    CREATE INDEX timing_versions_project ON timing_versions(project_id,saved_at);
+    CREATE TRIGGER timing_version_readonly BEFORE UPDATE ON timing_versions BEGIN
+      SELECT RAISE(ABORT,'Timing versions are read-only');
+    END;`);
+  },
 }];
 /** Each migration and its marker commit together. Failed migrations can be retried on next open. */
 export function applyMigrations(db: DatabaseSync, steps: Migration[] = migrations) {
