@@ -53,7 +53,7 @@ export function openStore(directory: string) {
   };
   const tasks = (projectId: string): Task[] => db.prepare('SELECT data FROM tasks WHERE project_id=? ORDER BY rowid').all(projectId).map((row: any) => JSON.parse(row.data));
   const revision = (id: string): number => Number((db.prepare('SELECT revision FROM projects WHERE id=?').get(id) as any)?.revision || 0);
-  function saveTasks(projectId: string, values: Task[], expected?: number, context?: WriteContext) {
+  function saveTasks(projectId: string, values: Task[], expected?: number, context?: WriteContext, committed?:()=>void) {
     return transaction(() => {
       if (!get('projects',projectId)) throw Object.assign(Error('项目不存在'), { status: 404 });
       if (values.some(t => t.projectId !== projectId)) throw Error('任务必须属于本项目');
@@ -78,6 +78,7 @@ export function openStore(directory: string) {
       }
       for (const task of beforeTasks) if (!ids.has(task.id)) audit(db,context,'tasks',task.id,task,null,versions);
       for (const row of beforeAttachments) if (!db.prepare('SELECT 1 FROM attachments WHERE id=?').get(row.id)) audit(db,context,'attachments',row.id,row,null,versions);
+      committed?.();
       return normalized;
     });
   }

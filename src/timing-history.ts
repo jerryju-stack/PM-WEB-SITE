@@ -1,4 +1,5 @@
 import type { TimingVersion, VersionKind, PlanChange, TaskDifference, SaveVersionRequest, timingVersions } from '../lib/timing-versions.ts';
+import { TimingTransfer } from '/timing-io.js';
 type Comparison=ReturnType<ReturnType<typeof timingVersions>['compare']>;
 type Context={revision:number;projectVersion:number;canSave:boolean;historical:string|null;version?:TimingVersion;dirty:boolean};
 type Options={projectId:string;signal:AbortSignal;context:()=>Context;capture:()=>void;showPlan:(id:string|null)=>Promise<void>;notify:(message:string)=>void};
@@ -8,6 +9,7 @@ const label=(v:TimingVersion)=>`${category(v)} · ${v.name}`;
 const time=(value:string)=>new Date(value).toLocaleString('zh-CN',{hour12:false});
 
 export class TimingHistory {
+  private transfer:TimingTransfer;
   private options:Options;
   private open=false;
   private versions:TimingVersion[]=[];
@@ -20,14 +22,15 @@ export class TimingHistory {
   private from='';
   private to='current';
   private comparison?:Comparison;
-  constructor(options:Options){this.options=options;}
+  constructor(options:Options){this.options=options;this.transfer=new TimingTransfer({...options,context:()=>({canEdit:options.context().canSave,historical:options.context().historical,dirty:options.context().dirty}),reload:()=>options.showPlan(null)});}
   async openPanel(){this.open=true;this.redraw();if(!this.loaded)await this.run(async()=>{await this.loadList();});}
   private async request(path:string,body?:unknown){
     const response=await fetch(`/api/projects/${this.options.projectId}/timing/${path}`,{signal:this.options.signal,...(body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});
     const data=await response.json();if(!response.ok)throw Object.assign(Error(data.error+(data.requestId?`（请求 ${data.requestId}）`:'')),{status:response.status});return data;
   }
-  private redraw(){if(this.options.signal.aborted)return;const node=document.querySelector('#timing-history');if(node){node.outerHTML=this.html();this.bind();}}
-  html(){
+  private redraw(){if(this.options.signal.aborted)return;const node=document.querySelector('#timing-history');if(node){node.outerHTML=this.historyHtml();this.bind();}}
+  html(){return this.historyHtml()+this.transfer.html();}
+  private historyHtml(){
     const ctx=this.options.context(),v=ctx.version;
     return `<section id="timing-history" class="timing-history" aria-label="排期版本管理"><div class="history-heading"><div><b>${v?esc(label(v)):'当前计划'}</b><span class="history-badge">${v?'历史 · 只读':`修订 ${ctx.revision}`}</span>${v?`<small>${esc(v.actorName)} · ${esc(time(v.savedAt))} · 来源修订 ${v.revision}</small>`:'<small>普通保存仅更新当前计划</small>'}</div><div class="history-actions">${ctx.historical?'<button class="small-btn" data-history-action="current">返回当前计划</button>':''}<button class="small-btn" data-history-action="toggle" aria-expanded="${this.open}">${this.open?'收起版本管理':'版本管理'}</button></div></div>${v?`<p class="history-reason">修改原因：${esc(v.reason)}</p><p class="history-note">任务表与甘特图均为保存时数据，不重新排期。附件不属于计划版本；返回当前计划后查看附件${ctx.dirty?'。当前计划的任务草稿已保留':''}。</p>`:''}${this.open?`<div class="history-content"><p class="history-note">仅主动保存基线、V 序列或最终版本。已有项目不补造历史；已保留版本只读。保存与比较当前计划均使用服务器已保存数据。</p>${ctx.canSave&&!ctx.historical?`<form id="save-plan-version" class="version-form"><label>版本类型<select name="kind"><option value="baseline" ${this.draft.kind==='baseline'?'selected':''}>基线</option><option value="version" ${this.draft.kind==='version'?'selected':''}>V 序列（自动编号）</option><option value="final" ${this.draft.kind==='final'?'selected':''}>最终版本</option></select></label><label>版本名称<input name="name" value="${esc(this.draft.name)}" maxlength="120" required></label><label class="version-reason">修改原因<textarea name="reason" rows="2" maxlength="2000" required placeholder="记录本次保留版本的原因…">${esc(this.draft.reason)}</textarea></label><button type="submit" class="primary compact">${this.busy?'处理中…':'保存版本'}</button><button type="button" class="small-btn" data-history-action="refresh">刷新当前计划以核对</button></form>`:''}<p class="form-error" role="alert">${esc(this.error)}</p><p class="history-note" role="status">${esc(this.message)}</p><div class="version-list-wrap"><table class="version-list"><thead><tr><th>已保存版本</th><th>保存人 / 时间</th><th>修改原因</th><th>操作</th></tr></thead><tbody>${this.versions.map(v=>`<tr><td><b>${esc(label(v))}</b><small>修订 ${v.revision} · ${v.id.slice(0,8)}</small></td><td>${esc(v.actorName)}<small>${esc(time(v.savedAt))}</small></td><td class="version-reason-cell">${esc(v.reason)}</td><td><button class="small-btn" data-history-open="${v.id}">任务表与甘特图</button></td></tr>`).join('')||`<tr><td colspan="4" class="history-note">${this.loaded?'尚无保留版本。保存第一个基线后将在这里显示。':'正在读取版本列表…'}</td></tr>`}</tbody></table></div>${this.versions.length?`<form id="compare-plan-versions" class="version-compare-form"><label>来源<select name="from">${this.selectOptions(this.from)}</select></label><span>→</span><label>目标<select name="to">${this.selectOptions(this.to)}</select></label><button class="small-btn" type="submit">比较计划</button></form>${this.comparison?this.comparisonHtml(this.comparison):''}`:''}</div>`:''}</section>`;
   }
@@ -42,6 +45,7 @@ export class TimingHistory {
     return `<section class="plan-comparison" aria-label="计划比较结果"><h3>${esc(name(c.from.version,c.from.revision))} → ${esc(name(c.to.version,c.to.revision))}</h3><p class="history-note">${esc(c.dateBasis)}</p><p class="comparison-counts">新增 ${c.summary.added} · 删除 ${c.summary.removed} · 修改 ${c.summary.changed} · 未变 ${c.summary.unchanged}</p>${c.projectChanges.length?`<article class="task-difference"><h4>项目信息变化</h4>${this.changesHtml(c.projectChanges)}</article>`:''}${c.differences.map(d=>this.differenceHtml(d)).join('')||'<p class="history-note">任务无变化。</p>'}</section>`;
   }
   bind(){
+    this.transfer.bind();
     const node=document.querySelector('#timing-history');if(!node)return;
     node.querySelectorAll<HTMLInputElement|HTMLButtonElement>('input,textarea,select,button').forEach(el=>el.disabled=this.busy);
     node.addEventListener('click',async event=>{

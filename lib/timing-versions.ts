@@ -60,7 +60,7 @@ export function timingVersions(store:Store) {
     const left=select(from),right=select(to);
     return {from:{...left,plan:undefined,revision:left.plan.project.taskRevision},to:{...right,plan:undefined,revision:right.plan.project.taskRevision},...comparePlans(left.plan,right.plan)};
   }
-  return {get,save,compare,list:(projectId:string)=>store.db.prepare(`SELECT ${columns} FROM timing_versions WHERE project_id=? ORDER BY rowid DESC`).all(projectId).map(metadata)};
+  return {current,get,save,compare,list:(projectId:string)=>store.db.prepare(`SELECT ${columns} FROM timing_versions WHERE project_id=? ORDER BY rowid DESC`).all(projectId).map(metadata)};
 }
 
 export type PlanChange = {field:string;label:string;before:string;after:string;delta?:number|null};

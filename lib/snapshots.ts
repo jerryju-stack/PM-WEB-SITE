@@ -6,7 +6,7 @@ import { digest, fileId } from './attachments.ts';
 import { dataLock } from './data-lock.ts';
 import { capabilities } from './policy.ts';
 const dbName='project-station.sqlite';
-const tables=['schema_migrations','meta','settings','users','projects','articles','tasks','dependencies','attachments','audit_events','file_jobs','identities','permission_groups','project_members','project_access','timing_versions'];
+const tables=['schema_migrations','meta','settings','users','projects','articles','tasks','dependencies','attachments','audit_events','file_jobs','identities','permission_groups','project_members','project_access','timing_versions','timing_imports'];
 type Entry={path:string;size:number;sha256:string};
 export type RecoveryTargets={rpoMinutes:number|null;rtoMinutes:number|null;maxDowntimeMinutes:number|null;retentionDays:number|null};
 export type Manifest={format:1;createdAt:string;codeVersion:string;producerCodeVersion:string;targets:RecoveryTargets;database:ReturnType<typeof inspectData>;files:Entry[]};
@@ -30,7 +30,7 @@ export function inspectData(directory:string) {
     if(db.prepare("SELECT value FROM meta WHERE key='initialized'").get()?.value!=='1'||!db.prepare("SELECT 1 FROM settings WHERE id='site'").get())throw Error('Missing initialized application state');
     const migrations=db.prepare('SELECT version,name FROM schema_migrations ORDER BY version').all().map(row=>({version:Number(row.version),name:String(row.name)}));
     const versions=JSON.stringify(migrations.map(row=>row.version));
-    if(!['[1]','[1,2]','[1,2,3]','[1,2,3,4]','[1,2,3,4,5]'].includes(versions))throw Error('Unsupported snapshot migration version');
+    if(!['[1]','[1,2]','[1,2,3]','[1,2,3,4]','[1,2,3,4,5]','[1,2,3,4,5,6]'].includes(versions))throw Error('Unsupported snapshot migration version');
     const latest=migrations.at(-1)!.version;
     const usableAccount=db.prepare('SELECT id,data FROM users').all().some(row=>{
       const user=JSON.parse(String(row.data));
@@ -53,7 +53,7 @@ export function inspectData(directory:string) {
       if(db.prepare('SELECT 1 FROM project_members m JOIN identities i ON i.uid=m.user_uid WHERE i.retired_at IS NOT NULL OR i.login_name IS NULL').get())throw Error('Retired project identity');
     }
     const state:Record<string,{count:number;sha256:string}>={};
-    for(const table of tables.filter(table=>!((latest<2&&['audit_events','file_jobs'].includes(table))||(latest<3&&table==='identities')||(latest<4&&['permission_groups','project_members','project_access'].includes(table))||(latest<5&&table==='timing_versions')))) {
+    for(const table of tables.filter(table=>!((latest<2&&['audit_events','file_jobs'].includes(table))||(latest<3&&table==='identities')||(latest<4&&['permission_groups','project_members','project_access'].includes(table))||(latest<5&&table==='timing_versions')||(latest<6&&table==='timing_imports')))) {
       const rows=db.prepare('SELECT * FROM '+table).all();state[table]={count:rows.length,sha256:digest(Buffer.from(rows.map(row=>JSON.stringify(row)).sort().join('\n')))};
     }
     for(const table of ['projects','articles'])for(const row of db.prepare('SELECT * FROM '+table).all() as any[]) {

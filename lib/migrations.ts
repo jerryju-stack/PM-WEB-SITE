@@ -82,6 +82,15 @@ export const migrations: Migration[] = [{
       SELECT RAISE(ABORT,'Timing versions are read-only');
     END;`);
   },
+}, {
+  version:6,name:'timing_import_receipts',
+  up(db) {
+    db.exec(`CREATE TABLE timing_imports (
+      id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      actor_uid TEXT NOT NULL REFERENCES identities(uid), revision INTEGER NOT NULL,
+      project_version INTEGER NOT NULL, expires_at TEXT NOT NULL, payload TEXT NOT NULL, result TEXT
+    ); CREATE INDEX timing_imports_expiry ON timing_imports(expires_at);`);
+  },
 }];
 /** Each migration and its marker commit together. Failed migrations can be retried on next open. */
 export function applyMigrations(db: DatabaseSync, steps: Migration[] = migrations) {

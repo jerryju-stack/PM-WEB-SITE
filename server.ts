@@ -14,6 +14,8 @@ import type { WriteContext } from './lib/audit.ts';
 import { resourceWriter } from './lib/resources.ts';
 import { writeTasks } from './lib/task-writes.ts';
 import { timingVersions } from './lib/timing-versions.ts';
+import { timingIO } from './lib/timing-io.ts';
+import { TEMPLATE } from './lib/timing-workbook.ts';
 import { attachmentService, fileId } from './lib/attachments.ts';
 import { dataLock } from './lib/data-lock.ts';
 import { requestId, errorResponse, diagnostic } from './lib/http-errors.ts';
@@ -27,6 +29,7 @@ const store=openStore(directory);
 const uploads=join(store.directory,'uploads'); await mkdir(uploads,{recursive:true});
 const resources=resourceWriter(store);
 const plans=timingVersions(store);
+const timingFiles=timingIO(store);
 const accounts=accountService(store),permissions=policy(store);
 const files=attachmentService(store);
 const recovery=await files.retry();
@@ -71,7 +74,8 @@ const server=http.createServer(async(req,res)=>{
       }
       let body:any={};
       if(['POST','PUT','DELETE','PATCH'].includes(method)) {
-        const chunks:Buffer[]=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>1024*1024)fail('请求内容不能超过 1 MB',413);chunks.push(chunk);}
+        const limit=parts[3]==='timing'&&parts[4]==='import'&&parts[5]==='preview'?12*1024*1024:1024*1024;
+        const chunks:Buffer[]=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>limit)fail('请求内容过大',413);chunks.push(chunk);}
         if(bytes){try{body=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{fail('JSON 格式无效');}if(!body||typeof body!=='object'||Array.isArray(body))fail('请求内容无效');}
       }
       // The body can take arbitrarily long. Resolve the live session and account only
@@ -92,6 +96,21 @@ const server=http.createServer(async(req,res)=>{
       if(url.pathname==='/api/data'&&method==='GET')return json(200,{settings:store.get('settings','site'),projects:store.all('projects').filter(p=>permissions.card(user,p.id)).map(p=>Object.fromEntries(['id','title','description','category','date','startDate','owner','status','progress','version','taskRevision'].map(key=>[key,p[key]]).concat([['capabilities',capabilities.filter(cap=>permissions.can(user,cap,p.id))]]))),articles:store.all('articles').filter(item=>permissions.articleRead(user,item)).map(item=>({...item,canEdit:permissions.can(user,'lessonEdit',item.projectId??undefined),canDelete:permissions.can(user,'lessonDelete',item.projectId??undefined)})),users:user?.role==='admin'?store.all('users').map(safeUser):[],user:safeUser(user)});
       if(parts[1]==='projects'&&parts[2]&&parts[3]==='timing'&&parts[4]) {
         const projectId=parts[2];permissions.requireRead(user,projectId);
+        if(parts[4]==='export'&&parts.length===5&&method==='GET') {
+          const format=url.searchParams.get('format')??'xlsx';if(!['xlsx','pdf'].includes(format))fail('请选择 Excel 或 PDF');
+          const output=timingFiles.exportPlan(projectId,url.searchParams.get('version')??'current',format),buffer=await output.buffer;
+          recheck();permissions.requireRead(user,projectId);
+          res.writeHead(200,{'Content-Type':format==='xlsx'?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'application/pdf','Content-Length':buffer.length,'Content-Disposition':`attachment; filename="timing.${format}"; filename*=UTF-8''${encodeURIComponent(output.filename).replaceAll("'",'%27')}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});res.end(buffer);return;
+        }
+        if(parts[4]==='template'&&parts.length===5&&method==='GET') {
+          res.writeHead(200,{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':'attachment; filename="Timing_Sample_v3_Print.xlsx"','Cache-Control':'private, no-store'});res.end(TEMPLATE);return;
+        }
+        if(parts[4]==='import'&&parts.length===6&&method==='POST') {
+          permissions.requireCap(user,'timingEdit',projectId);
+          if(parts[5]==='preview')return json(200,timingFiles.preview(projectId,body,context));
+          if(parts[5]==='confirm'){const {removed,...result}=timingFiles.confirm(projectId,body,context);await eraseFiles(removed);return json(200,result);}
+          fail('接口不存在',404);
+        }
         if(parts[4]==='versions') {
           if(method==='GET'&&parts.length===5)return json(200,{versions:plans.list(projectId)});
           if(method==='GET'&&parts.length===6)return json(200,plans.get(projectId,parts[5]));
@@ -186,7 +205,7 @@ const server=http.createServer(async(req,res)=>{
       return json(200,{ok:true});
     }
     if(method!=='GET')fail('不支持此方法',405);
-    const scripts:Record<string,string>={'/app.js':'src/app.ts','/timing.js':'src/timing.ts','/timing-history.js':'src/timing-history.ts','/schedule.js':'lib/schedule.ts','/drafts.js':'src/drafts.ts','/access-ui.js':'src/access-ui.ts'};
+    const scripts:Record<string,string>={'/app.js':'src/app.ts','/timing.js':'src/timing.ts','/timing-history.js':'src/timing-history.ts','/timing-io.js':'src/timing-io.ts','/schedule.js':'lib/schedule.ts','/drafts.js':'src/drafts.ts','/access-ui.js':'src/access-ui.ts'};
     if(scripts[url.pathname]){res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-cache'});return res.end(stripTypeScriptTypes(await readFile(join(root,scripts[url.pathname]),'utf8')));}
     if(['/styles.css','/timing.css'].includes(url.pathname)){res.writeHead(200,{'Content-Type':'text/css; charset=utf-8','Cache-Control':'no-cache'});return res.end(await readFile(join(root,'src',url.pathname.slice(1))));}
     if(url.pathname==='/robots.txt'){res.writeHead(200,{'Content-Type':'text/plain'});return res.end('User-agent: *\nAllow: /\nDisallow: /projects/\nDisallow: /api/\n');}

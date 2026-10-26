@@ -1,0 +1,52 @@
+{
+  "application": "Microsoft Excel（本机）",
+  "controls": {
+    "scale": "月",
+    "displayLevel": "1级",
+    "tick1": "46296",
+    "tick2": "46327",
+    "displayedWbs": [
+      "1",
+      "2",
+      "3"
+    ]
+  },
+  "identities": [
+    {
+      "cell": "P16",
+      "wbs": "1",
+      "id": "phase"
+    },
+    {
+      "cell": "P15",
+      "wbs": "1.1",
+      "id": "a"
+    },
+    {
+      "cell": "P13",
+      "wbs": "1.5",
+      "id": "b"
+    },
+    {
+      "cell": "P14",
+      "wbs": "1.3",
+      "id": "c"
+    },
+    {
+      "cell": "P12",
+      "wbs": "2",
+      "id": "phase2"
+    },
+    {
+      "cell": "P11",
+      "wbs": "2.1",
+      "id": "d"
+    },
+    {
+      "cell": "P10",
+      "wbs": "3",
+      "id": "e"
+    }
+  ],
+  "formulaErrors": []
+}
