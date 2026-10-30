@@ -12,6 +12,19 @@ let controller:AbortController|undefined;
 const viewStates=new Map<string,{collapsed:Set<string>;zoom:string;start:number|null}>();
 
 type TimeBounds={start:number;days:number;scale:number;width:number};
+export function scrollableProjectBounds(tasks:Pick<Task,'start'|'end'>[],zoom:string,availableWidth:number,fallback:string,anchor:number|null=null):TimeBounds {
+ const scale=zoom==='day'?32:zoom==='week'?12:5,minimum=zoom==='day'?90:zoom==='week'?180:365;
+ const viewportDays=Math.ceil(Math.max(1,Number.isFinite(availableWidth)?availableWidth:1)/scale);
+ let first=Infinity,last=-Infinity;
+ for(const task of tasks){const range=taskRange(task);if(range){first=Math.min(first,range[0]);last=Math.max(last,range[1]);}}
+ if(!Number.isFinite(first)){try{first=dateValue(fallback);}catch{first=dateValue(today());}last=first;}
+ const focus=anchor!==null&&Number.isFinite(anchor)?anchor:first-7*DAY;
+ let start=Math.min(first-7*DAY,focus);start-=((new Date(start).getUTCDay()+6)%7)*DAY;
+ // Keep day spacing unchanged, include the full plan and an end-day margin.
+ // A small scrollable margin also keeps navigation usable on very wide displays.
+ const days=Math.max(minimum,viewportDays+14,Math.ceil((last-start)/DAY)+8,Math.ceil((focus-start)/DAY)+viewportDays+7);
+ return {start,days,scale,width:days*scale};
+}
 function taskRange(task:Pick<Task,'start'|'end'>):[number,number]|null {
  try{if(task.start&&task.end){const start=dateValue(task.start),end=dateValue(task.end);if(end>=start)return [start,end];}}catch{/* Invalid or incomplete dates remain unscheduled. */}
  return null;
@@ -63,14 +76,15 @@ export async function mountTiming(options:Options){
  const reads=new ReadGuard();
  let attachmentBusy=false, scroll={left:0,right:0,top:0};
  let fitWidth=1,dragActive=false;
+ let endPan:(()=>void)|undefined;
  const layoutKey='project-station:timing-layout:v1:'+encodeURIComponent(editKey);
  let storedLayout:string|null=null;try{storedLayout=localStorage.getItem(layoutKey);}catch{/* Storage may be unavailable. */}
  const layoutPreference=readLayoutPreference(storedLayout);
  const saveLayout=()=>{try{localStorage.setItem(layoutKey,JSON.stringify(layoutPreference));}catch{/* Keep the session preference when storage is blocked. */}};
  let layout:TimingLayout|undefined;
  let timelineEvents:AbortController|undefined;
- const resizeObserver=new ResizeObserver(()=>{if(state.zoom==='project')adaptTimeline();});
- signal.addEventListener('abort',()=>{resizeObserver.disconnect();layout?.destroy();timelineEvents?.abort();},{once:true});
+ const resizeObserver=new ResizeObserver(()=>adaptTimeline());
+ signal.addEventListener('abort',()=>{endPan?.();resizeObserver.disconnect();layout?.destroy();timelineEvents?.abort();},{once:true});
  const state=viewStates.get(projectId)||{collapsed:new Set<string>(),zoom:'week',start:null};viewStates.set(projectId,state);
  const notify=(message:string)=>{const node=document.querySelector('#toast')!;node.textContent=message;node.classList.add('show');setTimeout(()=>node.classList.remove('show'),3500);};
  const shell=(content:string)=>`<div class="timing-app"><header class="station-header"><a class="timing-brand" href="/"><span class="station-logo">P<span>.</span></span><span>Project Station<small>PLAN · ALIGN · DELIVER</small></span></a><nav class="station-nav"><a href="/">项目空间</a><a href="/#articles">Lesson Learn</a><a href="/#team">团队</a></nav><div class="station-account"><span class="green-dot"></span>${escape(user?.name||'访客')}<span class="role-chip">${user?({admin:'管理员',editor:'编辑者',viewer:'只读成员'}[user.role]):'尚未登录'}</span></div></header>${content}</div>`;
@@ -154,7 +168,10 @@ export async function mountTiming(options:Options){
   if(edit?.dirty&&!confirm('有未保存的任务草稿，确定舍弃？'))return false;
   setEdit(undefined);return true;
  }
- function bounds(){if(state.zoom==='project')return fitProjectBounds(snapshot.tasks,fitWidth,snapshot.project.startDate||today());const dated=snapshot.tasks.filter((t:Task)=>t.start).map((t:Task)=>dateValue(t.start!));const first=dated.length?Math.min(...dated):dateValue(snapshot.project.startDate||today());let start=state.start??first-7*DAY;const weekday=new Date(start).getUTCDay();start-=((weekday+6)%7)*DAY;const days=state.zoom==='day'?90:state.zoom==='week'?180:365;const scale=state.zoom==='day'?32:state.zoom==='week'?12:5;return{start,days,scale,width:days*scale};}
+ function bounds(){return state.zoom==='project'?fitProjectBounds(snapshot.tasks,fitWidth,snapshot.project.startDate||today()):scrollableProjectBounds(snapshot.tasks,state.zoom,fitWidth,snapshot.project.startDate||today(),state.start);}
+ function focusDate(date:number){
+  rememberScroll();state.start=date;const b=bounds();scroll.right=Math.max(0,(date-b.start)/DAY*b.scale);render();
+ }
  function timelineHtml(visible:Row[],tasks:Task[]){
   const {start,days,scale,width}=bounds();
   const monthly:{name:string;count:number}[]=[];for(let i=0;state.zoom!=='project'&&i<days;i++){const date=new Date(start+i*DAY),name=`${date.getUTCFullYear()}年 ${String(date.getUTCMonth()+1).padStart(2,'0')}月`;const last=monthly.at(-1);if(last?.name===name)last.count++;else monthly.push({name,count:1});}
@@ -172,6 +189,7 @@ export async function mountTiming(options:Options){
  function labelDate(date:string|null){return date||'未排期';}
  function render(){
   if(signal.aborted)return;
+  endPan?.();
   layout?.destroy();layout=undefined;
   const focus=activeFocus()||pendingFocus;
   const project=snapshot.project, tasks:Task[]=snapshot.tasks, visible=rows(),allRows=rows(true),leaves=tasks.filter(t=>t.kind!=='summary');
@@ -181,7 +199,7 @@ export async function mountTiming(options:Options){
    const disabled=!canEdit||summary?'disabled':'';
    const input=(field:string,value:any,type='text',extra='')=>`<input aria-label="${escape(row.wbs+' '+({title:'任务名称',owner:'负责人',start:'开始日期',end:'结束日期',duration:'工期',progress:'完成度'}[field]||field))}" data-inline="${field}" data-task="${t.id}" type="${type}" value="${escape(value??'')}" ${extra}>`;
    return `<tr class="${summary?'summary-row':''} ${selected===t.id?'selected-row':''}" data-row="${t.id}"><td><span class="wbs-number">${row.wbs}</span></td><td><div class="task-title-cell" style="padding-left:${row.depth*16}px">${summary?`<button class="fold-task" data-fold="${t.id}" aria-label="${state.collapsed.has(t.id)?'展开':'折叠'} ${escape(t.title)}">${state.collapsed.has(t.id)?'▸':'▾'}</button>`:`<span class="task-kind-symbol">${t.kind==='milestone'?'◆':'▱'}</span>`}<button class="task-name" data-select="${t.id}" title="查看或编辑任务">${escape(t.title)}</button>${canEdit&&t.kind!=='milestone'?`<button class="add-child" data-child="${t.id}" aria-label="添加 ${escape(t.title)} 的子任务">＋</button>`:''}</div></td><td>${input('owner',t.owner,'text',canEdit?'':'disabled')}</td><td>${input('start',t.start,'date',disabled)}</td><td>${input('end',t.end,'date',disabled)}</td><td>${input('duration',t.duration,'number',`${disabled||t.kind==='milestone'?'disabled':''} min="1" max="2600"`)}<span class="unit">天</span></td><td>${input('progress',t.progress,'number',`${disabled} min="0" max="100"`)}<span class="unit">%</span></td><td><button class="predecessor-cell" data-select="${t.id}">${t.predecessors.map(dep=>allRows.find(r=>r.task.id===dep)?.wbs||'?').join(', ')||'—'}</button></td><td><button class="attachment-count" data-select="${t.id}" aria-label="${escape(t.title)} 附件">♧ ${files||'—'}</button></td></tr>`;
-  }).join('')}</tbody></table></div><div class="schedule-separator" role="separator" tabindex="0" aria-orientation="vertical" aria-label="调整详细信息与甘特图宽度" aria-controls="schedule-details schedule-gantt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="55" title="左右拖动调整宽度；双击或按 Home 恢复默认比例；方向键调整，Shift 加速"></div><div class="timeline-pane" id="schedule-gantt">${timelineHtml(visible,tasks)}</div></div>${!visible.length?'<div class="no-tasks">暂无阶段或任务，点击「新建任务」开始排期。</div>':''}<div class="gantt-foot"><div><span class="legend summary-legend"></span>汇总阶段 <span class="legend task-legend"></span>普通任务 <span class="diamond-legend">◆</span>里程碑 <span class="legend done-legend"></span>已完成 <span class="legend late-legend"></span>逾期</div><span>周一至周五 · FS 完成后开始${canEdit?' · 拖动任务条排期，拖动两端调整工期':' · 只读视图'}</span></div></section><div class="timing-bottom"><span>把每一个节点，连接成确定的交付。</span><span>Project Station / 项目工作空间</span></div></main>${drawer(allRows)}`);
+  }).join('')}</tbody></table></div><div class="schedule-separator" role="separator" tabindex="0" aria-orientation="vertical" aria-label="调整详细信息与甘特图宽度" aria-controls="schedule-details schedule-gantt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="55" title="左右拖动调整宽度；双击或按 Home 恢复默认比例；方向键调整，Shift 加速"></div><div class="timeline-pane" id="schedule-gantt" tabindex="0" role="region" aria-label="甘特图，拖动空白区域或底部滚动条横向浏览">${timelineHtml(visible,tasks)}</div></div>${!visible.length?'<div class="no-tasks">暂无阶段或任务，点击「新建任务」开始排期。</div>':''}<div class="gantt-foot"><div><span class="legend summary-legend"></span>汇总阶段 <span class="legend task-legend"></span>普通任务 <span class="diamond-legend">◆</span>里程碑 <span class="legend done-legend"></span>已完成 <span class="legend late-legend"></span>逾期</div><span>周一至周五 · FS 完成后开始 · 拖动空白或底部滚动条浏览时间${canEdit?' · 拖动任务条排期，拖动两端调整工期':' · 只读视图'}</span></div></section><div class="timing-bottom"><span>把每一个节点，连接成确定的交付。</span><span>Project Station / 项目工作空间</span></div></main>${drawer(allRows)}`);
   if(!historical&&edit?.inputs){const form=document.querySelector('#task-form') as HTMLFormElement|null;for(const [name,value] of Object.entries(edit.inputs)){
    const node=form?.elements.namedItem(name) as HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null;
    if(!node)continue;if(node instanceof HTMLSelectElement&&node.multiple){for(const option of node.options)option.selected=Array.isArray(value)&&value.includes(option.value);}else if(typeof value==='string')node.value=value;
@@ -189,22 +207,23 @@ export async function mountTiming(options:Options){
   bind();history.bind();if(busy)lockEditing();
   if(focus){const node=document.querySelector(focus.selector) as HTMLInputElement|null;if(node&&!node.disabled){node.focus({preventScroll:true});if(focus.start!==null&&['text','search','textarea'].includes(node.type))node.setSelectionRange(focus.start,focus.end);pendingFocus=null;}}
   const workspace=document.querySelector<HTMLElement>('.gantt-workspace'),tools=document.querySelector<HTMLElement>('.gantt-tools');
-  if(workspace&&tools)layout=new TimingLayout(workspace,tools,layoutPreference,saveLayout,()=>{if(state.zoom==='project')adaptTimeline();},scroll);
+  if(workspace&&tools)layout=new TimingLayout(workspace,tools,layoutPreference,saveLayout,adaptTimeline,scroll);
   const left=document.querySelector<HTMLElement>('.task-pane')!,right=document.querySelector<HTMLElement>('.timeline-pane')!;if(!left.hidden){left.scrollLeft=scroll.left;left.scrollTop=scroll.top;}if(!right.hidden){right.scrollLeft=scroll.right;right.scrollTop=scroll.top;}
-  resizeObserver.disconnect();resizeObserver.observe(right);if(state.zoom==='project')adaptTimeline();
+  resizeObserver.disconnect();resizeObserver.observe(right);adaptTimeline();
  }
  function adaptTimeline(){
   const right=document.querySelector('.timeline-pane') as HTMLElement|null;
   if(signal.aborted||dragActive||!right||right.hidden||right.clientWidth<=0||right.clientWidth===fitWidth)return;
-  fitWidth=right.clientWidth;const top=right.scrollTop;
-  right.innerHTML=timelineHtml(rows(),snapshot.tasks);bindTimeline();right.scrollLeft=0;right.scrollTop=top;
+  endPan?.();const previous=bounds(),date=previous.start+right.scrollLeft/previous.scale*DAY,top=right.scrollTop;
+  fitWidth=right.clientWidth;const next=bounds();
+  right.innerHTML=timelineHtml(rows(),snapshot.tasks);bindTimeline();right.scrollLeft=state.zoom==='project'?0:Math.max(0,(date-next.start)/DAY*next.scale);right.scrollTop=top;
  }
  function bindTimeline(){
   timelineEvents?.abort();timelineEvents=new AbortController();
   const right=document.querySelector('.timeline-pane')!;
   const on=(selector:string,event:string,fn:(event:any)=>void)=>right.querySelectorAll(selector).forEach(node=>node.addEventListener(event,fn,{signal:timelineEvents!.signal}));
   on('[data-select]','click',e=>openTask(e.currentTarget.dataset.select));
-  on('[data-focus-date]','click',e=>{rememberScroll();state.start=dateValue(e.currentTarget.dataset.focusDate)-7*DAY;scroll.right=0;render();});
+  on('[data-focus-date]','click',e=>focusDate(dateValue(e.currentTarget.dataset.focusDate)-7*DAY));
   on('[data-bar]','keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openTask(e.currentTarget.dataset.bar);}});
   on('[data-bar]','pointerdown',startDrag);
  }
@@ -231,14 +250,16 @@ export async function mountTiming(options:Options){
   on('.task-pane [data-select]','click',e=>openTask(e.currentTarget.dataset.select));
   on('[data-fold]','click',e=>{rememberScroll();const id=e.currentTarget.dataset.fold;if(state.collapsed.has(id))state.collapsed.delete(id);else state.collapsed.add(id);render();});
   on('#expand-all','click',()=>{rememberScroll();state.collapsed.clear();render();});on('#collapse-all','click',()=>{rememberScroll();snapshot.tasks.filter((t:Task)=>t.kind==='summary').forEach((t:Task)=>state.collapsed.add(t.id));render();});
-  on('[data-zoom]','click',e=>{rememberScroll();state.zoom=e.currentTarget.dataset.zoom;scroll.right=0;render();});
-  on('#today','click',()=>{rememberScroll();state.start=dateValue(today())-7*DAY;scroll.right=0;render();});
-  on('#previous-window','click',()=>{rememberScroll();const b=bounds();state.start=b.start-Math.floor(b.days/2)*DAY;scroll.right=0;render();});
-  on('#next-window','click',()=>{rememberScroll();const b=bounds();state.start=b.start+Math.floor(b.days/2)*DAY;scroll.right=0;render();});
+  on('[data-zoom]','click',e=>{rememberScroll();const b=bounds(),date=b.start+scroll.right/b.scale*DAY;state.zoom=e.currentTarget.dataset.zoom;if(state.zoom==='project'){scroll.right=0;render();}else focusDate(date);});
+  on('#today','click',()=>focusDate(dateValue(today())-7*DAY));
+  const moveWindow=(direction:number)=>{rememberScroll();const b=bounds();focusDate(b.start+scroll.right/b.scale*DAY+direction*Math.max(7,Math.floor(fitWidth/b.scale/2))*DAY);};
+  on('#previous-window','click',()=>moveWindow(-1));
+  on('#next-window','click',()=>moveWindow(1));
   on('#refresh-timing','click',()=>{rememberScroll();load().catch(e=>notify(e.message));});
   on('[data-inline]','change',e=>{const input=e.currentTarget as HTMLInputElement;if(input.closest<HTMLElement>('.task-pane')?.hidden)return;const field=input.dataset.inline!;let value:any=input.value;if(['duration','progress'].includes(field))value=Number(value);if(field==='start'&&!value)value=null;pendingFocus={selector:'[data-inline="'+field+'"][data-task="'+input.dataset.task+'"]',start:input.selectionStart,end:input.selectionEnd};mutate(input.dataset.task,{[field]:value});});
   const left=document.querySelector<HTMLElement>('.task-pane')!,right=document.querySelector<HTMLElement>('.timeline-pane')!;
   left.addEventListener('scroll',()=>{if(!left.hidden&&!right.hidden&&right.scrollTop!==left.scrollTop)right.scrollTop=left.scrollTop;},{signal});right.addEventListener('scroll',()=>{if(!left.hidden&&!right.hidden&&left.scrollTop!==right.scrollTop)left.scrollTop=right.scrollTop;},{signal});
+  right.addEventListener('pointerdown',startPan,{signal});
   on('.drawer-close,.drawer-backdrop','click',()=>{if(!leaveEditor())return;selected=null;render();});
   on('#task-form','input',captureDraft);on('#task-form','change',captureDraft);
   on('#task-latest','click',async()=>{captureDraft();const pending=edit;if(!pending)return;const current=reads.begin(()=>!signal.aborted&&!busy&&edit===pending);try{const latest=await request(`projects/${projectId}/timing`);if(!current())return;const task=latest.tasks.find((t:Task)=>t.id===pending.value.id);if(!task)throw Error('任务已删除，草稿仍保留，不能重新创建替代记录');snapshot=latest;pending.review(task,latest.revision);render();}catch(error:any){if(!current())return;pending.fail(error.message);notify(error.message);render();}});
@@ -271,6 +292,23 @@ export async function mountTiming(options:Options){
   });
   on('[data-file-delete]','click',async e=>{if(!confirm('确定删除此附件？'))return;try{await request('attachments/'+e.currentTarget.dataset.fileDelete,{},'DELETE');await load();notify('附件已删除');}catch(error:any){notify(error.message);}});
   bindTimeline();
+ }
+ function startPan(event:PointerEvent){
+  const pane=event.currentTarget as HTMLElement;
+  if(event.button!==0||event.pointerType==='touch'||dragActive||endPan||pane.scrollWidth<=pane.clientWidth||(event.target as HTMLElement).closest('[data-bar],button,input,select,a'))return;
+  // Leave the native scrollbar track/thumb to the browser.
+  const rect=pane.getBoundingClientRect();if(event.clientX>=rect.left+pane.clientWidth||event.clientY>=rect.top+pane.clientHeight)return;
+  event.preventDefault();const startX=event.clientX,startLeft=pane.scrollLeft,events=new AbortController(),panSignal=events.signal;
+  let latest=startX,frame=0;
+  const flush=()=>{frame=0;pane.scrollLeft=startLeft+startX-latest;};
+  const finish=()=>{if(frame)cancelAnimationFrame(frame);flush();endPan=undefined;events.abort();document.body.classList.remove('panning-timeline');if(pane.hasPointerCapture(event.pointerId))pane.releasePointerCapture(event.pointerId);};
+  endPan=finish;document.body.classList.add('panning-timeline');pane.setPointerCapture(event.pointerId);
+  pane.addEventListener('pointermove',e=>{if(e.pointerId!==event.pointerId)return;latest=e.clientX;if(!frame)frame=requestAnimationFrame(flush);},{signal:panSignal});
+  pane.addEventListener('pointerup',e=>{if(e.pointerId===event.pointerId){latest=e.clientX;finish();}},{signal:panSignal});
+  for(const name of ['pointercancel','lostpointercapture'])pane.addEventListener(name,e=>{if((e as PointerEvent).pointerId===event.pointerId)finish();},{signal:panSignal});
+  window.addEventListener('blur',finish,{signal:panSignal});
+  window.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();finish();}},{signal:panSignal,capture:true});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)finish();},{signal:panSignal});
  }
  function startDrag(event:PointerEvent){
   const element=event.currentTarget as HTMLElement,task:Task=snapshot.tasks.find((t:Task)=>t.id===element.dataset.bar);

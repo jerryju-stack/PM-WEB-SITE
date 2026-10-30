@@ -358,3 +358,9 @@ body.resizing-schedule,body.resizing-schedule * { cursor: col-resize !important;
 .timing-workspace .layout-switch button { white-space: nowrap; }
 .timing-workspace .layout-hint { font-size: 11px; line-height: 16px; color: var(--ds-muted); }
 .timing-workspace :is(.gantt-tool-left,.gantt-tool-right) { min-width: 0; max-width: 100%; }
+
+/* D7 increment: a visible native horizontal navigator and drag-to-pan canvas. */
+.timing-workspace .gantt-workspace :is(.task-pane,.timeline-pane) { scrollbar-width: auto; }
+.timing-workspace .timeline-pane { cursor: grab; }
+.timing-workspace .timeline-pane:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: -2px; }
+body.panning-timeline,body.panning-timeline * { cursor: grabbing !important; user-select: none !important; }
