@@ -29,17 +29,22 @@ export function timingIO(store:Store){
   const parsed=readWorkbook(Buffer.from(body.file as string,'base64'),signingKey()),before=plans.current(projectId),old=before.tasks,byId=new Map(old.map(t=>[t.id,t])),issues:InputIssue[]=[...parsed.issues],isNew=body.mode==='new';
   if(isNew&&old.length&&JSON.stringify(old)!==JSON.stringify(template(projectId)))invalid('建立新计划仅适用于空计划或未编辑的默认八阶段；请选择更新现有计划');
   const issue=(row:number,field:string,message:string)=>issues.push({sheet:'任务编辑',row,field,message});
-  const mapping=body.mapping===undefined?{}:objectInput(body.mapping),matches:{row:number;wbs:string;title:string;id:string|null;trusted:boolean;choiceRequired:boolean}[]=[],ids=new Set<string>();
+  const existing=orderedTasks(old).map(r=>({id:r.task.id,wbs:r.wbs,title:r.task.title}));
+  const mapping=body.mapping===undefined?{}:objectInput(body.mapping),matches:{row:number;wbs:string;title:string;id:string|null;trusted:boolean;choiceRequired:boolean;method:string;existingTitle:string|null;nameMismatch:boolean}[]=[],ids=new Map<string,number>();
   const rowId=new Map<number,string>(),byWbs=new Map<string,typeof parsed.rows[number]>();
   for(const row of parsed.rows){
    if(byWbs.has(row.wbs))issue(row.row,'WBS','编号重复（另一行 '+byWbs.get(row.wbs)!.row+'）');else byWbs.set(row.wbs,row);
-   const trusted=!isNew&&parsed.source?.projectId===projectId&&!!row.identity;
-   let chosen=trusted&&byId.has(row.identity!)?row.identity!:undefined;const explicit=mapping[String(row.row)];
-   if(explicit!==undefined){if(explicit!=='new'&&(typeof explicit!=='string'||!byId.has(explicit)))issue(row.row,'身份匹配','所选任务不存在');else chosen=explicit==='new'?undefined:explicit;}
-   const choiceRequired=!isNew&&!trusted&&old.length>0&&explicit===undefined;
-   matches.push({row:row.row,wbs:row.wbs,title:row.title,id:chosen??null,trusted,choiceRequired});
-   if(trusted&&!byId.has(row.identity!)&&explicit===undefined)issue(row.row,'身份匹配','原任务已删除，请明确选择新增或匹配现有任务');
-   const id=chosen??randomUUID();if(ids.has(id))issue(row.row,'身份匹配','多个 Excel 行映射到同一任务，请修改匹配或清除复制的身份');ids.add(id);rowId.set(row.row,id);
+   const trusted=!isNew&&parsed.source?.projectId===projectId&&!!row.identity&&byId.has(row.identity);
+   const candidates=isNew?[]:existing.filter(t=>t.wbs===row.wbs);
+   let chosen=trusted?row.identity:candidates.length===1?candidates[0].id:undefined;
+   let method=trusted?'identity':candidates.length===1?'wbs':candidates.length>1?'ambiguous':'new';
+   const explicit=mapping[String(row.row)];
+   if(explicit!==undefined){method='manual';if(explicit!=='new'&&(typeof explicit!=='string'||!byId.has(explicit)))issue(row.row,'身份匹配','所选任务不存在，请选择当前项目任务或新增任务');else chosen=explicit==='new'?undefined:explicit;}
+   const choiceRequired=explicit===undefined&&method==='ambiguous';
+   if(choiceRequired)issue(row.row,'身份匹配',`WBS ${row.wbs} 对应多个任务，请明确选择已有任务或新增任务`);
+   const existingTitle=chosen?byId.get(chosen)?.title??null:null;
+   matches.push({row:row.row,wbs:row.wbs,title:row.title,id:chosen??null,trusted,choiceRequired,method,existingTitle,nameMismatch:method==='wbs'&&existingTitle!==row.title});
+   const id=chosen??randomUUID();if(ids.has(id))issue(row.row,'身份匹配',`与第 ${ids.get(id)} 行映射到同一任务，请修改匹配或清除复制的身份`);else ids.set(id,row.row);rowId.set(row.row,id);
   }
   const tasks:Task[]=isNew?[]:structuredClone(old),deletions=new Set<string>(),inputDates:any[]=[];
   if(isNew)for(const t of old)deletions.add(t.id);
@@ -77,7 +82,7 @@ export function timingIO(store:Store){
   const comparison=comparePlans(before,{...before,tasks:normalized});
   const dates=inputDates.map(r=>{const t=normalized.find(t=>t.id===r.id);return {...r,finalStart:t?.start??null,finalEnd:t?.end??null,deleted:deletions.has(r.id),shifted:!!t&&(t.start!==r.inputStart||t.end!==r.inputEnd)};});
   for(const t of normalized)if(![...rowId.values()].includes(t.id)){const b=byId.get(t.id);if(b&&(b.start!==t.start||b.end!==t.end))dates.push({row:0,id:t.id,wbs:'保留项',title:t.title,inputStart:b.start,inputEnd:b.end,finalStart:t.start,finalEnd:t.end,deleted:false,shifted:true});}
-  const result={issues,matches,source:parsed.source??null,mode:isNew?'new':'update',comparison,dates,deletions:[...deletions].map(id=>({id,title:byId.get(id)?.title??tasks.find(t=>t.id===id)?.title??id})),affectedDependencies,revision:store.revision(projectId),projectVersion:before.project.version,existing:orderedTasks(old).map(r=>({id:r.task.id,wbs:r.wbs,title:r.task.title})),requiresMapping:matches.some(m=>m.choiceRequired),previewId:null as string|null};
+  const result={issues,matches,source:parsed.source??null,mode:isNew?'new':'update',comparison,dates,deletions:[...deletions].map(id=>({id,title:byId.get(id)?.title??tasks.find(t=>t.id===id)?.title??id})),affectedDependencies,revision:store.revision(projectId),projectVersion:before.project.version,existing,requiresMapping:matches.some(m=>m.choiceRequired),previewId:null as string|null};
   if(!issues.length&&!result.requiresMapping){
    const id=randomUUID(),expires=new Date(Date.now()+24*3600000).toISOString();store.db.prepare('DELETE FROM timing_imports WHERE result IS NULL AND expires_at<?').run(new Date().toISOString());
    store.db.prepare('INSERT INTO timing_imports(id,project_id,actor_uid,revision,project_version,expires_at,payload) VALUES(?,?,?,?,?,?,?)').run(id,projectId,context.actorUid!,result.revision,result.projectVersion,expires,JSON.stringify(normalized));result.previewId=id;

@@ -332,3 +332,5 @@
 .timing-workspace .import-preview { background: var(--ds-surface); color: var(--ds-text); border-color: var(--ds-border); }
 .timing-workspace .import-preview .schedule-shift,
 .timing-workspace .import-preview .schedule-shift td { background: var(--timing-warning-bg); color: var(--timing-warning-text); }
+
+.import-preview .import-warning{padding:8px 10px;border-left:3px solid #d69b18;border-radius:4px;background:var(--timing-warning-bg,#fff4db);color:var(--timing-warning-text,#805b0a);font-weight:600}

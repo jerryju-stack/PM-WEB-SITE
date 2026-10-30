@@ -64,8 +64,8 @@ test('D3 round trip uses signed cell identity across row/WBS changes, schedules 
 });
 test('D3 raw template, missing identity, explicit matching, deletion subtree and invalid fields are previewed without writes',async()=>{
  const {store,context,io,plans}=fixture();try{
-  const before=store.revision('p'),raw=io.preview('p',{file:TEMPLATE.toString('base64')},context);assert.equal(raw.source,null);assert.ok(raw.requiresMapping);assert.ok(raw.matches.every(m=>!m.trusted));assert.equal(store.revision('p'),before);
-  const file=await io.exportPlan('p','current','xlsx').buffer,missing=editWorkbook(file,{},undefined,true),unmatched=io.preview('p',{file:missing.toString('base64')},context);assert.equal(unmatched.requiresMapping,true);
+  const before=store.revision('p'),raw=io.preview('p',{file:TEMPLATE.toString('base64')},context);assert.equal(raw.source,null);assert.equal(raw.requiresMapping,false);assert.ok(raw.matches.every(m=>!m.trusted));assert.equal(store.revision('p'),before);
+  const file=await io.exportPlan('p','current','xlsx').buffer,missing=editWorkbook(file,{},undefined,true),unmatched=io.preview('p',{file:missing.toString('base64')},context);assert.equal(unmatched.requiresMapping,false);
   const mapping=Object.fromEntries(unmatched.matches.map((m,i)=>[m.row,orderedTasks(store.tasks('p'))[i].task.id]));assert.ok(io.preview('p',{file:missing.toString('base64'),mapping},context).previewId);
   const bad=editWorkbook(file,{A12:'1.1',D11:'not-a-date',G11:50,H12:'999.1',D13:excelDate('2026-10-29'),E13:excelDate('2026-10-30')});const invalid=io.preview('p',{file:bad.toString('base64')},context);for(const field of ['WBS','输入开始','输入完成度','前置任务 WBS','叶子类型'])assert.ok(invalid.issues.some(i=>i.field===field),field);assert.equal(invalid.previewId,null);
   const deleted=io.preview('p',{file:editWorkbook(file,{J10:'删除'}).toString('base64')},context);assert.ok(['phase','a','b','c'].every(id=>deleted.deletions.some(d=>d.id===id)));assert.ok(deleted.affectedDependencies.some(t=>t.id==='d'));
@@ -73,6 +73,36 @@ test('D3 raw template, missing identity, explicit matching, deletion subtree and
   store.put('projects',{id:'new',title:'新计划'});store.saveTasks('new',template('new'));const fresh=io.preview('new',{file:TEMPLATE.toString('base64'),mode:'new'},context);assert.equal(fresh.requiresMapping,false);assert.deepEqual(fresh.issues,[]);assert.ok(fresh.previewId);io.confirm('new',{previewId:fresh.previewId},context);assert.equal(store.tasks('new').length,20);assert.equal(plans.list('new').length,0);
  }finally{store.db.close();}
 });
+test('D5 identity priority, WBS defaults, name warnings, manual overrides and conflicting rows',async()=>{
+ const {store,context,io,plans}=fixture();try{
+  const file=await io.exportPlan('p','current','xlsx').buffer;
+  const signed=io.preview('p',{file:editWorkbook(file,{A11:'1.2',A12:'1.1'}).toString('base64')},context);
+  assert.equal(signed.matches.find(m=>m.row===11)!.id,'a');assert.equal(signed.matches.find(m=>m.row===11)!.method,'identity');
+  const missing=editWorkbook(file,{A10:1,A11:' 1.1 ',B11:'Excel 新名称',A16:4},undefined,true).toString('base64');
+  const pre=io.preview('p',{file:missing},context),match=pre.matches.find(m=>m.row===11)!;
+  assert.equal(match.id,'a');assert.equal(match.method,'wbs');assert.equal(match.nameMismatch,true);assert.equal(match.existingTitle,'需求与接口确认');
+  assert.equal(pre.matches.find(m=>m.row===10)!.method,'wbs');assert.equal(pre.matches.find(m=>m.row===10)!.nameMismatch,false);
+  assert.equal(pre.matches.find(m=>m.row===16)!.method,'new');assert.equal(pre.matches.find(m=>m.row===16)!.id,null);
+  assert.deepEqual(pre.issues,[]);assert.ok(pre.previewId);assert.equal(pre.requiresMapping,false);
+  const manual=io.preview('p',{file:missing,mapping:{11:'new'}},context);assert.equal(manual.matches.find(m=>m.row===11)!.method,'manual');assert.equal(manual.matches.find(m=>m.row===11)!.id,null);assert.ok(manual.previewId);assert.ok(!manual.deletions.some(t=>t.id==='a'));
+  const conflict=io.preview('p',{file:missing,mapping:{12:'a'}},context);assert.equal(conflict.previewId,null);assert.ok(conflict.issues.some(i=>i.row===12&&i.message.includes('第 11 行')));
+  const other=io.preview('p',{file:missing,mapping:{11:'foreign-task'}},context);assert.equal(other.previewId,null);assert.ok(other.issues.some(i=>i.row===11&&i.field==='身份匹配'));
+  const count=plans.list('p').length;io.confirm('p',{previewId:pre.previewId},context);assert.equal(store.tasks('p').find(t=>t.id==='a')!.title,'Excel 新名称');assert.ok(store.tasks('p').find(t=>t.id==='e'));assert.equal(plans.list('p').length,count);
+  // A signed workbook from another project may only fall back to this project's WBS.
+  store.put('projects',{id:'foreign',title:'其他项目'});store.saveTasks('foreign',sample().map(t=>({...t,id:'foreign-'+t.id,projectId:'foreign',parentId:t.parentId?'foreign-'+t.parentId:null,predecessors:t.predecessors.map(id=>'foreign-'+id)})));
+  const foreign=await io.exportPlan('foreign','current','xlsx').buffer,local=io.preview('p',{file:foreign.toString('base64')},context);assert.ok(local.matches.every(m=>!m.trusted));assert.ok(local.matches.every(m=>!m.id?.startsWith('foreign-')));
+ }finally{store.db.close();}
+});
+
+test('D5 WBS hierarchy text preserves 1.10 separately from 1.1 and blank WBS defaults to new with field validation',async()=>{
+ const {store,context,io}=fixture();try{
+  store.saveTasks('p',schedule([leaf('parent',{kind:'summary'}),...Array.from({length:10},(_,i)=>leaf('child'+(i+1),{parentId:'parent',order:i}))]));
+  const file=await io.exportPlan('p','current','xlsx').buffer,missing=editWorkbook(file,{A11:1.1,A20:' 1.10 '},undefined,true);
+  const pre=io.preview('p',{file:missing.toString('base64')},context);assert.equal(pre.matches.find(m=>m.row===11)!.id,'child1');assert.equal(pre.matches.find(m=>m.row===20)!.id,'child10');assert.ok(pre.previewId);
+  const blank=io.preview('p',{file:editWorkbook(file,{A20:''},undefined,true).toString('base64')},context);assert.equal(blank.matches.find(m=>m.row===20)!.method,'new');assert.ok(blank.issues.some(i=>i.row===20&&i.field==='WBS'));assert.equal(blank.previewId,null);
+ }finally{store.db.close();}
+});
+
 test('HTTP Excel/PDF selection, upload/preview/confirm reuse project permissions and retain D1 versions',async()=>{
  const f=await httpFixture();try{
   const {call,cookie,base}=f,p=(await call('projects',{title:'HTTP D23'},cookie)).data.id;
