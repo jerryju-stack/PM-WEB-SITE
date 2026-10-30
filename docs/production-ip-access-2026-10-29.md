@@ -12,3 +12,9 @@
 本机 `.deploy/cutover.sh` 已同步改为代理配置，并将 IP 状态检查从 301 改为 200。该目录属于本地部署文件，仓库通过上述 `ops` 配置保留正式配置来源。
 
 浏览器可能缓存此前的永久跳转；若仍跳到域名，可使用无痕窗口打开完整 HTTP 地址，或清除此 IP 的站点缓存后重试。IP 与域名的登录会话分别保存，需要分别登录。
+
+## 2026-10-30 登录修复
+
+正式服务设置 `COOKIE_SECURE=1`，应用登录成功后下发带 `Secure` 的 session Cookie。HTTP IP 入口无法使用该 Cookie，导致登录接口返回成功而后续请求仍是匿名用户。
+
+IP 专用的 HTTP location 增加 `proxy_cookie_flags session nosecure;`，仅移除该入口 session Cookie 的 Secure 标记，保留 HttpOnly、SameSite 等属性。域名 HTTPS 入口及应用的 `COOKIE_SECURE=1` 设置保持原样。无痕窗口内可以维持会话，关闭全部无痕窗口后需重新登录。HTTP 入口的账号密码及会话通过明文网络传输。
