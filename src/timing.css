@@ -292,3 +292,43 @@
   .timing-workspace .task-drawer .form-grid { grid-template-columns: 1fr 1fr; }
 }
 .transfer-export{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:14px 0}.transfer-export label{display:grid;gap:6px;font-size:12px}.transfer-export select,.import-preview select{padding:8px;border:1px solid #d9d5e5;border-radius:6px;max-width:440px;background:var(--surface,#fff)}.import-preview{margin-top:18px;padding:16px;border:1px solid #e2ddec;border-radius:8px}.import-preview details{margin:14px 0}.import-preview summary{cursor:pointer}.import-preview .schedule-shift{background:#fff4db}.import-ack{display:flex;gap:8px;align-items:start;margin:18px 0;font-size:13px}.import-ack input{margin-top:3px}
+
+/* D4: paired colors for Timing's dark rows and native form controls only. */
+.timing-workspace {
+  --timing-row-summary: #252d40;
+  --timing-row-selected: #263b59;
+  --timing-row-hover: #252932;
+  --timing-control-bg: #20242c;
+  --timing-control-text: #f3f4f6;
+  --timing-control-border: #50515e;
+  --timing-option-selected: #314b75;
+  --timing-selection-line: #60a5fa;
+  --timing-warning-bg: #3d321b;
+  --timing-warning-text: #ffe2a3;
+}
+.timing-workspace .task-table tr.summary-row td {
+  background: var(--timing-row-summary);
+  color: var(--timing-control-text);
+}
+.timing-workspace .summary-row .task-name { color: var(--timing-control-text); font-weight: 700; }
+.timing-workspace .task-table tr:hover td { background: var(--timing-row-hover); color: var(--ds-text); }
+.timing-workspace .task-table tr.selected-row td { background: var(--timing-row-selected); color: #fff; }
+.timing-workspace .task-table tr.selected-row td:first-child { box-shadow: inset 3px 0 var(--timing-selection-line); }
+.timing-workspace .task-table :is(.summary-row,.selected-row) :is(.task-name,.wbs-number,.fold-task,.task-kind-symbol,.add-child,.unit,.predecessor-cell,.attachment-count) { color: inherit; }
+.timing-workspace :is(.task-table,.task-drawer,.timing-history,.dialog) :is(input,select,textarea),
+.timing-workspace :is(.task-table,.task-drawer,.timing-history,.dialog) :is(input,select,textarea):is(:hover,:focus,:disabled) {
+  background: var(--timing-control-bg);
+  color: var(--timing-control-text);
+  border-color: var(--timing-control-border);
+  color-scheme: dark;
+}
+.timing-workspace :is(.task-table,.task-drawer,.timing-history,.dialog) :is(input,textarea)::placeholder { color: var(--ds-secondary); opacity: 1; }
+.timing-workspace :is(.task-table,.task-drawer,.timing-history,.dialog) :is(input,select,textarea):focus { border-color: var(--ds-accent); }
+.timing-workspace :is(.task-table,.task-drawer,.timing-history,.dialog) option { background: var(--timing-control-bg); color: var(--timing-control-text); }
+.timing-workspace :is(.task-table,.task-drawer,.timing-history,.dialog) option:checked {
+  background: var(--timing-option-selected) linear-gradient(var(--timing-option-selected),var(--timing-option-selected));
+  color: #fff;
+}
+.timing-workspace .import-preview { background: var(--ds-surface); color: var(--ds-text); border-color: var(--ds-border); }
+.timing-workspace .import-preview .schedule-shift,
+.timing-workspace .import-preview .schedule-shift td { background: var(--timing-warning-bg); color: var(--timing-warning-text); }
