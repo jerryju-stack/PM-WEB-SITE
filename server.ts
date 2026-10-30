@@ -205,7 +205,7 @@ const server=http.createServer(async(req,res)=>{
       return json(200,{ok:true});
     }
     if(method!=='GET')fail('不支持此方法',405);
-    const scripts:Record<string,string>={'/app.js':'src/app.ts','/timing.js':'src/timing.ts','/timing-history.js':'src/timing-history.ts','/timing-io.js':'src/timing-io.ts','/schedule.js':'lib/schedule.ts','/drafts.js':'src/drafts.ts','/access-ui.js':'src/access-ui.ts'};
+    const scripts:Record<string,string>={'/app.js':'src/app.ts','/timing.js':'src/timing.ts','/timing-layout.js':'src/timing-layout.ts','/timing-history.js':'src/timing-history.ts','/timing-io.js':'src/timing-io.ts','/schedule.js':'lib/schedule.ts','/drafts.js':'src/drafts.ts','/access-ui.js':'src/access-ui.ts'};
     if(scripts[url.pathname]){res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-cache'});return res.end(stripTypeScriptTypes(await readFile(join(root,scripts[url.pathname]),'utf8')));}
     if(['/styles.css','/timing.css'].includes(url.pathname)){res.writeHead(200,{'Content-Type':'text/css; charset=utf-8','Cache-Control':'no-cache'});return res.end(await readFile(join(root,'src',url.pathname.slice(1))));}
     if(url.pathname==='/robots.txt'){res.writeHead(200,{'Content-Type':'text/plain'});return res.end('User-agent: *\nAllow: /\nDisallow: /projects/\nDisallow: /api/\n');}

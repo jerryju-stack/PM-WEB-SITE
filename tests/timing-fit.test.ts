@@ -8,6 +8,7 @@ import {DAY,dateValue} from '../lib/schedule.ts';
 const source=stripTypeScriptTypes(readFileSync(new URL('../src/timing.ts',import.meta.url),'utf8'))
  .replace("'/schedule.js'",JSON.stringify(new URL('../lib/schedule.ts',import.meta.url).href))
  .replace("'/drafts.js'",JSON.stringify(new URL('../src/drafts.ts',import.meta.url).href))
+ .replace("'/timing-layout.js'",JSON.stringify(new URL('../src/timing-layout.ts',import.meta.url).href))
  .replace("import { TimingHistory } from '/timing-history.js';",'class TimingHistory { html(){return "";} bind(){} }');
 const timing=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 
