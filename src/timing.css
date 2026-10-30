@@ -293,6 +293,11 @@
 }
 .transfer-export{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:14px 0}.transfer-export label{display:grid;gap:6px;font-size:12px}.transfer-export select,.import-preview select{padding:8px;border:1px solid #d9d5e5;border-radius:6px;max-width:440px;background:var(--surface,#fff)}.import-preview{margin-top:18px;padding:16px;border:1px solid #e2ddec;border-radius:8px}.import-preview details{margin:14px 0}.import-preview summary{cursor:pointer}.import-preview .schedule-shift{background:#fff4db}.import-ack{display:flex;gap:8px;align-items:start;margin:18px 0;font-size:13px}.import-ack input{margin-top:3px}
 
+/* D6: fit only the horizontal timeline; keep the existing row and type sizes. */
+.project-timeline { overflow-x: clip; }
+.timing-workspace .project-timeline .timeline-rows { background-image: none; }
+.project-grid-line { position: absolute; top: 0; bottom: 0; border-left: 1px solid #ffffff09; pointer-events: none; }
+
 /* D4: paired colors for Timing's dark rows and native form controls only. */
 .timing-workspace {
   --timing-row-summary: #252d40;
