@@ -16,7 +16,8 @@ test('JSON 迁移、八阶段、权限、完整排期、附件、重启持久化
  const start=async()=>{child=spawn(process.execPath,['--experimental-strip-types',fileURLToPath(new URL('../server.ts',import.meta.url))],{env:{...process.env,PORT:port,DATA_DIR:directory},stdio:['ignore','pipe','pipe']});await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('启动超时')),10000);let errors='';child.stderr.on('data',(c:any)=>errors+=c);child.stdout.on('data',(c:any)=>{if(String(c).includes('Local:')){clearTimeout(timer);resolve();}});child.on('exit',(code:number)=>{if(code){clearTimeout(timer);reject(Error(errors));}});child.on('error',reject);});};
  const stop=async()=>{if(child&&child.exitCode===null)await new Promise<void>(resolve=>{child.once('exit',()=>resolve());child.kill();});};
  const base=`http://127.0.0.1:${port}`;
- const call=async(path:string,body?:any,cookie='',method='POST')=>{const r=await fetch(base+'/api/'+path,{method:body?method:'GET',headers:{'Content-Type':'application/json',Cookie:cookie},body:body?JSON.stringify(body):undefined});return{status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]||''};};
+ let lease:any;
+ const call=async(path:string,body?:any,cookie='',method='POST')=>{if(lease&&body&&/^projects\/[^/]+\/tasks(?:\/[^/]+)?$/.test(path))body={...body,leaseToken:lease.token,draftId:lease.id};const r=await fetch(base+'/api/'+path,{method:body?method:'GET',headers:{'Content-Type':'application/json',Cookie:cookie},body:body?JSON.stringify(body):undefined});return{status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]||''};};
  try{
  await start();const publicData=await call('data');assert.equal(publicData.data.settings.title,'Project Station');assert.equal(publicData.data.projects[0].title,'迁移项目');assert.ok(!('content' in publicData.data.projects[0]));assert.equal(publicData.data.articles[0].content,'## 复盘');assert.ok(!JSON.stringify(publicData.data).includes('"hash"'));assert.equal((await call('projects/legacy-project/timing')).status,401);
  assert.ok((await readdir(directory)).some(f=>f.startsWith('store.pre-sqlite-')));
@@ -26,17 +27,21 @@ test('JSON 迁移、八阶段、权限、完整排期、附件、重启持久化
  const editor=(await call('login',{id:'editor',password:'Member-Password-2026'})).cookie,viewer=(await call('login',{id:'viewer',password:'Member-Password-2026'})).cookie;
  const accounts=(await call('data',undefined,admin)).data.users;const editorUid=accounts.find((u:any)=>u.loginName==='editor').id;
  assert.equal((await call('projects/legacy-project/members',{userUid:editorUid,groupId:'manager'},admin)).status,200);
- const getTiming=()=>call('projects/legacy-project/timing',undefined,admin);
+ const getTiming=async()=>lease?{data:await (await fetch(base+'/api/projects/legacy-project/timing',{headers:{Cookie:lease.cookie,'X-Timing-Lease':lease.token}})).json()}:call('projects/legacy-project/timing',undefined,admin);
+ const enter=async(cookie:string)=>{const r=await call('projects/legacy-project/timing/draft/start',{},cookie);assert.equal(r.status,200);lease={token:r.data.leaseToken,id:r.data.draft.id,cookie};};
+ const adopt=async()=>{const current=(await getTiming()).data;assert.equal((await call('projects/legacy-project/timing/draft/adopt',{leaseToken:lease.token,draftId:lease.id,revision:current.revision},lease.cookie)).status,200);await call('projects/legacy-project/timing/draft/release',{leaseToken:lease.token},lease.cookie);lease=undefined;};
  let timing=(await getTiming()).data;assert.equal(timing.tasks.length,8);assert.equal(timing.project.content,'保留正文');assert.equal(timing.tasks[7].title,'SOP');
  assert.equal((await call('projects/legacy-project/tasks',{title:'forbidden',revision:0},viewer)).status,403);
  assert.equal((await call('settings',{title:'forbidden'},editor)).status,403);
  const created=await call('projects',{title:'新项目',startDate:'2026-10-20',date:'2026-12-31'},editor);assert.equal(created.status,200);const newProject=created.data.id;assert.equal((await call(`projects/${newProject}/timing`,undefined,viewer)).data.tasks.length,8);
+ await enter(editor);
  const add=async(values:any)=>{timing=(await getTiming()).data;const r=await call('projects/legacy-project/tasks',{parentId:timing.tasks[0].id,revision:timing.revision,...values},editor);assert.equal(r.status,200,JSON.stringify(r.data));return r.data.id;};
  const a=await add({title:'需求确认',start:'2026-10-23',duration:2,progress:100});const b=await add({title:'报价',start:'2026-10-23',duration:3,predecessors:[a]});const c=await add({title:'评审里程碑',kind:'milestone',predecessors:[b]});
  timing=(await getTiming()).data;assert.equal(timing.tasks.find((t:any)=>t.id===b).start,'2026-10-27');assert.equal(timing.tasks.find((t:any)=>t.id===c).start,'2026-10-30');
  let response=await call(`projects/legacy-project/tasks/${a}`,{start:'2026-10-26',revision:timing.revision},editor,'PATCH');assert.equal(response.status,200);timing=(await getTiming()).data;assert.equal(timing.tasks.find((t:any)=>t.id===b).start,'2026-10-28');assert.equal(timing.tasks.find((t:any)=>t.id===c).start,'2026-11-02');
  assert.equal((await call(`projects/legacy-project/tasks/${a}`,{predecessors:[c],revision:timing.revision},editor,'PATCH')).status,400);
  assert.equal((await call(`projects/legacy-project/tasks/${a}`,{title:'stale',revision:0},editor,'PATCH')).status,409);
+ await adopt();
  const uploadPath=`/api/projects/legacy-project/tasks/${b}/attachments`;
  const upload=(cookie:string,content='attachment-content')=>fetch(base+uploadPath,{method:'POST',headers:{Cookie:cookie,'X-File-Name':encodeURIComponent('报价说明.txt'),'Content-Type':'application/octet-stream'},body:content});
  assert.equal((await upload('')).status,401);assert.equal((await upload(viewer)).status,403);
@@ -50,8 +55,11 @@ test('JSON 迁移、八阶段、权限、完整排期、附件、重启持久化
  for(const asset of ['/app.js','/timing.js','/schedule.js','/timing.css'])assert.equal((await fetch(base+asset)).status,200);
  await stop();if(existsSync(join(directory,'.station-lock')))unlockDeadProcess(directory);await start();assert.equal((await call('projects/legacy-project/timing',undefined,admin)).status,401);admin=(await call('login',{id:'admin',password:'Admin-Password-2026'})).cookie;
  timing=(await getTiming()).data;assert.equal(timing.tasks.length,11);assert.equal(timing.attachments.length,1);assert.equal(timing.tasks.find((t:any)=>t.id===b).start,'2026-10-28');assert.equal(await readFile(join(directory,'uploads',file.id),'utf8'),'attachment-content');
- assert.equal((await call(`projects/legacy-project/tasks/${b}`,{revision:timing.revision},admin,'DELETE')).status,200);timing=(await getTiming()).data;assert.equal(timing.attachments.length,0);assert.deepEqual(timing.tasks.find((t:any)=>t.id===c).predecessors,[]);assert.ok(!(await readdir(join(directory,'uploads'))).includes(file.id));
+ await enter(admin);timing=(await getTiming()).data;
+ assert.equal((await call(`projects/legacy-project/tasks/${b}`,{revision:timing.revision},admin,'DELETE')).status,200);await adopt();timing=(await getTiming()).data;assert.equal(timing.attachments.length,0);assert.deepEqual(timing.tasks.find((t:any)=>t.id===c).predecessors,[]);assert.ok((await readdir(join(directory,'uploads'))).includes(file.id),'removed-task attachment bytes remain recoverable');
+ await enter(admin);timing=(await getTiming()).data;
  const milestoneEdit=await call(`projects/legacy-project/tasks/${c}`,{end:'2026-11-04',revision:timing.revision},admin,'PATCH');assert.equal(milestoneEdit.status,200);assert.equal(milestoneEdit.data.tasks.find((t:any)=>t.id===c).start,'2026-11-04');assert.equal(milestoneEdit.data.tasks.find((t:any)=>t.id===c).duration,0);
+ await adopt();
  assert.equal((await call('users/'+accounts.find((u:any)=>u.loginName==='admin').id,{},admin,'DELETE')).status,409);assert.equal((await call('projects',{id:newProject,version:0,taskRevision:0},admin,'DELETE')).status,200);
  assert.equal((await call('password',{current:'Admin-Password-2026',password:'Changed-Password-2026'},admin)).status,200);assert.equal((await call('login',{id:'admin',password:'Changed-Password-2026'})).status,200);
  assert.equal((await call('logout',{},admin)).status,200);assert.equal((await call('projects/legacy-project/timing',undefined,admin)).status,401);

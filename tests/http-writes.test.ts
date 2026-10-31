@@ -23,19 +23,20 @@ for(const collection of ['projects','articles'] as const)test(collection+' HTTP 
  assert.equal((await call('data')).data[collection].length,0);
  }finally{await f.stop();}
 });
-test('HTTP task and metadata writes keep separate versions and stale aggregate fields cannot overwrite results',async()=>{
+test('HTTP draft tasks and metadata keep separate versions; derived fields update only on adoption',async()=>{
  const f=await httpFixture();const {call,cookie}=f;try{
- const p=(await call('projects',{title:'original',date:'2026-12-31'},cookie)).data.item;
- let timing=(await call('projects/'+p.id+'/timing',undefined,cookie)).data;
- const task=await call('projects/'+p.id+'/tasks',{title:'leaf',parentId:timing.tasks[0].id,duration:1,progress:100,revision:0},cookie);assert.equal(task.status,200);
- const edit=await call('projects/'+p.id,{...p,title:'metadata change',progress:0,status:'计划中'},cookie,'PATCH');assert.equal(edit.status,200);assert.equal(edit.data.item.progress,100);assert.equal(edit.data.item.date,'2026-12-31');
- assert.equal((await call('projects/'+p.id,{version:1,taskRevision:0},cookie,'DELETE')).status,409);
- assert.equal((await call('projects/'+p.id+'/tasks/'+task.data.id,{revision:1,progress:0},cookie,'PATCH')).status,200);
- timing=(await call('projects/'+p.id+'/timing',undefined,cookie)).data;assert.equal(timing.project.title,'metadata change');assert.equal(timing.project.version,1);assert.equal(timing.revision,2);
- const protectedTask=await call('projects/'+p.id+'/tasks/'+task.data.id,{revision:2,id:'replacement',projectId:'elsewhere',version:999,taskRevision:999,owner:'',progress:0},cookie,'PATCH');assert.equal(protectedTask.status,200);
- const finalTiming=(await call('projects/'+p.id+'/timing',undefined,cookie)).data;const finalTask=finalTiming.tasks.find((t:{id:string})=>t.id===task.data.id);assert.equal(finalTask.projectId,p.id);assert.equal(finalTask.owner,'');assert.equal(finalTask.progress,0);assert.equal(finalTiming.project.version,1);assert.equal(finalTiming.revision,3);assert.ok(!finalTiming.tasks.some((t:{id:string})=>t.id==='replacement'));
- for(const body of [{revision:3,duration:'2'},{revision:3,progress:null},{revision:3,parentId:[]},{revision:3,duration:2601}])assert.equal((await call('projects/'+p.id+'/tasks/'+task.data.id,body,cookie,'PATCH')).status,400);
- assert.equal((await call('projects/'+p.id,{title:[],version:1},cookie,'PATCH')).status,400);
- assert.equal((await call('projects/'+p.id+'/timing',undefined,cookie)).data.revision,3);
+  const p=(await call('projects',{title:'original',date:'2026-12-31'},cookie)).data.item;
+  const live=(await call('projects/'+p.id+'/timing',undefined,cookie)).data;
+  const start=(await call('projects/'+p.id+'/timing/draft/start',{},cookie)).data;
+  let revision=start.draft.revision;const body=(extra:any={})=>({leaseToken:start.leaseToken,draftId:start.draft.id,revision,...extra});
+  const task=await call('projects/'+p.id+'/tasks',body({title:'leaf',parentId:live.tasks[0].id,duration:1,progress:100}),cookie);assert.equal(task.status,200);revision=task.data.revision;
+  const edit=await call('projects/'+p.id,{...p,title:'metadata change',progress:99,status:'已完成'},cookie,'PATCH');assert.equal(edit.status,200);assert.equal(edit.data.item.progress,0);assert.equal(edit.data.item.date,'2026-12-31');
+  assert.equal((await call('projects/'+p.id+'/timing',undefined,cookie)).data.revision,0);
+  const protectedTask=await call('projects/'+p.id+'/tasks/'+task.data.id,body({id:'replacement',projectId:'elsewhere',version:999,taskRevision:999,owner:''}),cookie,'PATCH');assert.equal(protectedTask.status,200);revision=protectedTask.data.revision;
+  assert.equal(protectedTask.data.tasks.find((t:any)=>t.id===task.data.id).projectId,p.id);assert.ok(!protectedTask.data.tasks.some((t:any)=>t.id==='replacement'));
+  for(const invalid of [{duration:'2'},{progress:null},{parentId:[]},{duration:2601}])assert.equal((await call('projects/'+p.id+'/tasks/'+task.data.id,body(invalid),cookie,'PATCH')).status,400);
+  assert.equal((await call('projects/'+p.id,{title:[],version:1},cookie,'PATCH')).status,400);
+  const adopted=await call('projects/'+p.id+'/timing/draft/adopt',body(),cookie);assert.equal(adopted.status,200);
+  const final=(await call('projects/'+p.id+'/timing',undefined,cookie)).data;assert.equal(final.project.title,'metadata change');assert.equal(final.project.version,1);assert.equal(final.project.progress,100);assert.equal(final.revision,1);
  }finally{await f.stop();}
 });

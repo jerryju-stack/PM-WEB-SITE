@@ -91,6 +91,38 @@ export const migrations: Migration[] = [{
       project_version INTEGER NOT NULL, expires_at TEXT NOT NULL, payload TEXT NOT NULL, result TEXT
     ); CREATE INDEX timing_imports_expiry ON timing_imports(expires_at);`);
   },
+}, {
+  version:7,name:'shared_timing_draft_and_lease',
+  up(db) {
+    db.exec(`ALTER TABLE tasks ADD COLUMN archived INTEGER NOT NULL DEFAULT 0;
+      CREATE TABLE timing_drafts (
+        project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE, id TEXT NOT NULL UNIQUE,
+        source_version TEXT, source_revision INTEGER NOT NULL, source_label TEXT NOT NULL,
+        base_revision INTEGER NOT NULL, revision INTEGER NOT NULL DEFAULT 0, payload TEXT NOT NULL,
+        actor_uid TEXT NOT NULL REFERENCES identities(uid), actor_name TEXT NOT NULL, saved_at TEXT NOT NULL
+      );
+      CREATE TABLE timing_edit_leases (
+        project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE, token TEXT NOT NULL,
+        actor_uid TEXT NOT NULL REFERENCES identities(uid), actor_name TEXT NOT NULL, expires_at INTEGER NOT NULL
+      );
+      CREATE TABLE timing_archives (
+        id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL CHECK(kind IN ('unadopted','previous')), sequence INTEGER,
+        name TEXT NOT NULL, reason TEXT NOT NULL, saved_at TEXT NOT NULL,
+        actor_uid TEXT NOT NULL REFERENCES identities(uid), actor_name TEXT NOT NULL,
+        revision INTEGER NOT NULL, project_version INTEGER NOT NULL, snapshot TEXT NOT NULL,
+        source_version TEXT, source_revision INTEGER NOT NULL
+      );
+      CREATE TRIGGER timing_archive_readonly BEFORE UPDATE ON timing_archives BEGIN SELECT RAISE(ABORT,'Timing archives are read-only'); END;
+      CREATE TABLE timing_adoptions (
+        draft_id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        actor_uid TEXT NOT NULL REFERENCES identities(uid), lease_token TEXT NOT NULL,
+        result TEXT NOT NULL, version_id TEXT REFERENCES timing_versions(id) ON DELETE CASCADE,
+        source_version TEXT, source_revision INTEGER NOT NULL
+      );
+      ALTER TABLE timing_imports ADD COLUMN draft_id TEXT;
+      ALTER TABLE timing_imports ADD COLUMN lease_token TEXT;`);
+  },
 }];
 /** Each migration and its marker commit together. Failed migrations can be retried on next open. */
 export function applyMigrations(db: DatabaseSync, steps: Migration[] = migrations) {

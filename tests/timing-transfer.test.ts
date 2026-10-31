@@ -23,7 +23,7 @@ test('D5 import actions stay visible and give specific feedback; changed mapping
  ui.redraw=()=>{};
  const originalConfirm=Object.getOwnPropertyDescriptor(globalThis,'confirm');
  let accepted=false,prompts=0,confirmed=0,received:any;
- Object.defineProperty(globalThis,'confirm',{configurable:true,value:(message:string)=>{prompts++;assert.match(message,/核对任务匹配、删除影响和网站最终排期/);assert.match(message,/仅更新当前计划，不保存保留版本/);return accepted;}});
+ Object.defineProperty(globalThis,'confirm',{configurable:true,value:(message:string)=>{prompts++;assert.match(message,/核对任务匹配、删除影响和网站最终排期/);assert.match(message,/仅更新共享草稿，采用后才更新执行计划/);return accepted;}});
  ui.request=async(path:string,body:any)=>{if(path==='import/confirm'){confirmed++;return {revision:2};}received=body;return {...preview,matches:[{...preview.matches[0],id:null,method:'manual'}],previewId:'new-preview'};};
  try{
   ui.bind();match.change();assert.equal(ui.mappingDirty,true);assert.match(ui.html(),/匹配已修改，请重新预览/);visible();

@@ -13,15 +13,15 @@ export type PlanSnapshot = {
   schedulePolicy: { id: string; workweek: number[]; dependency: string; durationUnit: string; dateBasis: string };
 };
 export type TimingVersion = {
-  id: string; projectId: string; kind: VersionKind; sequence: number | null; name: string; reason: string;
-  savedAt: string; actorUid: string; actorName: string; revision: number; projectVersion: number;
+  id: string; projectId: string; kind: VersionKind | 'unadopted' | 'previous'; sequence: number | null; name: string; reason: string;
+  savedAt: string; actorUid: string; actorName: string; revision: number; projectVersion: number; sourceVersion?:string|null; sourceRevision?:number;
 };
 export const schedulePolicy = { id:'weekday-fs-v1', workweek:[1,2,3,4,5], dependency:'FS / next workday', durationUnit:'workday / inclusive', dateBasis:'YYYY-MM-DD / UTC calendar date' };
-const metadata = (row:any):TimingVersion => ({ id:row.id,projectId:row.project_id,kind:row.kind,sequence:row.sequence,name:row.name,reason:row.reason,savedAt:row.saved_at,actorUid:row.actor_uid,actorName:row.actor_name,revision:row.revision,projectVersion:row.project_version });
-const columns = 'id,project_id,kind,sequence,name,reason,saved_at,actor_uid,actor_name,revision,project_version';
+const metadata = (row:any):TimingVersion => ({ id:row.id,projectId:row.project_id,kind:row.kind,sequence:row.sequence,name:row.name,reason:row.reason,savedAt:row.saved_at,actorUid:row.actor_uid,actorName:row.actor_name,revision:row.revision,projectVersion:row.project_version,...(row.source_revision!=null?{sourceVersion:row.source_version,sourceRevision:row.source_revision}:{}) });
+
 
 export function timingVersions(store:Store) {
-  const row = (projectId:string,id:string) => store.db.prepare('SELECT * FROM timing_versions WHERE project_id=? AND id=?').get(projectId,id);
+  const row = (projectId:string,id:string) => store.db.prepare('SELECT v.*,a.source_version,a.source_revision FROM timing_versions v LEFT JOIN timing_adoptions a ON a.version_id=v.id WHERE v.project_id=? AND v.id=?').get(projectId,id) ?? store.db.prepare('SELECT * FROM timing_archives WHERE project_id=? AND id=?').get(projectId,id);
   function get(projectId:string,id:string) {
     const found=row(projectId,id);if(!found)invalid('计划版本不存在',404);
     return {version:metadata(found),plan:JSON.parse(String(found!.snapshot)) as PlanSnapshot};
@@ -60,7 +60,7 @@ export function timingVersions(store:Store) {
     const left=select(from),right=select(to);
     return {from:{...left,plan:undefined,revision:left.plan.project.taskRevision},to:{...right,plan:undefined,revision:right.plan.project.taskRevision},...comparePlans(left.plan,right.plan)};
   }
-  return {current,get,save,compare,list:(projectId:string)=>store.db.prepare(`SELECT ${columns} FROM timing_versions WHERE project_id=? ORDER BY rowid DESC`).all(projectId).map(metadata)};
+  return {current,get,save,compare,list:(projectId:string)=>[...store.db.prepare('SELECT v.*,a.source_version,a.source_revision FROM timing_versions v LEFT JOIN timing_adoptions a ON a.version_id=v.id WHERE v.project_id=?').all(projectId),...store.db.prepare('SELECT * FROM timing_archives WHERE project_id=?').all(projectId)].sort((a:any,b:any)=>String(b.saved_at).localeCompare(String(a.saved_at))).map(metadata)};
 }
 
 export type PlanChange = {field:string;label:string;before:string;after:string;delta?:number|null};

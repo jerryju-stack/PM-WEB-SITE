@@ -12,7 +12,7 @@ import { policy, capabilities } from './lib/policy.ts';
 import { audit } from './lib/audit.ts';
 import type { WriteContext } from './lib/audit.ts';
 import { resourceWriter } from './lib/resources.ts';
-import { writeTasks } from './lib/task-writes.ts';
+import { timingDrafts } from './lib/timing-drafts.ts';
 import { timingVersions } from './lib/timing-versions.ts';
 import { timingIO } from './lib/timing-io.ts';
 import { TEMPLATE } from './lib/timing-workbook.ts';
@@ -29,6 +29,7 @@ const store=openStore(directory);
 const uploads=join(store.directory,'uploads'); await mkdir(uploads,{recursive:true});
 const resources=resourceWriter(store);
 const plans=timingVersions(store);
+const drafts=timingDrafts(store);
 const timingFiles=timingIO(store);
 const accounts=accountService(store),permissions=policy(store);
 const files=attachmentService(store);
@@ -41,7 +42,7 @@ const id=()=>randomBytes(16).toString('hex');
 const safeUser=(user:any)=>user?{...safeAccount(user),capabilities:capabilities.filter(cap=>permissions.can(user,cap))}:null;
 const fail=(message:string,status=400):never=>{throw Object.assign(Error(message),{status});};
 const text=(v:any,max=5000)=>String(v??'').slice(0,max);
-const attached=(projectId:string)=>store.db.prepare('SELECT a.* FROM attachments a JOIN tasks t ON a.task_id=t.id WHERE t.project_id=? ORDER BY a.created_at DESC').all(projectId);
+const attached=(projectId:string)=>store.db.prepare('SELECT a.* FROM attachments a JOIN tasks t ON a.task_id=t.id WHERE t.project_id=? AND t.archived=0 ORDER BY a.created_at DESC').all(projectId);
 const eraseFiles=async(rows:any[])=>{const results=await files.retry(rows.map(row=>row.id));if(results.some(row=>!row.ok))console.error(JSON.stringify({event:'attachment-cleanup-pending',count:results.filter(row=>!row.ok).length}));};
 const esc=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 
@@ -96,6 +97,16 @@ const server=http.createServer(async(req,res)=>{
       if(url.pathname==='/api/data'&&method==='GET')return json(200,{settings:store.get('settings','site'),projects:store.all('projects').filter(p=>permissions.card(user,p.id)).map(p=>Object.fromEntries(['id','title','description','category','date','startDate','owner','status','progress','version','taskRevision'].map(key=>[key,p[key]]).concat([['capabilities',capabilities.filter(cap=>permissions.can(user,cap,p.id))]]))),articles:store.all('articles').filter(item=>permissions.articleRead(user,item)).map(item=>({...item,canEdit:permissions.can(user,'lessonEdit',item.projectId??undefined),canDelete:permissions.can(user,'lessonDelete',item.projectId??undefined)})),users:user?.role==='admin'?store.all('users').map(safeUser):[],user:safeUser(user)});
       if(parts[1]==='projects'&&parts[2]&&parts[3]==='timing'&&parts[4]) {
         const projectId=parts[2];permissions.requireRead(user,projectId);
+        if(parts[4]==='draft'&&parts.length===5&&method==='GET')return json(200,drafts.state(projectId));
+        if(parts[4]==='draft'&&parts.length===6&&method==='POST') {
+          permissions.requireCap(user,'timingEdit',projectId);
+          const action=parts[5];
+          if(action==='start')return json(200,drafts.start(projectId,body,context));
+          if(action==='heartbeat')return json(200,drafts.heartbeat(projectId,body,context));
+          if(action==='release')return json(200,drafts.release(projectId,body,context));
+          if(action==='adopt')return json(200,drafts.adopt(projectId,body,context));
+          fail('接口不存在',404);
+        }
         if(parts[4]==='export'&&parts.length===5&&method==='GET') {
           const format=url.searchParams.get('format')??'xlsx';if(!['xlsx','pdf'].includes(format))fail('请选择 Excel 或 PDF');
           const output=timingFiles.exportPlan(projectId,url.searchParams.get('version')??'current',format),buffer=await output.buffer;
@@ -106,7 +117,7 @@ const server=http.createServer(async(req,res)=>{
           res.writeHead(200,{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':'attachment; filename="Timing_Sample_v3_Print.xlsx"','Cache-Control':'private, no-store'});res.end(TEMPLATE);return;
         }
         if(parts[4]==='import'&&parts.length===6&&method==='POST') {
-          permissions.requireCap(user,'timingEdit',projectId);
+          permissions.requireCap(user,'timingEdit',projectId);drafts.check(projectId,body,context);
           if(parts[5]==='preview')return json(200,timingFiles.preview(projectId,body,context));
           if(parts[5]==='confirm'){const {removed,...result}=timingFiles.confirm(projectId,body,context);await eraseFiles(removed);return json(200,result);}
           fail('接口不存在',404);
@@ -126,7 +137,9 @@ const server=http.createServer(async(req,res)=>{
       if(parts[1]==='projects'&&parts[2]&&parts[3]==='timing'&&parts.length===4&&method==='GET') {
         permissions.requireRead(user,parts[2]);
         const project=store.get('projects',parts[2]);if(!project)fail('项目不存在',404);
-        return json(200,{project,tasks:store.tasks(project.id),attachments:attached(project.id),revision:store.revision(project.id),members:permissions.can(user,'membersRead',project.id)?permissions.members(user,project.id):[],capabilities:capabilities.filter(cap=>permissions.can(user,cap,project.id))});
+        const leaseToken=req.headers['x-timing-lease'];let activePlan;
+        if(leaseToken){permissions.requireCap(user,'timingEdit',project.id);drafts.check(project.id,{leaseToken},context);if(drafts.state(project.id).draft)activePlan=drafts.plan(project.id);}
+        return json(200,{project:activePlan?.project??project,tasks:activePlan?.tasks??store.tasks(project.id),executionRevision:store.revision(project.id),executionTaskIds:store.tasks(project.id).map(t=>t.id),...drafts.state(project.id),attachments:attached(project.id),revision:activePlan?.project.taskRevision??store.revision(project.id),members:permissions.can(user,'membersRead',project.id)?permissions.members(user,project.id):[],capabilities:capabilities.filter(cap=>permissions.can(user,cap,project.id))});
       }
       if((parts[1]==='projects'||parts[1]==='articles')&&parts.length===3&&method==='GET') {
         const item=store.get(parts[1],parts[2]);if(!item)fail('记录已删除或不存在',404);if(parts[1]==='projects')permissions.requireRead(user,item.id);else if(!permissions.articleRead(user,item))fail('资源不存在或无权访问',user?404:401);return json(200,item);
@@ -166,8 +179,8 @@ const server=http.createServer(async(req,res)=>{
         files.remove(row.id,context);await eraseFiles([row]);return json(200,{ok:true});
       }
       if(parts[1]==='projects'&&parts[2]&&parts[3]==='tasks') {
-        permissions.requireRead(user,parts[2]);permissions.requireCap(user,'timingEdit',parts[2]);if(parts[4]&&permissions.taskProject(parts[4])!==parts[2])fail('资源不存在或无权访问',404);
-        const result=writeTasks(store,parts[2],parts[4],method,body,context);
+        permissions.requireRead(user,parts[2]);permissions.requireCap(user,'timingEdit',parts[2]);
+        const result=drafts.mutate(parts[2],parts[4],method,body,context);
         await eraseFiles(result.removed);const {removed,...response}=result;return json(200,response);
       }
       const collection=parts[1];
@@ -191,7 +204,7 @@ const server=http.createServer(async(req,res)=>{
         }
         if(method==='DELETE') {
           if(!resourceId)fail('请选择记录');
-          const rows=collection==='projects'?attached(resourceId):[];
+          const rows=collection==='projects'?store.db.prepare('SELECT a.* FROM attachments a JOIN tasks t ON a.task_id=t.id WHERE t.project_id=?').all(resourceId):[];
           resources.remove(collection,resourceId,body,context);await eraseFiles(rows as any[]);
         } else if((method==='PATCH'||method==='PUT'||method==='POST')&&resourceId!==undefined) {
           const item=resources.update(collection,resourceId,body,context);return json(200,{ok:true,id:item.id,version:item.version,item});

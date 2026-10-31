@@ -51,9 +51,9 @@ export function openStore(directory: string) {
     if(table==='users')db.prepare('UPDATE identities SET login_name=NULL,retired_at=? WHERE login_name=?').run(new Date().toISOString(),id);
     return db.prepare(`DELETE FROM ${checked(table)} WHERE id=?`).run(id);
   };
-  const tasks = (projectId: string): Task[] => db.prepare('SELECT data FROM tasks WHERE project_id=? ORDER BY rowid').all(projectId).map((row: any) => JSON.parse(row.data));
+  const tasks = (projectId: string): Task[] => db.prepare('SELECT data FROM tasks WHERE project_id=? AND archived=0 ORDER BY rowid').all(projectId).map((row: any) => JSON.parse(row.data));
   const revision = (id: string): number => Number((db.prepare('SELECT revision FROM projects WHERE id=?').get(id) as any)?.revision || 0);
-  function saveTasks(projectId: string, values: Task[], expected?: number, context?: WriteContext, committed?:()=>void) {
+  function saveTasks(projectId: string, values: Task[], expected?: number, context?: WriteContext, committed?:()=>void, preserveRemoved=false) {
     return transaction(() => {
       if (!get('projects',projectId)) throw Object.assign(Error('项目不存在'), { status: 404 });
       if (values.some(t => t.projectId !== projectId)) throw Error('任务必须属于本项目');
@@ -62,8 +62,12 @@ export function openStore(directory: string) {
       const beforeAttachments = db.prepare('SELECT a.* FROM attachments a JOIN tasks t ON a.task_id=t.id WHERE t.project_id=?').all(projectId) as any[];
       const hadLeaves = beforeTasks.some(t => t.kind !== 'summary');
       const normalized = schedule(values), ids = new Set(normalized.map(t => t.id));
-      for (const t of normalized) db.prepare('INSERT INTO tasks(id,project_id,parent_id,data) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET parent_id=excluded.parent_id,data=excluded.data').run(t.id,projectId,t.parentId,JSON.stringify(t));
-      for (const old of tasks(projectId)) if (!ids.has(old.id)) db.prepare('DELETE FROM tasks WHERE id=?').run(old.id);
+      for(const t of normalized){const owner=db.prepare('SELECT project_id FROM tasks WHERE id=?').get(t.id);if(owner&&owner.project_id!==projectId)throw Error('任务 ID 属于其他项目');}
+      for (const t of normalized) db.prepare('INSERT INTO tasks(id,project_id,parent_id,data) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET parent_id=excluded.parent_id,data=excluded.data,archived=0').run(t.id,projectId,t.parentId,JSON.stringify(t));
+      for (const old of beforeTasks) if (!ids.has(old.id)) {
+        if(preserveRemoved) db.prepare('UPDATE tasks SET archived=1,parent_id=NULL,data=? WHERE id=?').run(JSON.stringify({...old,parentId:null,predecessors:[]}),old.id);
+        else db.prepare('DELETE FROM tasks WHERE id=?').run(old.id);
+      }
       db.prepare('DELETE FROM dependencies WHERE task_id IN (SELECT id FROM tasks WHERE project_id=?)').run(projectId);
       for (const t of normalized) for (const predecessor of t.predecessors) db.prepare('INSERT INTO dependencies VALUES(?,?)').run(t.id,predecessor);
       db.prepare('UPDATE projects SET revision=revision+1 WHERE id=?').run(projectId);

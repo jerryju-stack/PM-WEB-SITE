@@ -18,11 +18,11 @@ function oldFixture(){
  return {directory,db};
 }
 test('old SQLite upgrade preserves projects articles tasks dependencies and attachments; repeated startup is stable',()=>{
- const {directory,db}=oldFixture();const before={tasks:db.prepare('SELECT * FROM tasks').all(),dependencies:db.prepare('SELECT * FROM dependencies').all(),attachments:db.prepare('SELECT * FROM attachments').all()};db.close();
+ const {directory,db}=oldFixture();const before={tasks:db.prepare('SELECT id,project_id,parent_id,data FROM tasks').all(),dependencies:db.prepare('SELECT * FROM dependencies').all(),attachments:db.prepare('SELECT * FROM attachments').all()};db.close();
  for(let attempt=0;attempt<2;attempt++){const store=openStore(directory);try{
  assert.equal(store.get('projects','p').version,0);assert.equal(store.get('articles','a').version,0);assert.equal(store.revision('p'),7);assert.equal(store.get('articles','a').content,'body');
- for(const table of ['tasks','dependencies','attachments'] as const)assert.deepEqual(store.db.prepare(table==='attachments'?'SELECT id,task_id,name,size,uploaded_by,created_at FROM attachments':'SELECT * FROM '+table).all(),before[table]);
- assert.equal(store.db.prepare('SELECT count(*) AS n FROM schema_migrations').get()!.n,6);
+ for(const table of ['tasks','dependencies','attachments'] as const)assert.deepEqual(store.db.prepare(table==='attachments'?'SELECT id,task_id,name,size,uploaded_by,created_at FROM attachments':table==='tasks'?'SELECT id,project_id,parent_id,data FROM tasks':'SELECT * FROM '+table).all(),before[table]);
+ assert.equal(store.db.prepare('SELECT count(*) AS n FROM schema_migrations').get()!.n,migrations.length);
  assert.deepEqual(store.db.prepare('PRAGMA foreign_key_check').all(),[]);
  }finally{store.db.close();}}
 });
@@ -37,7 +37,7 @@ test('failed migration rolls back DDL and marker, then retries successfully',()=
 test('new database and JSON import receive zero resource versions without resetting task versions',()=>{
  for(const legacy of [false,true]){const directory=mkdtempSync(join(tmpdir(),'station-init-test-'));if(legacy)writeFileSync(join(directory,'store.json'),JSON.stringify({settings:{},users:[],projects:[{id:'p',title:'JSON project'}],articles:[{id:'a',title:'JSON article',content:'keep'}]}));
  process.env.ADMIN_PASSWORD='Isolated-Test-Only-2026';const store=openStore(directory);try{
- assert.equal(store.db.prepare('SELECT count(*) AS n FROM schema_migrations').get()!.n,6);
+ assert.equal(store.db.prepare('SELECT count(*) AS n FROM schema_migrations').get()!.n,migrations.length);
  if(legacy){assert.equal(store.get('projects','p').version,0);assert.equal(store.get('articles','a').version,0);assert.equal(store.tasks('p').length,8);assert.equal(store.revision('p'),0);}
  }finally{store.db.close();}}
 });

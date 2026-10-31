@@ -71,5 +71,5 @@ test('D6 actual zoom handlers, collapse, date refresh and ResizeObserver preserv
   events.get('right:pointermove')!({pointerId:1,clientX:90});events.get('right:pointerup')!({pointerId:1,clientX:80});assert.equal(frames.size,0);assert.equal(right.scrollLeft,243);assert.ok(!captured);assert.ok(!classes.has('panning-timeline'));assert.equal(events.has('right:pointermove'),false);
   for(const ending of ['right:pointercancel','window:blur']){pan();events.get(ending)!({pointerId:1});assert.ok(!captured);assert.ok(!classes.has('panning-timeline'));}
   await click('#today');assert.ok(right.scrollLeft>0);const atToday=right.scrollLeft;await click('#next-window');assert.ok(right.scrollLeft>atToday);await click('#previous-window');assert.ok(right.scrollLeft<atToday+2500);
- }finally{globals.forEach((k,i)=>{if(originals[i])Object.defineProperty(globalThis,k,originals[i]!);else Reflect.deleteProperty(globalThis,k);});}
+ }finally{timing.unmountTiming();globals.forEach((k,i)=>{if(originals[i])Object.defineProperty(globalThis,k,originals[i]!);else Reflect.deleteProperty(globalThis,k);});}
 });

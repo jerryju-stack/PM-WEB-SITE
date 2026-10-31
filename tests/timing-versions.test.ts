@@ -94,8 +94,11 @@ test('HTTP history and comparison reuse project access; only timing editors can 
     assert.equal((await call(`projects/${p}/timing/versions`,body,cookie)).status,200);
     assert.equal((await call(`projects/${p}/timing/versions/${id}`,{name:'overwrite'},cookie,'PATCH')).status,405);
     assert.equal((await call(`projects/${p}/timing/versions/${id}`,{},cookie,'DELETE')).status,405);
-    const changed=await call(`projects/${p}/tasks/${current.tasks[0].id}`,{revision:current.revision,owner:'updated'},cookie,'PATCH');assert.equal(changed.status,200);
+    const started=(await call(`projects/${p}/timing/draft/start`,{},cookie)).data;
+    const session={leaseToken:started.leaseToken,draftId:started.draft.id,revision:started.draft.revision};
+    const changed=await call(`projects/${p}/tasks/${current.tasks[0].id}`,{...session,owner:'updated'},cookie,'PATCH');assert.equal(changed.status,200);
     assert.equal((await call(`projects/${p}/timing/versions`,undefined,cookie)).data.versions.length,1);
+    const adopted=await call(`projects/${p}/timing/draft/adopt`,{...session,revision:changed.data.revision},cookie);assert.equal(adopted.status,200);
     const v2=await call(`projects/${p}/timing/versions`,{...body,kind:'version',name:'review',revision:changed.data.revision,requestKey:randomUUID()},cookie);assert.equal(v2.status,201);
     const diff=await call(`projects/${p}/timing/compare?from=${id}&to=current`,undefined,cookie);assert.equal(diff.status,200);assert.equal(diff.data.summary.changed,1);
     assert.equal((await call(`projects/${p}/timing/compare?from=${id}&to=${v2.data.version.id}`,undefined,cookie)).data.summary.changed,1);

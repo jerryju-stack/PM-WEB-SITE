@@ -17,7 +17,7 @@ export function resourceWriter(store: Store) {
     return store.transaction(()=>{
       store.db.prepare('INSERT INTO '+collection+'(id,data) VALUES(?,?)').run(item.id,JSON.stringify(item));
       created?.(item.id);
-      if(collection==='projects')for(const task of template(item.id))store.db.prepare('INSERT INTO tasks VALUES(?,?,?,?)').run(task.id,item.id,null,JSON.stringify(task));
+      if(collection==='projects')for(const task of template(item.id))store.db.prepare('INSERT INTO tasks(id,project_id,parent_id,data) VALUES(?,?,?,?)').run(task.id,item.id,null,JSON.stringify(task));
       const result=find(collection,item.id);
       audit(store.db,context,collection,item.id,null,result,{after:result.version});
       if(collection==='projects')for(const task of store.tasks(item.id))audit(store.db,context,'tasks',task.id,null,task,{projectId:item.id,revisionAfter:0});

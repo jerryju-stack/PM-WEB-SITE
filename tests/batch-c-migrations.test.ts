@@ -27,7 +27,7 @@ function bFixture(){
 }
 for(const version of [3,4])test(`explicit B -> C preserves evidence; migration ${version} failure rolls back its entire step then retries stably`,()=>{
   const {directory,db,user}=bFixture();
-  const before=Object.fromEntries(['tasks','dependencies','file_jobs'].map(table=>[table,db.prepare('SELECT * FROM '+table).all()]));
+  const before=Object.fromEntries(['tasks','dependencies','file_jobs'].map(table=>[table,db.prepare(table==='tasks'?'SELECT id,project_id,parent_id,data FROM tasks':'SELECT * FROM '+table).all()]));
   const steps=migrations.slice(0,version).map(step=>step.version===version?{...step,up(db:DatabaseSync){step.up(db);db.exec('INSERT INTO injected_identity_failure VALUES(1)');}}:step);
   assert.throws(()=>applyMigrations(db,steps),/injected_identity_failure/);
   assert.equal(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()!.v,version-1);
@@ -39,7 +39,7 @@ for(const version of [3,4])test(`explicit B -> C preserves evidence; migration $
     assert.notEqual(uid,'admin');assert.equal(account.hash,user.hash);assert.equal(account.name,user.name);
     assert.equal(store.get('projects','p').owner,'legacy name');assert.equal(store.get('projects','p').version,3);assert.equal(store.revision('p'),7);
     assert.equal(store.get('articles','a').content,'keep body');assert.equal(store.get('articles','a').projectId,null);
-    for(const table of ['tasks','dependencies','file_jobs'])assert.deepEqual(store.db.prepare('SELECT * FROM '+table).all(),before[table]);
+    for(const table of ['tasks','dependencies','file_jobs'])assert.deepEqual(store.db.prepare(table==='tasks'?'SELECT id,project_id,parent_id,data FROM tasks':'SELECT * FROM '+table).all(),before[table]);
     assert.equal(store.db.prepare('SELECT COUNT(*) AS n FROM project_members').get()!.n,0);
     const event=store.db.prepare('SELECT * FROM audit_events').get()!;assert.equal(event.actor_id,'admin');assert.equal(event.actor_uid,null);
     const file=store.db.prepare('SELECT * FROM attachments').get()!;assert.equal(file.uploaded_by,'admin');assert.equal(file.uploaded_uid,null);

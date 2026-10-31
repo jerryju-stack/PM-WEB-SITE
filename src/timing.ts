@@ -9,6 +9,7 @@ type Row={task:Task;wbs:string;depth:number};
 const escape=(v:any='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const today=()=>new Date().toLocaleDateString('sv-SE');
 let controller:AbortController|undefined;
+export function unmountTiming(){controller?.abort();controller=undefined;}
 const viewStates=new Map<string,{collapsed:Set<string>;zoom:string;start:number|null}>();
 
 type TimeBounds={start:number;days:number;scale:number;width:number};
@@ -71,6 +72,10 @@ export async function mountTiming(options:Options){
  let edit=editors.get(editKey);
  let snapshot:any, busy=false,selected:string|null=edit?.value.id||null;
  let historical:string|null=null, savedVersion:TimingVersion|undefined;
+ let editRequests=new AbortController();
+ let leaseToken='',leaseUntil=0,hasEditPermission=false,sharedDraft:any,editorInfo:any;
+ let saveError='',autoTimer:ReturnType<typeof setTimeout>|undefined,activeWrite:Promise<boolean>|undefined,transition=false;
+ const pendingInline=new Map<string,Record<string,any>>();
  let drawerHidden=false;
  const setEdit=(value:TaskDraft|undefined)=>{edit=value;if(value)editors.set(editKey,value);else editors.delete(editKey);};
  const reads=new ReadGuard();
@@ -91,21 +96,24 @@ export async function mountTiming(options:Options){
  if(!user){root.innerHTML=shell('<main class="timing-gate"><span class="gate-icon">▦</span><div class="eyebrow">PROJECT TIMING</div><h1>登录，进入项目工作空间。</h1><p>项目排期与附件仅对登录成员开放。</p><button class="primary" id="timing-login">登录并继续 →</button><a href="/">返回项目列表</a></main>');document.querySelector('#timing-login')!.addEventListener('click',login,{signal});return;}
  root.innerHTML=shell('<main class="timing-gate"><p>正在载入项目排期…</p></main>');
  async function request(path:string,body?:any,method='POST'){
-  const response=await fetch('/api/'+path,body?{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal}:{signal});
+  const requestSignal=body&&(path.includes('/tasks')||path.endsWith('/adopt'))?AbortSignal.any([signal,editRequests.signal]):signal;
+  const response=await fetch('/api/'+path,body?{method,headers:{'Content-Type':'application/json',...(leaseToken?{'X-Timing-Lease':leaseToken}:{})},body:JSON.stringify(body),signal:requestSignal}:{headers:leaseToken?{'X-Timing-Lease':leaseToken}:{},signal});
   const result=await response.json();if(!response.ok)throw Object.assign(Error(result.error+(result.requestId?`（请求 ${result.requestId}）`:"")),{status:response.status});return result;
  }
- const history=new TimingHistory({projectId,signal,notify,capture:captureDraft,
-   context:()=>({revision:snapshot?.revision??0,projectVersion:snapshot?.project.version??0,canSave:canEdit,historical,version:savedVersion,dirty:!!edit?.dirty}),
+ const history=new TimingHistory({projectId,signal,notify,capture:captureDraft,session:()=>({leaseToken,draftId:sharedDraft?.id,revision:snapshot?.revision}),canImport:()=>canEdit,flush:async()=>{await ensureDraft();return flushInputs();},
+   context:()=>({revision:snapshot?.executionRevision??snapshot?.revision??0,projectVersion:snapshot?.project.version??0,canSave:hasEditPermission&&!leaseToken,historical,version:savedVersion,dirty:!!edit?.dirty}),
    showPlan:async target=>{
     if(busy||attachmentBusy)throw Error('正在保存或上传，请等待结果');
-    captureDraft();busy=true;lockEditing();
+    captureDraft();await flushInputs();if(target&&leaseToken)await exitEditing(false);busy=true;lockEditing();
     try{await load(target);}finally{busy=false;render();}
    },
  });
  async function load(target=historical){const current=reads.begin(()=>!signal.aborted);const result=await request(`projects/${projectId}/timing${target?'/versions/'+target:''}`);if(!current())return;
    const latest=target?{project:result.plan.project,tasks:result.plan.tasks,schedulePolicy:result.plan.schedulePolicy,attachments:[],revision:result.version.revision,members:[],capabilities:[]}:result;
    if(target!==historical){selected=target?null:edit?.value.id||null;drawerHidden=!!target;scroll={left:0,right:0,top:0};state.start=null;state.collapsed.clear();}
-   historical=target;savedVersion=target?result.version:undefined;snapshot=latest;canEdit=latest.capabilities.includes('timingEdit');canUpload=latest.capabilities.includes('attachmentUpload');canDeleteFile=latest.capabilities.includes('attachmentDelete');canProjectEdit=latest.capabilities.includes('projectEdit');canManage=latest.capabilities.includes('membersManage');canViewMembers=latest.capabilities.includes('membersRead');
+   historical=target;savedVersion=target?result.version:undefined;snapshot=latest;
+   if(!target){sharedDraft=result.draft;editorInfo=result.editor;}
+   if(!target)hasEditPermission=latest.capabilities.includes('timingEdit');canEdit=!target&&hasEditPermission&&!!leaseToken;canUpload=latest.capabilities.includes('attachmentUpload');canDeleteFile=latest.capabilities.includes('attachmentDelete');canProjectEdit=latest.capabilities.includes('projectEdit');canManage=latest.capabilities.includes('membersManage');canViewMembers=latest.capabilities.includes('membersRead');
    if(!historical&&edit&&!edit.dirty&&edit.value.id){const latest=snapshot.tasks.find((t:Task)=>t.id===edit!.value.id);if(latest)setEdit(new EditDraft(latest,snapshot.revision));}
    render();
  }
@@ -117,23 +125,36 @@ export async function mountTiming(options:Options){
   const active=document.activeElement as HTMLInputElement|null;
   return active?.dataset.inline?{selector:'[data-inline="'+active.dataset.inline+'"][data-task="'+active.dataset.task+'"]',start:active.selectionStart,end:active.selectionEnd}:active?.closest('#task-form')&&active.name?{selector:'#task-form [name="'+active.name+'"]',start:active.selectionStart,end:active.selectionEnd}:null;
  }
- function saveStatusText(){return historical?'':busy?'正在保存…':edit?.dirty?'有未保存草稿':'';}
+ function saveStatusText(){return historical?'':saveError?'保存失败 · 输入已保留':busy?'正在保存…':edit?.dirty||pendingInline.size?'等待自动保存…':leaseToken?(sharedDraft?'草稿已保存'+(sharedDraft.savedAt?' · '+new Date(sharedDraft.savedAt).toLocaleTimeString('zh-CN'):''):'执行计划已保存'):'';}
  function updateSaveStatus(){const status=document.querySelector<HTMLElement>('.save-state');if(status){status.textContent=saveStatusText();status.hidden=!status.textContent;}}
  function lockEditing(){pendingFocus=activeFocus()||pendingFocus;root.querySelectorAll<HTMLInputElement|HTMLButtonElement>('input,textarea,select,button').forEach(node=>node.disabled=true);}
- async function mutate(taskId:string|undefined,body:any,method='PATCH',source:'inline'|'drawer'='inline'){
+ function mutate(taskId:string|undefined,body:any,method='PATCH',source:'inline'|'drawer'='inline'):Promise<boolean>{
+  if(activeWrite)return Promise.resolve(false);
+  const operation=performMutation(taskId,body,method,source);activeWrite=operation;
+  void operation.finally(()=>{if(activeWrite===operation)activeWrite=undefined;});return operation;
+ }
+ async function ensureDraft(){
+  if(!leaseToken||Date.now()>=leaseUntil){loseSession('编辑占用已过期，请重新进入编辑');throw Error('请重新进入编辑');}
+  if(!sharedDraft){const result=await request('projects/'+projectId+'/timing/draft/start',{leaseToken});sharedDraft=result.draft;snapshot.revision=result.draft.revision;snapshot.tasks=result.plan.tasks;}
+ }
+ async function performMutation(taskId:string|undefined,body:any,method='PATCH',source:'inline'|'drawer'='inline'){
   if(historical||!canEdit)return false;
   if(busy){notify('正在保存。本次操作未提交，请等待后重试。');return false;}
-  const expected=source==='drawer'&&edit?edit.version:snapshot.revision;
+  const expected=snapshot.revision;
   busy=true;reads.invalidate();rememberScroll();lockEditing();updateSaveStatus();
   try{
-   const result=await request(`projects/${projectId}/tasks${taskId?'/'+taskId:''}`,{...body,revision:expected},method);
+   await ensureDraft();
+   const result=await request(`projects/${projectId}/tasks${taskId?'/'+taskId:''}`,{...body,revision:snapshot.revision,draftId:sharedDraft.id,leaseToken},method);
    if(signal.aborted)return false;
-   snapshot={...snapshot,tasks:result.tasks,revision:result.revision,project:result.project||snapshot.project};
+   snapshot={...snapshot,tasks:result.tasks,revision:result.revision,project:result.project||snapshot.project};sharedDraft=result.draft;saveError='';
+   if(source==='inline'&&taskId)pendingInline.delete(taskId);
    if(source==='drawer'){selected=method==='DELETE'?null:result.id||selected;setEdit(undefined);}
    try{await load();}catch{notify('排期已保存，但重新读取失败；可点击刷新确认。');return true;}
-   notify('排期已保存，关联任务已同步');return true;
+   return true;
   }catch(error:any){
    if(error.name!=='AbortError'){
+    saveError=error.message;
+    if(error.status===409||error.status===401||error.status===403||error instanceof TypeError)loseSession(error.message);
     if(source==='inline'){
      const task=snapshot.tasks.find((t:Task)=>t.id===taskId);
      if(task){selected=task.id;const pending=new EditDraft<Task>(task,expected);try{pending.set(previewTaskEdit(task,body));}catch{pending.set({...task,...body});}setEdit(pending);}
@@ -143,6 +164,87 @@ export async function mountTiming(options:Options){
    return false;
   }finally{busy=false;render();}
  }
+ function queueAutosave(){
+  clearTimeout(autoTimer);if(canEdit&&!busy&&!saveError)autoTimer=setTimeout(()=>void flushInputs(),800);
+ }
+ async function flushInputs():Promise<boolean>{
+  clearTimeout(autoTimer);if(activeWrite)await activeWrite;
+  if(!canEdit)return !edit?.dirty&&!pendingInline.size;
+  captureDraft();clearTimeout(autoTimer);
+  for(const [id,body] of [...pendingInline])if(!await mutate(id,body))return false;
+  if(edit?.dirty){const form=document.querySelector<HTMLFormElement>('#task-form');if(form&&!form.reportValidity()){saveError='请补全任务输入';updateSaveStatus();return false;}
+   const values:Partial<Task>=form?readTaskForm(form):{...edit.value};delete values.end;if(!edit.value.id)delete values.order;
+   if(!await mutate(edit.value.id||undefined,values,edit.value.id?'PATCH':'POST','drawer'))return false;
+  }
+  return !saveError;
+ }
+ function loseSession(message:string){
+  const old=leaseToken;editRequests.abort();leaseToken='';leaseUntil=0;canEdit=false;clearTimeout(autoTimer);reads.invalidate();
+  if(old)void fetch('/api/projects/'+projectId+'/timing/draft/release',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leaseToken:old}),keepalive:true}).catch(()=>{});
+  saveError=message;notify(message+'；请点击编辑计划重新读取草稿。');render();
+ }
+ function releaseOnLeave(){
+  clearTimeout(autoTimer);if(!leaseToken)return;
+  const old=leaseToken;leaseToken='';canEdit=false;
+  void fetch('/api/projects/'+projectId+'/timing/draft/release',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({leaseToken:old}),keepalive:true}).catch(()=>{});
+ }
+ async function exitEditing(flush=true){
+  if(flush)await flushInputs();const old=leaseToken;leaseToken='';leaseUntil=0;canEdit=false;clearTimeout(autoTimer);
+  if(old)try{await request('projects/'+projectId+'/timing/draft/release',{leaseToken:old});}catch{/* Expiry releases a request that cannot reach the server. */}
+  if(!edit?.dirty)setEdit(undefined);await load(null);
+ }
+ function chooseDraft():Promise<'archive'|'discard'|undefined>{
+  return new Promise(resolve=>{
+   const dialog=document.createElement('dialog');dialog.className='timing-draft-choice';
+   dialog.innerHTML='<h3>已有待采用草稿</h3><p>切换历史起点前，请选择如何处理当前共享草稿。</p><div class="history-actions"><button class="small-btn" data-choice="archive">保留草稿为历史版本并切换</button><button class="small-btn" data-choice="discard">放弃草稿并切换</button><button class="small-btn" data-choice="cancel">取消</button></div>';
+   const done=(value?:'archive'|'discard')=>{dialog.close();dialog.remove();resolve(value);};
+   dialog.addEventListener('cancel',e=>{e.preventDefault();done();},{once:true});
+   dialog.querySelectorAll<HTMLElement>('[data-choice]').forEach(b=>b.addEventListener('click',()=>done(b.dataset.choice==='cancel'?undefined:b.dataset.choice as 'archive'|'discard'),{once:true}));
+   document.body.append(dialog);dialog.showModal();
+  });
+ }
+ async function enterEditing(sourceVersion?:string){
+  if(transition||busy)return;transition=true;
+  try{
+   if(leaseToken&&!await flushInputs())return;
+   const status=await request('projects/'+projectId+'/timing');sharedDraft=status.draft;editorInfo=status.editor;
+   const decision=sourceVersion&&sharedDraft?await chooseDraft():undefined;if(sourceVersion&&sharedDraft&&!decision)return;
+   const result=await request('projects/'+projectId+'/timing/draft/start',{...(leaseToken?{leaseToken}:{}),...(sourceVersion?{sourceVersion,decision,expectedDraftId:sharedDraft?.id,revision:sharedDraft?.revision}:{})});
+   editRequests=new AbortController();leaseToken=result.leaseToken;leaseUntil=result.editor.expiresAt;sharedDraft=result.draft;editorInfo=result.editor;saveError='';pendingInline.clear();setEdit(undefined);selected=null;drawerHidden=true;
+   await load(null);if(sourceVersion)history.invalidate();
+  }catch(e:any){notify(e.message);if(leaseToken)loseSession(e.message);}finally{transition=false;}
+ }
+ async function adoptDraft(){
+  if(transition||!leaseToken)return;transition=true;
+  try{
+   if(!await flushInputs())return;
+   if(!sharedDraft){notify('执行计划无变化');return;}
+   busy=true;lockEditing();updateSaveStatus();
+   const result=await request('projects/'+projectId+'/timing/draft/adopt',{leaseToken,draftId:sharedDraft.id,revision:snapshot.revision});
+   sharedDraft=null;saveError='';setEdit(undefined);pendingInline.clear();
+   await load(null);history.invalidate();notify(result.changed?'已保存为执行计划 · V'+result.sequence:'执行计划无变化，未新增版本');
+  }catch(e:any){saveError=e.message;notify(e.message+'；草稿已保留，可重试。');if(e.status===409||e instanceof TypeError)loseSession(e.message);}finally{busy=false;transition=false;render();}
+ }
+ const heartbeatTimer=setInterval(async()=>{
+  const token=leaseToken;if(!token){
+   if(!busy&&!transition)try{const status=await request('projects/'+projectId+'/timing/draft');if(leaseToken)return;
+    const changed=editorInfo?.actorUid!==status.editor?.actorUid||sharedDraft?.id!==status.draft?.id||sharedDraft?.savedAt!==status.draft?.savedAt;
+    editorInfo=status.editor;sharedDraft=status.draft;
+    if(changed){const node=document.querySelector('#timing-draft-workflow');if(node){node.outerHTML=workflowHtml();bindWorkflow();}}
+   }catch{/* A read-only viewer can refresh after reconnecting. */}return;
+  }
+  if(Date.now()>=leaseUntil){loseSession('编辑占用已过期');return;}
+  try{const result=await request('projects/'+projectId+'/timing/draft/heartbeat',{leaseToken:token});if(leaseToken===token){leaseUntil=result.editor.expiresAt;editorInfo=result.editor;}}
+  catch(e:any){if(leaseToken===token)loseSession(e.message);}
+ },8000);
+ signal.addEventListener('abort',()=>{clearInterval(heartbeatTimer);releaseOnLeave();},{once:true});
+ window.addEventListener('pagehide',releaseOnLeave,{signal});
+ window.addEventListener('offline',()=>{if(leaseToken)loseSession('网络已断开，编辑占用将释放');},{signal});
+ window.addEventListener('online',()=>{if(!leaseToken)void load(null).catch(()=>{});},{signal});
+ function workflowHtml(){
+  const source=sharedDraft?escape(sharedDraft.sourceLabel)+' · 修订 '+sharedDraft.sourceRevision:'最新执行计划';
+  return '<section id="timing-draft-workflow" class="timing-history"><div class="history-heading"><div><b>'+ (historical?'历史计划 · 只读':leaseToken?'正在编辑草稿':'当前执行计划')+'</b><small>'+(leaseToken?'草稿来源：'+source:editorInfo&&editorInfo.expiresAt>Date.now()?escape(editorInfo.actorName)+' 正在编辑':sharedDraft?'有共享草稿可继续 · '+escape(sharedDraft.actorName)+' · '+escape(new Date(sharedDraft.savedAt).toLocaleString('zh-CN')):'进入编辑后自动保存共享草稿')+'</small></div><div class="history-actions">'+(historical&&hasEditPermission?'<button class="primary compact" id="edit-from-history">基于此版本编辑</button>':leaseToken?'<button class="primary compact" id="adopt-draft">保存为执行计划</button><button class="small-btn" id="exit-editing">退出编辑</button>':hasEditPermission?'<button class="primary compact" id="enter-editing">编辑计划</button>':'')+(saveError&&leaseToken?'<button class="small-btn" id="retry-autosave">重试保存草稿</button>':'')+'</div></div></section>';
+ }
  function readTaskForm(form:HTMLFormElement):Partial<Task>{
   const values=Object.fromEntries(new FormData(form)) as any;
   values.parentId=values.parentId||null;
@@ -151,7 +253,8 @@ export async function mountTiming(options:Options){
   for(const field of ['duration','progress'])if(values[field]!==undefined)values[field]=Number(values[field]);
   return values;
  }
- function captureDraft(){
+ function captureDraft(event?:Event){
+  if(event)saveError='';
   const form=document.querySelector('#task-form') as HTMLFormElement|null;
   if(!canEdit||busy||!form)return;
   if(!edit&&selected){const current=snapshot.tasks.find((t:Task)=>t.id===selected);if(current)setEdit(new EditDraft(current,snapshot.revision));}
@@ -161,13 +264,13 @@ export async function mountTiming(options:Options){
     if(node.disabled)continue;edit.inputs[node.name]=node instanceof HTMLSelectElement&&node.multiple?Array.from(node.selectedOptions).map(option=>option.value):node.value;
    }
    if(edit.inputs.duration===''||edit.inputs.progress==='')edit.dirty=true;
-   updateSaveStatus();
+   updateSaveStatus();queueAutosave();
   }
  }
- function leaveEditor(){
+ async function leaveEditor(){
   if(busy||attachmentBusy){notify('正在保存或上传，请等待结果');return false;}
   if(historical)return true;
-  if(edit?.dirty&&!confirm('有未保存的任务草稿，确定舍弃？'))return false;
+  if((edit?.dirty||pendingInline.size)&&!await flushInputs())return false;
   setEdit(undefined);return true;
  }
  function bounds(){return state.zoom==='project'?fitProjectBounds(snapshot.tasks,fitWidth,snapshot.project.startDate||today()):scrollableProjectBounds(snapshot.tasks,state.zoom,fitWidth,snapshot.project.startDate||today(),state.start);}
@@ -196,7 +299,7 @@ export async function mountTiming(options:Options){
   const focus=activeFocus()||pendingFocus;
   const project=snapshot.project, tasks:Task[]=snapshot.tasks, visible=rows(),allRows=rows(true),leaves=tasks.filter(t=>t.kind!=='summary');
   const complete=leaves.filter(t=>t.progress===100).length,late=leaves.filter(t=>t.end&&t.end<(savedVersion?savedVersion.savedAt.slice(0,10):today())&&t.progress<100).length;
-  root.innerHTML=shell(`<main class="timing-main"><div class="timing-crumb"><a href="/">项目空间</a><span>/</span><span>${escape(project.title)}</span><span>/</span><b>Timing</b></div><section class="timing-heading"><div><div class="eyebrow">PROJECT TIMELINE <span> / ${escape(project.category)}</span></div><h1>${escape(project.title)}<span class="project-state" data-state="${escape(project.status)}">${escape(project.status)}</span></h1><p>${escape(project.description||'用清晰的计划，让每一次交付有迹可循。')}</p></div><div class="heading-actions">${canViewMembers?`<button class="small-btn" id="project-members">${canManage?'成员与可见性':'项目成员'}</button>`:''}${canProjectEdit?'<button class="small-btn" id="project-settings">编辑基础信息</button>':''}<span class="owner-bubble">${escape((project.owner||'P')[0])}</span><span>${escape(project.owner)}</span></div></section>${history.html()}<div class="timing-metrics"><div><span>整体进度</span><strong>${project.progress||0}<small>%</small></strong><div class="mini-progress"><i style="width:${project.progress||0}%"></i></div></div><div><span>已完成任务</span><strong>${complete}<small> / ${leaves.length} 项</small></strong></div><div><span>项目阶段</span><strong>${tasks.filter(t=>!t.parentId).length}<small> 个</small></strong></div><div><span>逾期任务${historical?'（保存时）':''}</span><strong class="${late?'metric-late':''}">${late}<small> 项</small></strong></div><div class="project-dates"><span>项目计划周期</span><strong>${escape(project.startDate||'未设置')}<small> → </small>${escape(project.date||'未设置')}</strong></div></div><section class="gantt-panel"><div class="gantt-tools"><div class="gantt-tool-left"><h2>项目排期 <small>TIMING PLAN</small></h2>${!historical&&drawerHidden&&edit?'<button class="small-btn" id="resume-task-draft">返回任务草稿</button>':''}${canEdit?'<button class="primary compact" id="add-task">＋ 新建任务</button>':''}<button class="tool-btn" id="expand-all">展开全部</button><button class="tool-btn" id="collapse-all">收起阶段</button></div><div class="gantt-tool-right"><div class="gantt-controls-row"><div class="zoom-switch layout-switch" role="group" aria-label="排期显示模式">${([['details','仅详细信息'],['split','分栏显示'],['gantt','仅甘特图']] as const).map(([id,label])=>`<button type="button" data-layout-mode="${id}" aria-pressed="${layoutPreference.mode===id}" class="${layoutPreference.mode===id?'chosen':''}">${label}</button>`).join('')}</div><div class="zoom-switch date-zoom-switch">${[['day','日'],['week','周'],['month','月'],['project','全项目']].map(([id,label])=>`<button data-zoom="${id}" aria-pressed="${state.zoom===id}" class="${state.zoom===id?'chosen':''}">${label}</button>`).join('')}</div><div class="timeline-navigation" role="group" aria-label="时间导航"><button ${state.zoom==='project'?'disabled':''} class="tool-btn" id="previous-window" aria-label="上一段时间">‹</button><button ${state.zoom==='project'?'disabled':''} class="small-btn" id="today">今天</button><button ${state.zoom==='project'?'disabled':''} class="tool-btn" id="next-window" aria-label="下一段时间">›</button></div><button class="tool-btn" id="refresh-timing" aria-label="刷新排期" title="刷新排期">↻</button></div><div class="gantt-tool-note"><span class="layout-hint">双击分隔栏恢复默认比例</span><span class="save-state" role="status" ${saveStatusText()?'':'hidden'}>${saveStatusText()}</span></div></div></div><div class="gantt-workspace"><div class="task-pane" id="schedule-details"><table class="task-table"><thead><tr><th>WBS</th><th>任务名称</th><th>负责人</th><th>开始日期</th><th>结束日期</th><th>工期</th><th>完成度</th><th>前置任务</th><th>附件</th></tr></thead><tbody>${visible.map(row=>{
+  root.innerHTML=shell(`<main class="timing-main"><div class="timing-crumb"><a href="/">项目空间</a><span>/</span><span>${escape(project.title)}</span><span>/</span><b>Timing</b></div><section class="timing-heading"><div><div class="eyebrow">PROJECT TIMELINE <span> / ${escape(project.category)}</span></div><h1>${escape(project.title)}<span class="project-state" data-state="${escape(project.status)}">${escape(project.status)}</span></h1><p>${escape(project.description||'用清晰的计划，让每一次交付有迹可循。')}</p></div><div class="heading-actions">${canViewMembers?`<button class="small-btn" id="project-members">${canManage?'成员与可见性':'项目成员'}</button>`:''}${canProjectEdit?'<button class="small-btn" id="project-settings">编辑基础信息</button>':''}<span class="owner-bubble">${escape((project.owner||'P')[0])}</span><span>${escape(project.owner)}</span></div></section>${workflowHtml()}${history.html()}<div class="timing-metrics"><div><span>整体进度</span><strong>${project.progress||0}<small>%</small></strong><div class="mini-progress"><i style="width:${project.progress||0}%"></i></div></div><div><span>已完成任务</span><strong>${complete}<small> / ${leaves.length} 项</small></strong></div><div><span>项目阶段</span><strong>${tasks.filter(t=>!t.parentId).length}<small> 个</small></strong></div><div><span>逾期任务${historical?'（保存时）':''}</span><strong class="${late?'metric-late':''}">${late}<small> 项</small></strong></div><div class="project-dates"><span>项目计划周期</span><strong>${escape(project.startDate||'未设置')}<small> → </small>${escape(project.date||'未设置')}</strong></div></div><section class="gantt-panel"><div class="gantt-tools"><div class="gantt-tool-left"><h2>项目排期 <small>TIMING PLAN</small></h2>${!historical&&drawerHidden&&edit?'<button class="small-btn" id="resume-task-draft">返回任务草稿</button>':''}${canEdit?'<button class="primary compact" id="add-task">＋ 新建任务</button>':''}<button class="tool-btn" id="expand-all">展开全部</button><button class="tool-btn" id="collapse-all">收起阶段</button></div><div class="gantt-tool-right"><div class="gantt-controls-row"><div class="zoom-switch layout-switch" role="group" aria-label="排期显示模式">${([['details','仅详细信息'],['split','分栏显示'],['gantt','仅甘特图']] as const).map(([id,label])=>`<button type="button" data-layout-mode="${id}" aria-pressed="${layoutPreference.mode===id}" class="${layoutPreference.mode===id?'chosen':''}">${label}</button>`).join('')}</div><div class="zoom-switch date-zoom-switch">${[['day','日'],['week','周'],['month','月'],['project','全项目']].map(([id,label])=>`<button data-zoom="${id}" aria-pressed="${state.zoom===id}" class="${state.zoom===id?'chosen':''}">${label}</button>`).join('')}</div><div class="timeline-navigation" role="group" aria-label="时间导航"><button ${state.zoom==='project'?'disabled':''} class="tool-btn" id="previous-window" aria-label="上一段时间">‹</button><button ${state.zoom==='project'?'disabled':''} class="small-btn" id="today">今天</button><button ${state.zoom==='project'?'disabled':''} class="tool-btn" id="next-window" aria-label="下一段时间">›</button></div><button class="tool-btn" id="refresh-timing" aria-label="刷新排期" title="刷新排期">↻</button></div><div class="gantt-tool-note"><span class="layout-hint">双击分隔栏恢复默认比例</span><span class="save-state" role="status" ${saveStatusText()?'':'hidden'}>${saveStatusText()}</span></div></div></div><div class="gantt-workspace"><div class="task-pane" id="schedule-details"><table class="task-table"><thead><tr><th>WBS</th><th>任务名称</th><th>负责人</th><th>开始日期</th><th>结束日期</th><th>工期</th><th>完成度</th><th>前置任务</th><th>附件</th></tr></thead><tbody>${visible.map(row=>{
    const t=row.task,summary=t.kind==='summary',hasChildren=tasks.some(c=>c.parentId===t.id),files=snapshot.attachments.filter((a:any)=>a.task_id===t.id).length;
    const disabled=!canEdit||summary?'disabled':'';
    const input=(field:string,value:any,type='text',extra='')=>`<input aria-label="${escape(row.wbs+' '+({title:'任务名称',owner:'负责人',start:'开始日期',end:'结束日期',duration:'工期',progress:'完成度'}[field]||field))}" data-inline="${field}" data-task="${t.id}" type="${type}" value="${escape(value??'')}" ${extra}>`;
@@ -206,6 +309,7 @@ export async function mountTiming(options:Options){
    const node=form?.elements.namedItem(name) as HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|null;
    if(!node)continue;if(node instanceof HTMLSelectElement&&node.multiple){for(const option of node.options)option.selected=Array.isArray(value)&&value.includes(option.value);}else if(typeof value==='string')node.value=value;
   }}
+  for(const [id,body] of pendingInline)for(const [field,value] of Object.entries(body)){const input=root.querySelector<HTMLInputElement>('[data-inline="'+field+'"][data-task="'+id+'"]');if(input)input.value=value??'';}
   bind();history.bind();if(busy)lockEditing();
   if(focus){const node=document.querySelector(focus.selector) as HTMLInputElement|null;if(node&&!node.disabled){node.focus({preventScroll:true});if(focus.start!==null&&['text','search','textarea'].includes(node.type))node.setSelectionRange(focus.start,focus.end);pendingFocus=null;}}
   const workspace=document.querySelector<HTMLElement>('.gantt-workspace'),tools=document.querySelector<HTMLElement>('.gantt-tools');
@@ -239,12 +343,21 @@ export async function mountTiming(options:Options){
   const isNew=!historical&&!!edit&&!edit.value.id,t=current as Task,summary=t.kind==='summary',files=snapshot.attachments.filter((a:any)=>a.task_id===t.id);
   const descendants=new Set<string>([t.id]);let previous=-1;while(previous!==descendants.size){previous=descendants.size;for(const row of allRows)if(row.task.parentId&&descendants.has(row.task.parentId))descendants.add(row.task.id);}
   const field=(label:string,name:string,value:any,type='text',extra='')=>`<label>${label}<input name="${name}" type="${type}" value="${escape(value??'')}" ${extra}></label>`;
-  return `<div class="drawer-backdrop"></div><section class="task-drawer" role="dialog" aria-modal="true" aria-label="任务详情"><div class="drawer-top"><div><div class="eyebrow">${isNew?'NEW TASK':'TASK DETAILS'} ${!isNew?' / '+allRows.find(r=>r.task.id===t.id)?.wbs:''}</div><h2>${isNew?'创建子任务':escape(t.title)}</h2></div><div class="drawer-actions">${!historical&&canEdit?'<button class="small-btn" id="task-history">查看版本（保留草稿）</button>':''}<span class="drawer-mode">${canEdit?'可编辑':'只读'}</span><button class="drawer-close" aria-label="关闭任务详情">×</button></div></div><div class="drawer-scroll"><form id="task-form"><fieldset ${canEdit?'':'disabled'}><h3 class="drawer-section-title">任务信息</h3>${field('任务名称','title',t.title,'text','required maxlength="200"')}<div class="form-grid"><label>任务类型<select name="kind" ${summary&&!isNew?'disabled':''}>${[['task','普通任务'],['milestone','里程碑'],['summary','汇总阶段']].map(([value,label])=>`<option value="${value}" ${t.kind===value?'selected':''}>${label}</option>`).join('')}</select></label>${field('负责人','owner',t.owner,'text','list="member-list" maxlength="100"')}<datalist id="member-list">${snapshot.members.map((m:any)=>`<option value="${escape(m.user?.name)}"></option>`).join('')}</datalist></div><label>所属目录<select name="parentId"><option value="">一级目录</option>${t.parentId&&!allRows.some(r=>r.task.id===t.parentId&&r.task.kind!=='milestone')?`<option value="${escape(t.parentId)}" selected>原目录已变更，请重新选择</option>`:''}${allRows.filter(r=>!descendants.has(r.task.id)&&r.task.kind!=='milestone').map(r=>`<option value="${r.task.id}" ${t.parentId===r.task.id?'selected':''}>${r.wbs} · ${escape(r.task.title)}</option>`).join('')}</select></label><h3 class="drawer-section-title">计划与依赖</h3>${summary&&!isNew?'<div class="summary-explanation">阶段日期、工期和完成度由子任务自动汇总。前置关系在普通任务和里程碑上设置。</div>':`<div class="form-grid">${field('开始日期','start',t.start,'date','min="2000-01-01" max="2100-12-31"')}${field('结束日期','end',t.end,'date','min="2000-01-01" max="2100-12-31"')}${field('工期 / 工作日','duration',t.duration??1,'number','min="0" max="2600" required')}${field('完成度 / %','progress',t.progress??0,'number','min="0" max="100" required')}</div><label>任务状态<select name="status"><option ${t.status==='计划中'?'selected':''}>计划中</option><option ${t.status==='进行中'?'selected':''}>进行中</option><option ${t.status==='已暂停'?'selected':''}>已暂停</option><option ${t.status==='已完成'?'selected':''}>已完成</option></select></label><label>前置任务 / FS<select name="predecessors" multiple size="4">${(t.predecessors||[]).filter(id=>!allRows.some(r=>r.task.id===id&&r.task.kind!=='summary')).map(id=>`<option value="${escape(id)}" selected>原前置任务已变更，请重新选择</option>`).join('')}${allRows.filter(r=>r.task.id!==t.id&&r.task.kind!=='summary').map(r=>`<option value="${r.task.id}" ${t.predecessors?.includes(r.task.id)?'selected':''}>${r.wbs} · ${escape(r.task.title)}</option>`).join('')}</select><small>按住 Ctrl / ⌘ 多选或取消；任务会顺延至前置任务完成后的工作日。</small></label>`}<h3 class="drawer-section-title">交付说明</h3><label>备注<textarea name="notes" rows="4" maxlength="20000" placeholder="交付要求、验收标准、工作记录…">${escape(t.notes)}</textarea></label></fieldset><p class="form-error" role="alert">${escape(!historical?edit?.message||'':'')}</p>${!historical&&edit?.dirty&&t.id?`<div class="conflict-panel"><button type="button" class="small-btn" id="task-latest">查看最新数据（保留草稿）</button>${edit.latest?`<pre style="white-space:pre-wrap;max-height:200px;overflow:auto">${escape(latestTaskText(edit.latest.value,edit.latest.version))}</pre><button type="button" class="small-btn" id="task-retry">保留草稿，选择所示版本后重试</button>`:''}</div>`:''}</form><section class="attachment-section"><div class="attachment-heading"><h3>任务附件 <span>${files.length}</span></h3>${canUpload&&!isNew?'<label class="small-btn upload">↑ 上传附件<input type="file" id="task-upload" multiple hidden></label>':''}</div>${historical?'<p class="muted">历史版本仅保留计划数据。请返回当前计划查看附件。</p>':isNew?'<p class="muted">创建任务后即可上传附件。</p>':files.length?files.map((a:any)=>`<div class="attachment-row"><span class="file-icon">▤</span><div><a href="/api/attachments/${a.id}" download>${escape(a.name)}</a><small>${(a.size/1024).toFixed(1)} KB · ${escape(new Date(a.created_at).toLocaleDateString('sv-SE'))}</small></div><a class="download-icon" href="/api/attachments/${a.id}" download aria-label="下载 ${escape(a.name)}">↓</a>${canDeleteFile?`<button class="delete-attachment" data-file-delete="${a.id}" aria-label="删除附件 ${escape(a.name)}">×</button>`:''}</div>`).join(''):'<div class="attachment-empty">将交付物留在任务旁。<small>文档、表格、图片或压缩包 · 单个文件最大 20 MB</small></div>'}<p id="upload-status" role="status"></p></section></div>${canEdit?`<div class="drawer-save"><button type="button" class="danger" id="delete-task" ${isNew?'hidden':''}>删除${summary?'阶段及子任务':'任务'}</button><button class="primary" type="submit" form="task-form">${isNew?'创建任务':'保存更改'}</button></div>`:''}</section>`;
+  return `<div class="drawer-backdrop"></div><section class="task-drawer" role="dialog" aria-modal="true" aria-label="任务详情"><div class="drawer-top"><div><div class="eyebrow">${isNew?'NEW TASK':'TASK DETAILS'} ${!isNew?' / '+allRows.find(r=>r.task.id===t.id)?.wbs:''}</div><h2>${isNew?'创建子任务':escape(t.title)}</h2></div><div class="drawer-actions">${!historical&&canEdit?'<button class="small-btn" id="task-history">查看版本（保留草稿）</button>':''}<span class="drawer-mode">${canEdit?'可编辑':'只读'}</span><button class="drawer-close" aria-label="关闭任务详情">×</button></div></div><div class="drawer-scroll"><form id="task-form"><fieldset ${canEdit?'':'disabled'}><h3 class="drawer-section-title">任务信息</h3>${field('任务名称','title',t.title,'text','required maxlength="200"')}<div class="form-grid"><label>任务类型<select name="kind" ${summary&&!isNew?'disabled':''}>${[['task','普通任务'],['milestone','里程碑'],['summary','汇总阶段']].map(([value,label])=>`<option value="${value}" ${t.kind===value?'selected':''}>${label}</option>`).join('')}</select></label>${field('负责人','owner',t.owner,'text','list="member-list" maxlength="100"')}<datalist id="member-list">${snapshot.members.map((m:any)=>`<option value="${escape(m.user?.name)}"></option>`).join('')}</datalist></div><label>所属目录<select name="parentId"><option value="">一级目录</option>${t.parentId&&!allRows.some(r=>r.task.id===t.parentId&&r.task.kind!=='milestone')?`<option value="${escape(t.parentId)}" selected>原目录已变更，请重新选择</option>`:''}${allRows.filter(r=>!descendants.has(r.task.id)&&r.task.kind!=='milestone').map(r=>`<option value="${r.task.id}" ${t.parentId===r.task.id?'selected':''}>${r.wbs} · ${escape(r.task.title)}</option>`).join('')}</select></label><h3 class="drawer-section-title">计划与依赖</h3>${summary&&!isNew?'<div class="summary-explanation">阶段日期、工期和完成度由子任务自动汇总。前置关系在普通任务和里程碑上设置。</div>':`<div class="form-grid">${field('开始日期','start',t.start,'date','min="2000-01-01" max="2100-12-31"')}${field('结束日期','end',t.end,'date','min="2000-01-01" max="2100-12-31"')}${field('工期 / 工作日','duration',t.duration??1,'number','min="0" max="2600" required')}${field('完成度 / %','progress',t.progress??0,'number','min="0" max="100" required')}</div><label>任务状态<select name="status"><option ${t.status==='计划中'?'selected':''}>计划中</option><option ${t.status==='进行中'?'selected':''}>进行中</option><option ${t.status==='已暂停'?'selected':''}>已暂停</option><option ${t.status==='已完成'?'selected':''}>已完成</option></select></label><label>前置任务 / FS<select name="predecessors" multiple size="4">${(t.predecessors||[]).filter(id=>!allRows.some(r=>r.task.id===id&&r.task.kind!=='summary')).map(id=>`<option value="${escape(id)}" selected>原前置任务已变更，请重新选择</option>`).join('')}${allRows.filter(r=>r.task.id!==t.id&&r.task.kind!=='summary').map(r=>`<option value="${r.task.id}" ${t.predecessors?.includes(r.task.id)?'selected':''}>${r.wbs} · ${escape(r.task.title)}</option>`).join('')}</select><small>按住 Ctrl / ⌘ 多选或取消；任务会顺延至前置任务完成后的工作日。</small></label>`}<h3 class="drawer-section-title">交付说明</h3><label>备注<textarea name="notes" rows="4" maxlength="20000" placeholder="交付要求、验收标准、工作记录…">${escape(t.notes)}</textarea></label></fieldset><p class="form-error" role="alert">${escape(!historical?edit?.message||'':'')}</p>${!historical&&edit?.dirty&&t.id?`<div class="conflict-panel"><button type="button" class="small-btn" id="task-latest">查看最新数据（保留草稿）</button>${edit.latest?`<pre style="white-space:pre-wrap;max-height:200px;overflow:auto">${escape(latestTaskText(edit.latest.value,edit.latest.version))}</pre><button type="button" class="small-btn" id="task-retry">保留草稿，选择所示版本后重试</button>`:''}</div>`:''}</form><section class="attachment-section"><div class="attachment-heading"><h3>任务附件 <span>${files.length}</span></h3>${canUpload&&!isNew&&snapshot.executionTaskIds?.includes(t.id)?'<label class="small-btn upload">↑ 上传附件<input type="file" id="task-upload" multiple hidden></label>':''}</div>${historical?'<p class="muted">历史版本仅保留计划数据。请返回当前计划查看附件。</p>':isNew||!snapshot.executionTaskIds?.includes(t.id)?'<p class="muted">任务采用为执行计划后即可上传附件。</p>':files.length?files.map((a:any)=>`<div class="attachment-row"><span class="file-icon">▤</span><div><a href="/api/attachments/${a.id}" download>${escape(a.name)}</a><small>${(a.size/1024).toFixed(1)} KB · ${escape(new Date(a.created_at).toLocaleDateString('sv-SE'))}</small></div><a class="download-icon" href="/api/attachments/${a.id}" download aria-label="下载 ${escape(a.name)}">↓</a>${canDeleteFile?`<button class="delete-attachment" data-file-delete="${a.id}" aria-label="删除附件 ${escape(a.name)}">×</button>`:''}</div>`).join(''):'<div class="attachment-empty">将交付物留在任务旁。<small>文档、表格、图片或压缩包 · 单个文件最大 20 MB</small></div>'}<p id="upload-status" role="status"></p></section></div>${canEdit?`<div class="drawer-save"><button type="button" class="danger" id="delete-task" ${isNew?'hidden':''}>删除${summary?'阶段及子任务':'任务'}</button><button class="primary" type="submit" form="task-form">${isNew?'保存任务到草稿':'保存到草稿'}</button></div>`:''}</section>`;
  }
- function openTask(taskId:string){if(!leaveEditor())return;drawerHidden=false;rememberScroll();selected=taskId;const task=snapshot.tasks.find((t:Task)=>t.id===taskId);if(task&&!historical)setEdit(new EditDraft(task,snapshot.revision));render();(document.querySelector('.drawer-close') as HTMLElement)?.focus();}
- function newTask(parentId:string|null){if(!leaveEditor())return;drawerHidden=false;rememberScroll();selected=null;setEdit(new EditDraft<Task>({id:'',projectId,title:'',parentId,order:0,kind:parentId?'task':'summary',owner:user.name,start:null,end:null,duration:1,progress:0,status:'计划中',notes:'',predecessors:[]},snapshot.revision));render();(document.querySelector('#task-form input') as HTMLInputElement)?.focus();}
+ async function openTask(taskId:string){if(!await leaveEditor())return;drawerHidden=false;rememberScroll();selected=taskId;const task=snapshot.tasks.find((t:Task)=>t.id===taskId);if(task&&!historical)setEdit(new EditDraft(task,snapshot.revision));render();(document.querySelector('.drawer-close') as HTMLElement)?.focus();}
+ async function newTask(parentId:string|null){if(!await leaveEditor())return;drawerHidden=false;rememberScroll();selected=null;setEdit(new EditDraft<Task>({id:'',projectId,title:'',parentId,order:0,kind:parentId?'task':'summary',owner:user.name,start:null,end:null,duration:1,progress:0,status:'计划中',notes:'',predecessors:[]},snapshot.revision));render();(document.querySelector('#task-form input') as HTMLInputElement)?.focus();}
+ function bindWorkflow(){
+  const on=(selector:string,event:string,fn:(event:any)=>void)=>document.querySelectorAll(selector).forEach(node=>node.addEventListener(event,fn,{signal}));
+  on('#enter-editing','click',()=>enterEditing());
+  on('#edit-from-history','click',()=>enterEditing(historical!));
+  on('#adopt-draft','click',adoptDraft);
+  on('#exit-editing','click',()=>{if(!transition)void exitEditing().catch(e=>notify(e.message));});
+  on('#retry-autosave','click',()=>{saveError='';void flushInputs();});
+ }
  function bind(){
   const on=(selector:string,event:string,fn:(event:any)=>void)=>document.querySelectorAll(selector).forEach(node=>node.addEventListener(event,fn,{signal}));
+  bindWorkflow();
   on('#task-history','click',()=>{if(busy||attachmentBusy)return;captureDraft();drawerHidden=true;selected=null;render();history.openPanel();});
   on('#resume-task-draft','click',()=>{drawerHidden=false;selected=edit?.value.id||null;render();});
   on('#project-members','click',()=>{if(busy||attachmentBusy){notify('正在保存或上传，请等待结果');return;}options.manageMembers(canManage);});on('#project-settings','click',()=>{if(busy||attachmentBusy){notify('正在保存或上传，请等待结果');return;}editProject();});on('#add-task','click',()=>newTask(snapshot.tasks.find((t:Task)=>!t.parentId)?.id||null));
@@ -258,11 +371,11 @@ export async function mountTiming(options:Options){
   on('#previous-window','click',()=>moveWindow(-1));
   on('#next-window','click',()=>moveWindow(1));
   on('#refresh-timing','click',()=>{rememberScroll();load().catch(e=>notify(e.message));});
-  on('[data-inline]','change',e=>{const input=e.currentTarget as HTMLInputElement;if(input.closest<HTMLElement>('.task-pane')?.hidden)return;const field=input.dataset.inline!;let value:any=input.value;if(['duration','progress'].includes(field))value=Number(value);if(field==='start'&&!value)value=null;pendingFocus={selector:'[data-inline="'+field+'"][data-task="'+input.dataset.task+'"]',start:input.selectionStart,end:input.selectionEnd};mutate(input.dataset.task,{[field]:value});});
+  on('[data-inline]','input',e=>{const input=e.currentTarget as HTMLInputElement;if(!canEdit)return;const field=input.dataset.inline!;let value:any=input.value;if(['duration','progress'].includes(field))value=Number(value);if(['start','end'].includes(field)&&!value)value=null;const id=input.dataset.task!;pendingInline.set(id,{...pendingInline.get(id),[field]:value});saveError='';updateSaveStatus();queueAutosave();});
   const left=document.querySelector<HTMLElement>('.task-pane')!,right=document.querySelector<HTMLElement>('.timeline-pane')!;
   left.addEventListener('scroll',()=>{if(!left.hidden&&!right.hidden&&right.scrollTop!==left.scrollTop)right.scrollTop=left.scrollTop;},{signal});right.addEventListener('scroll',()=>{if(!left.hidden&&!right.hidden&&left.scrollTop!==right.scrollTop)left.scrollTop=right.scrollTop;},{signal});
   right.addEventListener('pointerdown',startPan,{signal});
-  on('.drawer-close,.drawer-backdrop','click',()=>{if(!leaveEditor())return;selected=null;render();});
+  on('.drawer-close,.drawer-backdrop','click',async()=>{if(!await leaveEditor())return;selected=null;render();});
   on('#task-form','input',captureDraft);on('#task-form','change',captureDraft);
   on('#task-latest','click',async()=>{captureDraft();const pending=edit;if(!pending)return;const current=reads.begin(()=>!signal.aborted&&!busy&&edit===pending);try{const latest=await request(`projects/${projectId}/timing`);if(!current())return;const task=latest.tasks.find((t:Task)=>t.id===pending.value.id);if(!task)throw Error('任务已删除，草稿仍保留，不能重新创建替代记录');snapshot=latest;pending.review(task,latest.revision);render();}catch(error:any){if(!current())return;pending.fail(error.message);notify(error.message);render();}});
   on('#task-retry','click',()=>{if(!edit)return;edit.useReviewedVersion();render();});
@@ -286,7 +399,7 @@ export async function mountTiming(options:Options){
    try{if(kind.value==='milestone'){duration.value='0';end.value=start.value;}else if(start.value){start.value=nextWorkday(start.value);if(e.target.name==='end'&&end.value)duration.value=String(workdays(start.value,end.value));else end.value=finish(start.value,Math.max(1,Number(duration.value)));}form.querySelector('.form-error')!.textContent='';}catch(error:any){form.querySelector('.form-error')!.textContent=error.message;}
    captureDraft();
   });
-  on('#delete-task','click',async()=>{if(!confirm('删除此任务及其全部子任务和附件？此操作无法撤销。'))return;const taskId=selected!;await mutate(taskId,{},'DELETE','drawer');});
+  on('#delete-task','click',async()=>{if(!confirm('从草稿移除此任务及其全部子任务？附件会保留。'))return;const taskId=selected!;await mutate(taskId,{},'DELETE','drawer');});
   on('#task-upload','change',async e=>{
    const files=Array.from((e.target as HTMLInputElement).files||[]);if(!files.length||attachmentBusy)return;const taskId=selected!;attachmentBusy=true;
    const status=document.querySelector('#upload-status')!;let count=0;
@@ -325,7 +438,9 @@ export async function mountTiming(options:Options){
   element.addEventListener('pointermove',move);element.addEventListener('pointerup',up);element.addEventListener('pointercancel',cancel);
  }
  document.addEventListener('keydown',e=>{if(document.querySelector('#modal')?.childElementCount)return;if(e.key==='Escape'&&(selected||edit)){if(!leaveEditor())return;selected=null;render();}if(e.key==='Tab'){const drawer=document.querySelector('.task-drawer');if(!drawer)return;const focusable=Array.from(drawer.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')).filter(el=>!el.closest('[hidden]'));const first=focusable[0],last=focusable.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}},{signal});
- window.addEventListener('beforeunload',e=>{if(edit?.dirty||busy||attachmentBusy){e.preventDefault();e.returnValue='';}},{signal});
- root.addEventListener('click',e=>{const link=(e.target as HTMLElement).closest('a');if(link&&!link.hasAttribute('download')&&!link.href.includes('/api/attachments/')&&(edit?.dirty||busy||attachmentBusy)&&!leaveEditor()){e.preventDefault();e.stopPropagation();}},{signal,capture:true});
+ window.addEventListener('beforeunload',e=>{if(edit?.dirty||pendingInline.size||busy||attachmentBusy){e.preventDefault();e.returnValue='';}},{signal});
+ root.addEventListener('click',async e=>{const link=(e.target as HTMLElement).closest('a');if(!link||link.hasAttribute('download')||link.href.includes('/api/attachments/'))return;
+  if(edit?.dirty||pendingInline.size||busy||attachmentBusy){e.preventDefault();e.stopPropagation();if(!await leaveEditor())return;releaseOnLeave();location.assign(link.href);}
+ },{signal,capture:true});
  try{await load();}catch(error:any){if(error.name==='AbortError')return;root.innerHTML=shell(`<main class="timing-gate"><h1>暂时无法打开项目</h1><p>${escape(error.message)}</p><a class="primary" href="/">返回项目空间</a></main>`);}
 }

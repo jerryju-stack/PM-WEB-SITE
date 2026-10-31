@@ -27,7 +27,7 @@ export async function exportTimingPdf(plan:PlanSnapshot,version:TimingVersion|nu
  for(let window=0;window<windows;window++)for(const section of vertical){
   doc.addPage();page++;const ws=start,we=end;
   text(plan.project.title+' 项目排期',margin,19,W-2*margin,17);
-  const versionLabel=version?`${version.kind==='version'?'V'+version.sequence:version.kind==='baseline'?'基线':'最终版本'} · ${version.name} · 来源修订 ${version.revision}`:`当前计划 · 修订 ${plan.project.taskRevision}`;
+  const versionLabel=version?`${version.kind==='version'?'V'+version.sequence:version.kind==='baseline'?'基线':version.kind==='unadopted'?'未采用':version.kind==='previous'?'原执行计划':'最终版本'} · ${version.name} · 来源修订 ${version.revision}`:`当前计划 · 修订 ${plan.project.taskRevision}`;
   text(versionLabel,margin,47,W-2*margin,10);text(`状态日期 ${statusDate}（固定）    ${iso(ws)} 至 ${iso(we-DAY)}`,margin,65,W-2*margin,9,'#64677d');
   const top=87,headerH=51;doc.rect(margin,top,W-margin*2,headerH).fill('#303247');
   let x=margin;heads.forEach((h,i)=>{text(h,x+3,top+19,widths[i]-6,9,'#ffffff',i===1?'left':'center');x+=widths[i];});

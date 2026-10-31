@@ -379,3 +379,5 @@ body.panning-timeline,body.panning-timeline * { cursor: grabbing !important; use
   .timing-workspace .gantt-tool-right { width: 100%; }
   .timing-workspace .gantt-controls-row { gap: 8px; }
 }
+
+.timing-draft-choice{max-width:640px;border:1px solid #d7dfda;border-radius:12px;padding:24px;color:inherit}.timing-draft-choice::backdrop{background:#162b244d}.timing-draft-choice .history-actions{flex-wrap:wrap;gap:8px}

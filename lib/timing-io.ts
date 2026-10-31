@@ -4,12 +4,13 @@ import type { WriteContext } from './audit.ts';
 import type { Task } from './schedule.ts';
 import { schedule,workdays,nextWorkday,template } from './schedule.ts';
 import { timingVersions,comparePlans } from './timing-versions.ts';
+import { timingDrafts } from './timing-drafts.ts';
 import { invalid,objectInput } from './contracts.ts';
 import { exportWorkbook,readWorkbook,orderedTasks } from './timing-workbook.ts';
 import type { InputIssue } from './timing-workbook.ts';
 import { exportTimingPdf } from './timing-pdf.ts';
 export function timingIO(store:Store){
- const plans=timingVersions(store);
+ const plans=timingVersions(store),drafts=timingDrafts(store);
  // Starting a server on a restored snapshot must not change its data digest.
  // Initialize this internal key only when Excel is actually exported/imported.
  function signingKey(){
@@ -20,13 +21,13 @@ export function timingIO(store:Store){
  }
  function exportPlan(projectId:string,versionId:string,format:string){
   const {plan,version}=versionId==='current'?{plan:plans.current(projectId),version:null}:plans.get(projectId,versionId);
-  const label=version?`${version.kind==='version'?'V'+version.sequence:version.kind==='baseline'?'基线':'最终版本'}-${version.name}-r${version.revision}`:`当前-r${plan.project.taskRevision}`;
+  const label=version?`${version.kind==='version'?'V'+version.sequence:version.kind==='baseline'?'基线':version.kind==='unadopted'?'未采用':version.kind==='previous'?'原执行计划':'最终版本'}-${version.name}-r${version.revision}`:`当前-r${plan.project.taskRevision}`;
   return {filename:`${plan.project.title}-${label}.${format}`.replace(/[\\/:*?"<>|\x00-\x1f]/g,'_'),buffer:format==='xlsx'?exportWorkbook(plan,version,signingKey()).buffer:exportTimingPdf(plan,version)};
  }
  function preview(projectId:string,value:unknown,context:WriteContext){
   const body=objectInput(value);if(typeof body.file!=='string'||body.file.length>12*1024*1024||!/^[a-zA-Z0-9+/]*={0,2}$/.test(body.file))invalid('请上传原框架 .xlsx 文件（最大 8 MB）');
   if(body.mode!==undefined&&!['update','new'].includes(String(body.mode)))invalid('导入模式无效');
-  const parsed=readWorkbook(Buffer.from(body.file as string,'base64'),signingKey()),before=plans.current(projectId),old=before.tasks,byId=new Map(old.map(t=>[t.id,t])),issues:InputIssue[]=[...parsed.issues],isNew=body.mode==='new';
+  const parsed=readWorkbook(Buffer.from(body.file as string,'base64'),signingKey()),before=drafts.view(projectId,body,context),old=before.tasks,byId=new Map(old.map(t=>[t.id,t])),issues:InputIssue[]=[...parsed.issues],isNew=body.mode==='new';
   if(isNew&&old.length&&JSON.stringify(old)!==JSON.stringify(template(projectId)))invalid('建立新计划仅适用于空计划或未编辑的默认八阶段；请选择更新现有计划');
   const issue=(row:number,field:string,message:string)=>issues.push({sheet:'任务编辑',row,field,message});
   const existing=orderedTasks(old).map(r=>({id:r.task.id,wbs:r.wbs,title:r.task.title}));
@@ -82,24 +83,26 @@ export function timingIO(store:Store){
   const comparison=comparePlans(before,{...before,tasks:normalized});
   const dates=inputDates.map(r=>{const t=normalized.find(t=>t.id===r.id);return {...r,finalStart:t?.start??null,finalEnd:t?.end??null,deleted:deletions.has(r.id),shifted:!!t&&(t.start!==r.inputStart||t.end!==r.inputEnd)};});
   for(const t of normalized)if(![...rowId.values()].includes(t.id)){const b=byId.get(t.id);if(b&&(b.start!==t.start||b.end!==t.end))dates.push({row:0,id:t.id,wbs:'保留项',title:t.title,inputStart:b.start,inputEnd:b.end,finalStart:t.start,finalEnd:t.end,deleted:false,shifted:true});}
-  const result={issues,matches,source:parsed.source??null,mode:isNew?'new':'update',comparison,dates,deletions:[...deletions].map(id=>({id,title:byId.get(id)?.title??tasks.find(t=>t.id===id)?.title??id})),affectedDependencies,revision:store.revision(projectId),projectVersion:before.project.version,existing,requiresMapping:matches.some(m=>m.choiceRequired),previewId:null as string|null};
+  const result={issues,matches,source:parsed.source??null,mode:isNew?'new':'update',comparison,dates,deletions:[...deletions].map(id=>({id,title:byId.get(id)?.title??tasks.find(t=>t.id===id)?.title??id})),affectedDependencies,revision:before.project.taskRevision,projectVersion:before.project.version,existing,requiresMapping:matches.some(m=>m.choiceRequired),previewId:null as string|null};
   if(!issues.length&&!result.requiresMapping){
    const id=randomUUID(),expires=new Date(Date.now()+24*3600000).toISOString();store.db.prepare('DELETE FROM timing_imports WHERE result IS NULL AND expires_at<?').run(new Date().toISOString());
-   store.db.prepare('INSERT INTO timing_imports(id,project_id,actor_uid,revision,project_version,expires_at,payload) VALUES(?,?,?,?,?,?,?)').run(id,projectId,context.actorUid!,result.revision,result.projectVersion,expires,JSON.stringify(normalized));result.previewId=id;
+   store.db.prepare('INSERT INTO timing_imports(id,project_id,actor_uid,revision,project_version,expires_at,payload,draft_id,lease_token) VALUES(?,?,?,?,?,?,?,?,?)').run(id,projectId,context.actorUid!,result.revision,result.projectVersion,expires,JSON.stringify(normalized),body.draftId as string,body.leaseToken as string);result.previewId=id;
   }return result;
  }
  function confirm(projectId:string,value:unknown,context:WriteContext){
   const body=objectInput(value);if(typeof body.previewId!=='string')invalid('请先生成并核对导入预览');
   const row=store.db.prepare('SELECT * FROM timing_imports WHERE id=? AND project_id=? AND actor_uid=?').get(body.previewId as string,projectId,context.actorUid!) as any;if(!row)invalid('预览不存在，请重新上传核对',404);
+  drafts.check(projectId,body,context);
+  if(row.lease_token!==body.leaseToken||row.draft_id!==body.draftId)invalid('预览不属于当前编辑会话，请重新生成预览',409);
   if(row.result)return {...JSON.parse(row.result),replayed:true,removed:[]};
   if(row.expires_at<new Date().toISOString())invalid('导入预览已过期，请重新上传核对',409);
-  if(store.revision(projectId)!==row.revision||store.get('projects',projectId).version!==row.project_version)invalid('预览后服务器计划已更新，请重新生成预览并核对',409);
-  const values=JSON.parse(row.payload) as Task[],ids=new Set(values.map(t=>t.id)),removed=store.db.prepare('SELECT a.* FROM attachments a JOIN tasks t ON a.task_id=t.id WHERE t.project_id=?').all(projectId).filter((a:any)=>!ids.has(a.task_id));
-  const result={revision:row.revision+1,replayed:false};
-  store.saveTasks(projectId,values,row.revision,context,()=>{
-   if(store.get('projects',projectId).version!==row.project_version)invalid('项目已更新，请重新核对',409);
+  const before=drafts.view(projectId,body,context);
+  if(before.project.taskRevision!==row.revision||before.project.version!==row.project_version)invalid('预览后草稿已更新，请重新生成预览并核对',409);
+  let result:any;
+  drafts.save(projectId,JSON.parse(row.payload) as Task[],body,context,()=>{
+   result={revision:drafts.state(projectId).draft!.revision,replayed:false};
    store.db.prepare("UPDATE timing_imports SET result=?,payload='[]' WHERE id=?").run(JSON.stringify(result),row.id);
-  });return {...result,removed};
+  });return {...result,removed:[]};
  }
  return {exportPlan,preview,confirm};
 }
