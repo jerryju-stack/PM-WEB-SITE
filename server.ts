@@ -180,6 +180,7 @@ const server=http.createServer(async(req,res)=>{
       }
       if(parts[1]==='projects'&&parts[2]&&parts[3]==='tasks') {
         permissions.requireRead(user,parts[2]);permissions.requireCap(user,'timingEdit',parts[2]);
+        if(parts[4]){const owner=store.db.prepare('SELECT project_id FROM tasks WHERE id=?').get(parts[4]);if(owner&&owner.project_id!==parts[2])fail('资源不存在或无权访问',404);}
         const result=drafts.mutate(parts[2],parts[4],method,body,context);
         await eraseFiles(result.removed);const {removed,...response}=result;return json(200,response);
       }

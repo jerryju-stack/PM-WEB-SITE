@@ -19,7 +19,13 @@ async function setup(){
 test('two-project matrix, Engineering capabilities, aggregation and direct-ID bypasses are enforced on server',async()=>{
   const f=await setup(),db=new DatabaseSync(join(f.directory,'project-station.sqlite'));
   try{
-    const task=(await f.call(`projects/${f.p}/tasks`,{revision:0,title:'matrix leaf'},f.cookie)).data.id;
+    const start=(await f.call(`projects/${f.p}/timing/draft/start`,{},f.cookie)).data;
+    const session={leaseToken:start.leaseToken,draftId:start.draft.id,revision:start.draft.revision};
+    const added=await f.call(`projects/${f.p}/tasks`,{...session,title:'matrix leaf'},f.cookie);assert.equal(added.status,200);const task=added.data.id;
+    assert.equal((await f.call(`projects/${f.p}/timing/draft/adopt`,{...session,revision:added.data.revision},f.cookie)).status,200);
+    await f.call(`projects/${f.p}/timing/draft/release`,{leaseToken:start.leaseToken},f.cookie);
+    const editorStart=(await f.call(`projects/${f.p}/timing/draft/start`,{},f.users.editor.cookie)).data;
+    const editorSession={leaseToken:editorStart.leaseToken,draftId:editorStart.draft.id,revision:editorStart.draft.revision};
     const taskQ=(await f.call(`projects/${f.q}/timing`,undefined,f.cookie)).data.tasks[0].id;
     for(const key of ['manager','editor','engineer','viewer']){
       assert.equal((await f.call(`projects/${f.p}/timing`,undefined,f.users[key].cookie)).status,200);
@@ -33,8 +39,8 @@ test('two-project matrix, Engineering capabilities, aggregation and direct-ID by
       assert.equal((await f.call('users',undefined,cookie)).status,cookie?403:401);
     }
     for(const key of ['viewer','engineer','outsider'])assert.equal((await f.call(`projects/${f.p}/tasks/${task}`,{revision:0,title:'forbidden',role:'admin',userUid:f.users.manager.id},f.users[key].cookie,'PATCH')).status,key==='outsider'?404:403);
-    assert.equal((await f.call(`projects/${f.p}/tasks/${taskQ}`,{revision:0,title:'cross'},f.users.editor.cookie,'PATCH')).status,404);
-    assert.equal((await f.call(`projects/${f.p}/tasks/${task}`,{revision:1,predecessors:[taskQ]},f.users.editor.cookie,'PATCH')).status,400);
+    assert.equal((await f.call(`projects/${f.p}/tasks/${taskQ}`,{...editorSession,title:'cross'},f.users.editor.cookie,'PATCH')).status,404);
+    assert.equal((await f.call(`projects/${f.p}/tasks/${task}`,{...editorSession,predecessors:[taskQ]},f.users.editor.cookie,'PATCH')).status,400);
     const upload=(path:string,cookie:string)=>fetch(f.base+'/api/'+path,{method:'POST',headers:{Cookie:cookie,'X-File-Name':'engineering.txt'},body:'Engineering bytes'});
     const uploaded=await upload(`projects/${f.p}/tasks/${task}/attachments`,f.users.engineer.cookie);assert.equal(uploaded.status,201);const file=(await uploaded.json()).id;
     assert.equal((await upload(`projects/${f.p}/tasks/${taskQ}/attachments`,f.users.engineer.cookie)).status,404);
