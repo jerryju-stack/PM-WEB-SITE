@@ -93,7 +93,9 @@ test('HTTP history and comparison reuse project access; only timing editors can 
     const saved=await call(`projects/${p}/timing/versions`,body,cookie);assert.equal(saved.status,201);const id=saved.data.version.id;
     assert.equal((await call(`projects/${p}/timing/versions`,body,cookie)).status,200);
     assert.equal((await call(`projects/${p}/timing/versions/${id}`,{name:'overwrite'},cookie,'PATCH')).status,405);
-    assert.equal((await call(`projects/${p}/timing/versions/${id}`,{},cookie,'DELETE')).status,405);
+    assert.equal((await call(`projects/${p}/timing/versions/${id}`,{},cookie,'DELETE')).status,200);
+    assert.equal((await call(`projects/${p}/timing/versions/${id}`,undefined,cookie)).status,404);
+    assert.equal((await call(`projects/${p}/timing/versions/${id}/restore`,{},cookie)).status,200);
     const started=(await call(`projects/${p}/timing/draft/start`,{},cookie)).data;
     const session={leaseToken:started.leaseToken,draftId:started.draft.id,revision:started.draft.revision};
     const changed=await call(`projects/${p}/tasks/${current.tasks[0].id}`,{...session,owner:'updated'},cookie,'PATCH');assert.equal(changed.status,200);
@@ -109,9 +111,28 @@ test('HTTP history and comparison reuse project access; only timing editors can 
     assert.equal(viewer.status,200);
     const viewerCookie=(await call('login',{id:'d1viewer',password:'D1-Viewer-Only-2026'})).cookie;
     assert.equal((await call(`projects/${p}/timing/versions/${id}`,undefined,viewerCookie)).status,200);
+    assert.equal((await call(`projects/${p}/timing/versions/${id}`,{},viewerCookie,'DELETE')).status,403);
+    assert.equal((await call(`projects/${p}/timing/versions/${id}/restore`,{},viewerCookie)).status,403);
+    assert.equal((await call(`projects/${p2}/timing/versions/${id}`,{},cookie,'DELETE')).status,404);
     assert.equal((await call(`projects/${p}/timing/versions`,{...body,revision:changed.data.revision,requestKey:randomUUID()},viewerCookie)).status,403);
     await call(`projects/${p}/access`,{timing:'members'},cookie,'PATCH');
     assert.equal((await call(`projects/${p}/timing/versions`,undefined,viewerCookie)).status,404);
     assert.equal((await call(`projects/${p}/timing/compare?from=${id}&to=current`,undefined,viewerCookie)).status,404);
   }finally{await f.stop();}
+});
+
+test('D8 history deletion is reversible and atomic, retains snapshots and never reuses V numbers',()=>{
+ const {store,plans,body,context}=fixture();try{
+  const baseline=plans.save('p',body(),context).version;
+  const version=plans.save('p',body({kind:'version',name:'V one'}),context).version;
+  const live=plans.current('p');
+  store.db.exec("CREATE TRIGGER reject_history_delete BEFORE INSERT ON audit_events WHEN NEW.resource='timing-versions' AND NEW.operation='delete' BEGIN SELECT RAISE(ABORT,'history delete failure'); END");
+  assert.throws(()=>plans.remove('p',version.id,context),/history delete failure/);assert.equal(plans.get('p',version.id).version.id,version.id);
+  store.db.exec('DROP TRIGGER reject_history_delete');
+  assert.equal(plans.remove('p',version.id,context).replayed,false);assert.equal(plans.remove('p',version.id,context).replayed,true);
+  assert.ok(!plans.list('p').some(v=>v.id===version.id));assert.throws(()=>plans.get('p',version.id),{status:404});assert.throws(()=>plans.compare('p',version.id,'current'),{status:404});
+  assert.ok(store.db.prepare('SELECT 1 FROM timing_versions WHERE id=?').get(version.id));assert.deepEqual(plans.current('p'),live);assert.equal(plans.get('p',baseline.id).version.kind,'baseline');
+  assert.equal(plans.save('p',body({kind:'version',name:'V two'}),context).version.sequence,2);
+  plans.restore('p',version.id,context);assert.equal(plans.get('p',version.id).version.sequence,1);assert.equal(plans.list('p').length,3);
+ }finally{store.db.close();}
 });

@@ -123,6 +123,14 @@ export const migrations: Migration[] = [{
       ALTER TABLE timing_imports ADD COLUMN draft_id TEXT;
       ALTER TABLE timing_imports ADD COLUMN lease_token TEXT;`);
   },
+}, {
+  version:8,name:'timing_version_deletion_records',
+  up(db){
+    db.exec(`CREATE TABLE timing_version_deletions (
+      version_id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      deleted_at TEXT NOT NULL, actor_uid TEXT NOT NULL REFERENCES identities(uid)
+    ); CREATE INDEX timing_version_deletions_project ON timing_version_deletions(project_id);`);
+  },
 }];
 /** Each migration and its marker commit together. Failed migrations can be retried on next open. */
 export function applyMigrations(db: DatabaseSync, steps: Migration[] = migrations) {

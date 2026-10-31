@@ -22,8 +22,29 @@ const metadata = (row:any):TimingVersion => ({ id:row.id,projectId:row.project_i
 
 export function timingVersions(store:Store) {
   const row = (projectId:string,id:string) => store.db.prepare('SELECT v.*,a.source_version,a.source_revision FROM timing_versions v LEFT JOIN timing_adoptions a ON a.version_id=v.id WHERE v.project_id=? AND v.id=?').get(projectId,id) ?? store.db.prepare('SELECT * FROM timing_archives WHERE project_id=? AND id=?').get(projectId,id);
+  const isDeleted=(projectId:string,id:string)=>!!store.db.prepare('SELECT 1 FROM timing_version_deletions WHERE project_id=? AND version_id=?').get(projectId,id);
+  function remove(projectId:string,id:string,context:WriteContext){
+    return store.transaction(()=>{
+      const found=row(projectId,id);if(!found)invalid('计划版本不存在',404);
+      if(!context.actorUid)invalid('请先登录',401);
+      if(isDeleted(projectId,id))return {deleted:id,replayed:true};
+      store.db.prepare('INSERT INTO timing_version_deletions VALUES(?,?,?,?)').run(id,projectId,new Date().toISOString(),context.actorUid!);
+      audit(store.db,context,'timing-versions',id,metadata(found),null,{projectId,historyOnly:true});
+      return {deleted:id,replayed:false};
+    });
+  }
+  function restore(projectId:string,id:string,context:WriteContext){
+    return store.transaction(()=>{
+      const found=row(projectId,id);if(!found)invalid('计划版本不存在',404);
+      if(!context.actorUid)invalid('请先登录',401);
+      if(!isDeleted(projectId,id))return {restored:id,replayed:true};
+      store.db.prepare('DELETE FROM timing_version_deletions WHERE project_id=? AND version_id=?').run(projectId,id);
+      audit(store.db,context,'timing-versions',id,null,metadata(found),{projectId,historyOnly:true});
+      return {restored:id,replayed:false};
+    });
+  }
   function get(projectId:string,id:string) {
-    const found=row(projectId,id);if(!found)invalid('计划版本不存在',404);
+    const found=row(projectId,id);if(!found||isDeleted(projectId,id))invalid('计划版本不存在或已删除',404);
     return {version:metadata(found),plan:JSON.parse(String(found!.snapshot)) as PlanSnapshot};
   }
   function current(projectId:string):PlanSnapshot {
@@ -60,7 +81,7 @@ export function timingVersions(store:Store) {
     const left=select(from),right=select(to);
     return {from:{...left,plan:undefined,revision:left.plan.project.taskRevision},to:{...right,plan:undefined,revision:right.plan.project.taskRevision},...comparePlans(left.plan,right.plan)};
   }
-  return {current,get,save,compare,list:(projectId:string)=>[...store.db.prepare('SELECT v.*,a.source_version,a.source_revision FROM timing_versions v LEFT JOIN timing_adoptions a ON a.version_id=v.id WHERE v.project_id=?').all(projectId),...store.db.prepare('SELECT * FROM timing_archives WHERE project_id=?').all(projectId)].sort((a:any,b:any)=>String(b.saved_at).localeCompare(String(a.saved_at))).map(metadata)};
+  return {current,get,save,compare,remove,restore,list:(projectId:string)=>[...store.db.prepare('SELECT v.*,a.source_version,a.source_revision FROM timing_versions v LEFT JOIN timing_adoptions a ON a.version_id=v.id WHERE v.project_id=?').all(projectId),...store.db.prepare('SELECT * FROM timing_archives WHERE project_id=?').all(projectId)].filter((v:any)=>!isDeleted(projectId,v.id)).sort((a:any,b:any)=>String(b.saved_at).localeCompare(String(a.saved_at))).map(metadata)};
 }
 
 export type PlanChange = {field:string;label:string;before:string;after:string;delta?:number|null};

@@ -48,7 +48,7 @@ test('D8 adoption is atomic, idempotent, versioned, keeps lease and baseline, sk
   store.db.exec("CREATE TRIGGER reject_d8 BEFORE INSERT ON timing_versions WHEN NEW.kind='version' BEGIN SELECT RAISE(ABORT,'adoption failure'); END");
   assert.throws(()=>drafts.adopt('p',request,context),/adoption failure/);assert.deepEqual(store.tasks('p'),before);assert.equal(store.revision('p'),revision);assert.deepEqual(drafts.state('p').draft,draft);assert.equal(plans.list('p').length,1);
   store.db.exec('DROP TRIGGER reject_d8');const adopted=drafts.adopt('p',request,context);
-  assert.equal(adopted.sequence,1);assert.equal(drafts.adopt('p',request,context).replayed,true);assert.equal(plans.list('p').length,2,'identical baseline covers original execution');
+  assert.equal(adopted.sequence,1);assert.equal(drafts.adopt('p',request,context).replayed,true);plans.remove('p',adopted.versionId,context);assert.equal(drafts.adopt('p',request,context).replayed,true);plans.restore('p',adopted.versionId,context);assert.equal(plans.list('p').length,2,'identical baseline covers original execution');
   assert.deepEqual(plans.get('p',base.id).plan.tasks,before);assert.equal(plans.get('p',adopted.versionId).version.sourceRevision,revision);
   assert.equal(store.tasks('p').length,1);assert.ok(store.db.prepare('SELECT 1 FROM attachments WHERE id=?').get('retained-file'));assert.equal(store.db.prepare('SELECT 1 FROM file_jobs WHERE id=?').get('retained-file'),undefined);
   assert.equal(drafts.state('p').draft,null);drafts.check('p',{leaseToken:token},context);

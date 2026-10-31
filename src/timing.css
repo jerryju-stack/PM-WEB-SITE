@@ -381,3 +381,23 @@ body.panning-timeline,body.panning-timeline * { cursor: grabbing !important; use
 }
 
 .timing-draft-choice{max-width:640px;border:1px solid #d7dfda;border-radius:12px;padding:24px;color:inherit}.timing-draft-choice::backdrop{background:#162b244d}.timing-draft-choice .history-actions{flex-wrap:wrap;gap:8px}
+
+/* D8 increment: one preview bar, with tools expanded inside the same module. */
+.timing-workspace .timing-plan-module{overflow:hidden}
+.timing-workspace .plan-preview-bar{padding:14px 18px;gap:20px;flex-wrap:wrap}
+.timing-workspace .plan-preview-bar>.plan-preview-summary{display:grid;gap:6px;min-width:0;flex:1}
+.timing-workspace .plan-preview-title,.timing-workspace .plan-preview-meta{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.timing-workspace .plan-preview-label{font-size:11px;color:var(--ds-muted)}
+.timing-workspace .plan-preview-meta small{font-size:11px;overflow-wrap:anywhere}
+.timing-workspace .plan-preview-meta .save-state{font-size:11px;margin:0;color:var(--ds-secondary)}
+.timing-workspace .plan-preview-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.timing-workspace .plan-preview-edit{border-left:1px solid var(--ds-border);padding-left:12px}
+.timing-workspace .plan-preview-tools .chosen{border-color:var(--ds-accent);color:var(--ds-accent);background:var(--ds-hover)}
+.timing-workspace .timing-plan-module>.plan-tool-panel{margin:0;border:0;border-top:1px solid var(--ds-border);border-radius:0;background:transparent}
+.timing-workspace .plan-tool-panel[hidden]{display:none}
+.timing-workspace .plan-tool-panel>.history-content{border:0;padding:16px 18px 18px}
+.timing-workspace .plan-panel-title{font-size:13px;margin:0 0 12px}
+.timing-workspace .plan-tool-panel .history-reason{margin:16px 0 8px}
+.timing-workspace .version-row-actions{display:flex;gap:8px;flex-wrap:wrap}
+.timing-workspace [data-history-restore]{margin-left:10px}
+@media(max-width:760px){.timing-workspace .plan-preview-bar{padding:12px;gap:12px}.timing-workspace .plan-preview-bar>.plan-preview-summary{flex-basis:100%}.timing-workspace .plan-preview-controls{width:100%;justify-content:space-between;gap:10px}.timing-workspace .plan-preview-tools,.timing-workspace .plan-preview-edit{flex-wrap:wrap}.timing-workspace .plan-preview-edit{padding-left:0;border-left:0;margin-left:auto}}

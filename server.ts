@@ -126,7 +126,9 @@ const server=http.createServer(async(req,res)=>{
           if(method==='GET'&&parts.length===5)return json(200,{versions:plans.list(projectId)});
           if(method==='GET'&&parts.length===6)return json(200,plans.get(projectId,parts[5]));
           if(method==='POST'&&parts.length===5){permissions.requireCap(user,'timingEdit',projectId);const result=plans.save(projectId,body,context);return json(result.replayed?200:201,result);}
-          fail('已保存版本只读，不支持此方法',405);
+          if(method==='DELETE'&&parts.length===6){permissions.requireCap(user,'timingEdit',projectId);return json(200,plans.remove(projectId,parts[5],context));}
+          if(method==='POST'&&parts.length===7&&parts[6]==='restore'){permissions.requireCap(user,'timingEdit',projectId);return json(200,plans.restore(projectId,parts[5],context));}
+          fail('已保存版本内容只读，不支持此方法',405);
         }
         if(parts[4]==='compare'&&parts.length===5&&method==='GET') {
           const from=url.searchParams.get('from'),to=url.searchParams.get('to');if(!from||!to)fail('请选择来源和目标计划');
