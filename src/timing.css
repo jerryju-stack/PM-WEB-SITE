@@ -353,7 +353,6 @@
 .timing-workspace .schedule-separator:focus-visible { outline: 2px solid var(--ds-accent); }
 body.resizing-schedule,body.resizing-schedule * { cursor: col-resize !important; user-select: none !important; }
 .timing-workspace .resizing-layout :is(.task-pane,.timeline-pane) { pointer-events: none; }
-.timing-workspace .layout-controls { display: flex; flex-direction: column; gap: 4px; max-width: 100%; }
 .timing-workspace .layout-switch { display: flex; flex-wrap: wrap; }
 .timing-workspace .layout-switch button { white-space: nowrap; }
 .timing-workspace .layout-hint { font-size: 11px; line-height: 16px; color: var(--ds-muted); }
@@ -364,3 +363,19 @@ body.resizing-schedule,body.resizing-schedule * { cursor: col-resize !important;
 .timing-workspace .timeline-pane { cursor: grab; }
 .timing-workspace .timeline-pane:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: -2px; }
 body.panning-timeline,body.panning-timeline * { cursor: grabbing !important; user-select: none !important; }
+
+/* D7 increment: align actions independently of their secondary hint/status line. */
+.timing-workspace .gantt-tools { align-items: flex-start; }
+.timing-workspace .gantt-tool-left { min-height: 36px; }
+.timing-workspace .gantt-tool-right { flex-direction: column; align-items: flex-start; gap: 6px; }
+.timing-workspace .gantt-controls-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; max-width: 100%; }
+.timing-workspace .gantt-controls-row .zoom-switch { align-items: center; height: 36px; flex-shrink: 0; }
+.timing-workspace .timeline-navigation { display: flex; align-items: center; gap: 4px; }
+.timing-workspace .gantt-controls-row :is(.tool-btn,.small-btn) { height: 36px; }
+.timing-workspace .gantt-tool-note { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+.timing-workspace .save-state { margin: 0; }
+.timing-workspace .save-state[hidden] { display: none; }
+@media(max-width:760px) {
+  .timing-workspace .gantt-tool-right { width: 100%; }
+  .timing-workspace .gantt-controls-row { gap: 8px; }
+}
