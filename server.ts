@@ -108,10 +108,10 @@ const server=http.createServer(async(req,res)=>{
           fail('接口不存在',404);
         }
         if(parts[4]==='export'&&parts.length===5&&method==='GET') {
-          const format=url.searchParams.get('format')??'xlsx';if(!['xlsx','pdf'].includes(format))fail('请选择 Excel 或 PDF');
+          const format=url.searchParams.get('format')??'xlsx';if(!['xlsx','pdf','xml'].includes(format))fail('请选择 Excel、PDF 或 Project XML');
           const output=timingFiles.exportPlan(projectId,url.searchParams.get('version')??'current',format),buffer=await output.buffer;
           recheck();permissions.requireRead(user,projectId);
-          res.writeHead(200,{'Content-Type':format==='xlsx'?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'application/pdf','Content-Length':buffer.length,'Content-Disposition':`attachment; filename="timing.${format}"; filename*=UTF-8''${encodeURIComponent(output.filename).replaceAll("'",'%27')}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});res.end(buffer);return;
+          res.writeHead(200,{'Content-Type':format==='xlsx'?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':format==='xml'?'application/xml; charset=utf-8':'application/pdf','Content-Length':buffer.length,'Content-Disposition':`attachment; filename="timing.${format}"; filename*=UTF-8''${encodeURIComponent(output.filename).replaceAll("'",'%27')}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});res.end(buffer);return;
         }
         if(parts[4]==='template'&&parts.length===5&&method==='GET') {
           res.writeHead(200,{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':'attachment; filename="Timing_Sample_v3_Print.xlsx"','Cache-Control':'private, no-store'});res.end(TEMPLATE);return;

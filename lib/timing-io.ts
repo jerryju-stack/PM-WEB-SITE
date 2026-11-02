@@ -9,6 +9,7 @@ import { invalid,objectInput } from './contracts.ts';
 import { exportWorkbook,readWorkbook,orderedTasks } from './timing-workbook.ts';
 import type { InputIssue } from './timing-workbook.ts';
 import { exportTimingPdf } from './timing-pdf.ts';
+import { exportProjectXml,readProjectXml } from './timing-project.ts';
 export function timingIO(store:Store){
  const plans=timingVersions(store),drafts=timingDrafts(store);
  // Starting a server on a restored snapshot must not change its data digest.
@@ -20,14 +21,16 @@ export function timingIO(store:Store){
   return String(store.db.prepare('SELECT value FROM meta WHERE key=?').get('timing-workbook-key')!.value);
  }
  function exportPlan(projectId:string,versionId:string,format:string){
+  if(!['xlsx','pdf','xml'].includes(format))invalid('请选择 Excel、PDF 或 Project XML');
   const {plan,version}=versionId==='current'?{plan:plans.current(projectId),version:null}:plans.get(projectId,versionId);
   const label=version?`${version.kind==='version'?'V'+version.sequence:version.kind==='baseline'?'基线':version.kind==='unadopted'?'未采用':version.kind==='previous'?'原执行计划':'最终版本'}-${version.name}-r${version.revision}`:`当前-r${plan.project.taskRevision}`;
-  return {filename:`${plan.project.title}-${label}.${format}`.replace(/[\\/:*?"<>|\x00-\x1f]/g,'_'),buffer:format==='xlsx'?exportWorkbook(plan,version,signingKey()).buffer:exportTimingPdf(plan,version)};
+  return {filename:`${plan.project.title}-${label}.${format}`.replace(/[\\/:*?"<>|\x00-\x1f]/g,'_'),buffer:format==='xlsx'?exportWorkbook(plan,version,signingKey()).buffer:format==='xml'?exportProjectXml(plan):exportTimingPdf(plan,version)};
  }
  function preview(projectId:string,value:unknown,context:WriteContext){
-  const body=objectInput(value);if(typeof body.file!=='string'||body.file.length>12*1024*1024||!/^[a-zA-Z0-9+/]*={0,2}$/.test(body.file))invalid('请上传原框架 .xlsx 文件（最大 8 MB）');
+  const body=objectInput(value);if(typeof body.file!=='string'||body.file.length>12*1024*1024||!/^[a-zA-Z0-9+/]*={0,2}$/.test(body.file))invalid('请上传 Excel 或 Project XML 文件（最大 8 MB）');
+  if(body.format!==undefined&&!['xlsx','xml'].includes(String(body.format)))invalid('请选择 Excel 或 Project XML；不支持原生 .mpp');
   if(body.mode!==undefined&&!['update','new'].includes(String(body.mode)))invalid('导入模式无效');
-  const parsed=readWorkbook(Buffer.from(body.file as string,'base64'),signingKey()),before=drafts.view(projectId,body,context),old=before.tasks,byId=new Map(old.map(t=>[t.id,t])),issues:InputIssue[]=[...parsed.issues],isNew=body.mode==='new';
+  const parsed=body.format==='xml'?readProjectXml(Buffer.from(body.file as string,'base64')):readWorkbook(Buffer.from(body.file as string,'base64'),signingKey()),before=drafts.view(projectId,body,context),old=before.tasks,byId=new Map(old.map(t=>[t.id,t])),issues:InputIssue[]=[...parsed.issues],isNew=body.mode==='new';
   if(isNew&&old.length&&JSON.stringify(old)!==JSON.stringify(template(projectId)))invalid('建立新计划仅适用于空计划或未编辑的默认八阶段；请选择更新现有计划');
   const issue=(row:number,field:string,message:string)=>issues.push({sheet:'任务编辑',row,field,message});
   const existing=orderedTasks(old).map(r=>({id:r.task.id,wbs:r.wbs,title:r.task.title}));
@@ -53,7 +56,7 @@ export function timingIO(store:Store){
    const id=rowId.get(row.row)!,original=byId.get(id),parentWbs=row.wbs.includes('.')?row.wbs.slice(0,row.wbs.lastIndexOf('.')):null,parent=parentWbs?byWbs.get(parentWbs):null;
    if(parentWbs&&!parent)issue(row.row,'WBS',`缺少父任务 ${parentWbs}`);
    const children=parsed.rows.filter(r=>r.wbs.startsWith(row.wbs+'.'));
-   const summary=children.length>0||(original?.kind==='summary'&&!row.start&&!row.end)||(!parentWbs&&!row.start&&!row.end&&row.kind!=='milestone');
+   const summary=body.format==='xml'?row.raw.projectSummary===true||children.length>0:children.length>0||(original?.kind==='summary'&&!row.start&&!row.end)||(!parentWbs&&!row.start&&!row.end&&row.kind!=='milestone');
    const predecessors:string[]=[];
    for(const wbs of row.predecessors){const p=byWbs.get(wbs);if(!p)issue(row.row,'前置任务 WBS',`无法解析 ${wbs}（须指向文件中的任务）`);else predecessors.push(rowId.get(p.row)!);}
    const siblings=parsed.rows.filter(r=>(r.wbs.includes('.')?r.wbs.slice(0,r.wbs.lastIndexOf('.')):null)===parentWbs).sort((a,b)=>+a.wbs.split('.').at(-1)!-+b.wbs.split('.').at(-1)!);
@@ -64,7 +67,7 @@ export function timingIO(store:Store){
     if(row.start&&row.end&&row.end>=row.start){try{duration=row.kind==='milestone'?0:workdays(nextWorkday(row.start),row.end);if(row.kind!=='milestone'&&duration<1)issue(row.row,'输入结束','日期范围内没有工作日');}catch(e:any){issue(row.row,'输入日期',e.message);}}
    }
    if(summary&&predecessors.length)issue(row.row,'前置任务 WBS','汇总阶段不能设置前置任务');
-   const task:Task={...(original??{notes:'',status:'计划中'}),id,projectId,parentId:parent?rowId.get(parent.row)!:null,order:siblings.indexOf(row),title:row.title,owner:row.owner,kind:summary?'summary':row.kind,start:row.start,end:row.end,duration,progress:row.progress,predecessors};
+   const task:Task={...(original??{notes:'',status:'计划中'}),...(body.format==='xml'&&typeof row.raw.notes==='string'?{notes:row.raw.notes}:{}),id,projectId,parentId:parent?rowId.get(parent.row)!:null,order:siblings.indexOf(row),title:row.title,owner:row.owner,kind:summary?'summary':row.kind,start:row.start,end:row.end,duration,progress:row.progress,predecessors};
    const index=tasks.findIndex(t=>t.id===id);if(index>=0)tasks[index]=task;else tasks.push(task);
    if(row.operation==='删除')deletions.add(id);
    inputDates.push({row:row.row,id,wbs:row.wbs,title:row.title,inputStart:row.start,inputEnd:row.end});
@@ -83,7 +86,7 @@ export function timingIO(store:Store){
   const comparison=comparePlans(before,{...before,tasks:normalized});
   const dates=inputDates.map(r=>{const t=normalized.find(t=>t.id===r.id);return {...r,finalStart:t?.start??null,finalEnd:t?.end??null,deleted:deletions.has(r.id),shifted:!!t&&(t.start!==r.inputStart||t.end!==r.inputEnd)};});
   for(const t of normalized)if(![...rowId.values()].includes(t.id)){const b=byId.get(t.id);if(b&&(b.start!==t.start||b.end!==t.end))dates.push({row:0,id:t.id,wbs:'保留项',title:t.title,inputStart:b.start,inputEnd:b.end,finalStart:t.start,finalEnd:t.end,deleted:false,shifted:true});}
-  const result={issues,matches,source:parsed.source??null,mode:isNew?'new':'update',comparison,dates,deletions:[...deletions].map(id=>({id,title:byId.get(id)?.title??tasks.find(t=>t.id===id)?.title??id})),affectedDependencies,revision:before.project.taskRevision,projectVersion:before.project.version,existing,requiresMapping:matches.some(m=>m.choiceRequired),previewId:null as string|null};
+  const result={issues,matches,warnings:'warnings' in parsed?parsed.warnings:[],source:parsed.source??null,mode:isNew?'new':'update',comparison,dates,deletions:[...deletions].map(id=>({id,title:byId.get(id)?.title??tasks.find(t=>t.id===id)?.title??id})),affectedDependencies,revision:before.project.taskRevision,projectVersion:before.project.version,existing,requiresMapping:matches.some(m=>m.choiceRequired),previewId:null as string|null};
   if(!issues.length&&!result.requiresMapping){
    const id=randomUUID(),expires=new Date(Date.now()+24*3600000).toISOString();store.db.prepare('DELETE FROM timing_imports WHERE result IS NULL AND expires_at<?').run(new Date().toISOString());
    store.db.prepare('INSERT INTO timing_imports(id,project_id,actor_uid,revision,project_version,expires_at,payload,draft_id,lease_token) VALUES(?,?,?,?,?,?,?,?,?)').run(id,projectId,context.actorUid!,result.revision,result.projectVersion,expires,JSON.stringify(normalized),body.draftId as string,body.leaseToken as string);result.previewId=id;
