@@ -1,0 +1,186 @@
+{
+  "step": "P05",
+  "recordedAt": "2026-11-17T14:56:50.613Z",
+  "sourceSha256": "58c80ce9b4d11b700e49b0e2e9baf6b5814dfcc869fe033b792a5cb2b6c14741",
+  "controlSha256": "13575788d15e93b2db298d308cf58911a56152824984dfeb5b84e77f024d5d26",
+  "mappingVersion": "P05.1",
+  "schema": 11,
+  "status": "passed_with_historical_unexplained",
+  "counts": {
+    "products": 4,
+    "periods": 11,
+    "markets": 8,
+    "lines": 6,
+    "sources": 25320,
+    "inputs": 3441,
+    "annualRows": 2156,
+    "externalLinks": 57,
+    "excludedTemplates": 9
+  },
+  "checks": {
+    "scope": 30,
+    "source_ranges": 513,
+    "control_pin": 2,
+    "development": 133,
+    "bom": 28,
+    "line_labor_oh": 148,
+    "product_totals": 28,
+    "product_cash": 176,
+    "investment_nwc": 172,
+    "product_pl": 288,
+    "commercial": 120,
+    "returns": 31,
+    "exec_cash": 88,
+    "exec_pl": 40,
+    "import_raw": 21939,
+    "import_formula": 21939,
+    "import_missing": 21939,
+    "import_cache": 14156,
+    "import_normalization": 3441,
+    "import_scope": 2
+  },
+  "products": [
+    {
+      "key": "center",
+      "sheet": "Financials RC Retr_FS1",
+      "periods": 11,
+      "excelControls": "passed",
+      "importNormalization": "passed",
+      "websiteCalculation": "not_implemented"
+    },
+    {
+      "key": "double_buckle",
+      "sheet": "Financials Dbl BK+SW",
+      "periods": 11,
+      "excelControls": "passed",
+      "importNormalization": "passed",
+      "websiteCalculation": "not_implemented"
+    },
+    {
+      "key": "outboard",
+      "sheet": "Financials RO Ret_SPR4",
+      "periods": 11,
+      "excelControls": "passed",
+      "importNormalization": "passed",
+      "websiteCalculation": "not_implemented"
+    },
+    {
+      "key": "single_buckle",
+      "sheet": "Financials Sgl BK+SW",
+      "periods": 11,
+      "excelControls": "passed",
+      "importNormalization": "passed",
+      "websiteCalculation": "not_implemented"
+    }
+  ],
+  "sourceReadOnly": true,
+  "previewDidNotWriteFinance": true,
+  "confirmationAtomic": true,
+  "baselineFrozen": true,
+  "currentForecastAutoSelected": false,
+  "duplicateConfirmationReceiptEqual": true,
+  "duplicateConfirmationTablesEqual": true,
+  "backupRestoreTablesEqual": true,
+  "pending": [
+    {
+      "code": "station_actual",
+      "status": "to_collect"
+    },
+    {
+      "code": "prototype_actual",
+      "status": "to_collect"
+    },
+    {
+      "code": "budget_actual",
+      "status": "to_collect"
+    },
+    {
+      "code": "operating_bridge",
+      "status": "pending_finance"
+    }
+  ],
+  "historicalUnexplained": [
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U61",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U64",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U67",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U70",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U71",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U72",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U77",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U78",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U79",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U81",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_error",
+      "sheet": "1-2# RR OTB_SPR4.1 Reverse (EU)",
+      "cell": "AF30",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    }
+  ],
+  "websiteValues": {
+    "value": null,
+    "status": "not_implemented"
+  },
+  "privateAmountsExportedToRepository": false
+}

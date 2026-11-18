@@ -1,0 +1,76 @@
+{
+  "step": "P12",
+  "browser": "Chrome",
+  "viewports": [
+    [
+      1440,
+      1000
+    ],
+    [
+      390,
+      844
+    ]
+  ],
+  "checks": [
+    "T6 displays separate 400 actual, 50 draft, 500 ETC and 900 EAC",
+    "A preparer with approval capabilities cannot confirm their own posting",
+    "Independent approval consumes matching ETC with zero operating or cash impact",
+    "A later payment updates settlements while T6 actual, EAC and operating cash remain unchanged",
+    "Saved budget action matches the preview digest",
+    "Stale approval fails with a revision conflict after another posting",
+    "Saved budget action matches the preview digest",
+    "Retry after a lost confirmation response returns the original receipt",
+    "Saved budget action matches the preview digest",
+    "Cross-period correction adjusts actual in 2028 and retains the original cutoff ETC",
+    "Saved budget action matches the preview digest",
+    "Overrun exceeds EAC budget by 130 while actual-cost budget balance stays 570",
+    "Saved budget action matches the preview digest",
+    "Overrun source returns to the dashboard with the same forecast",
+    "Revoked approver cannot replay a prior receipt even with read access",
+    "Removed membership also blocks a fresh version read",
+    "Saved budget action matches the preview digest",
+    "A separate project can establish a different currency precision, tax and recognition policy",
+    "Narrow-screen budget preserves T6 and stays within the viewport",
+    "No uncaught page errors"
+  ],
+  "reconciliation": {
+    "T6": {
+      "approved_budget": "1000.00",
+      "confirmed_actual": "400.00",
+      "draft_cost": "50.00",
+      "etc": "500.00",
+      "eac": "900.00",
+      "budget_balance": "600.00",
+      "completion_variance": "100.00"
+    },
+    "accepted": {
+      "approved_budget": "1000.00",
+      "confirmed_actual": "450.00",
+      "draft_cost": "0.00",
+      "etc": "450.00",
+      "eac": "900.00",
+      "budget_balance": "550.00",
+      "completion_variance": "100.00"
+    },
+    "corrected": {
+      "approved_budget": "1000.00",
+      "confirmed_actual": "430.00",
+      "draft_cost": "0.00",
+      "etc": "450.00",
+      "eac": "880.00",
+      "budget_balance": "570.00",
+      "completion_variance": "120.00"
+    },
+    "overrun": {
+      "approved_budget": "1000.00",
+      "confirmed_actual": "430.00",
+      "draft_cost": "0.00",
+      "etc": "700.00",
+      "eac": "1130.00",
+      "budget_balance": "570.00",
+      "completion_variance": "-130.00"
+    },
+    "recordedPayments": "125.00",
+    "projectOperatingImpact": "0.00"
+  }
+}

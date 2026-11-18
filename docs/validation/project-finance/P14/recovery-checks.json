@@ -1,0 +1,127 @@
+{
+  "step": "P14",
+  "codeVersion": "3f89b16d07bd94f3dc6bc2b21b49b0690f7acdc8",
+  "migrations": [
+    {
+      "version": 1,
+      "name": "resource_versions"
+    },
+    {
+      "version": 2,
+      "name": "audit_and_attachment_recovery"
+    },
+    {
+      "version": 3,
+      "name": "permanent_account_identity"
+    },
+    {
+      "version": 4,
+      "name": "project_capability_groups"
+    },
+    {
+      "version": 5,
+      "name": "timing_plan_versions"
+    },
+    {
+      "version": 6,
+      "name": "timing_import_receipts"
+    },
+    {
+      "version": 7,
+      "name": "shared_timing_draft_and_lease"
+    },
+    {
+      "version": 8,
+      "name": "timing_version_deletion_records"
+    },
+    {
+      "version": 9,
+      "name": "history_metadata_and_content_index"
+    },
+    {
+      "version": 10,
+      "name": "resource_card_projections"
+    },
+    {
+      "version": 11,
+      "name": "project_finance_contract"
+    }
+  ],
+  "verifiedTables": {
+    "schema_migrations": 11,
+    "meta": 1,
+    "settings": 1,
+    "users": 7,
+    "projects": 7,
+    "articles": 1,
+    "tasks": 48,
+    "dependencies": 0,
+    "attachments": 1,
+    "audit_events": 159,
+    "file_jobs": 0,
+    "identities": 7,
+    "permission_groups": 17,
+    "project_members": 6,
+    "project_access": 7,
+    "timing_versions": 0,
+    "timing_imports": 0,
+    "timing_drafts": 0,
+    "timing_edit_leases": 0,
+    "timing_archives": 0,
+    "timing_adoptions": 0,
+    "timing_version_deletions": 0,
+    "timing_history_index": 0,
+    "projects_cards": 7,
+    "articles_cards": 1,
+    "finance_versions": 18,
+    "finance_products": 24,
+    "finance_markets": 22,
+    "finance_lines": 28,
+    "finance_periods": 65,
+    "finance_sources": 50714,
+    "finance_inputs": 7343,
+    "finance_events": 15,
+    "finance_project_state": 7,
+    "finance_changes": 83,
+    "finance_receipts": 83
+  },
+  "sameTablesAndDigests": true,
+  "attachmentFiles": 1,
+  "financeVersionsRecomputed": 18,
+  "frozenVersions": 6,
+  "frozenCqa": {
+    "products": 4,
+    "periods": 11,
+    "fullPrecisionAndSourceSnapshotMatch": true
+  },
+  "sameVersionPointersAndRevisions": true,
+  "samePeriodAmountsBudgetAndReturns": true,
+  "restoredApi": {
+    "login": true,
+    "timingAndLesson": true,
+    "attachmentBytes": true,
+    "financeCalculation": true,
+    "timingBridge": true,
+    "budgetAfterApproval": true,
+    "projectIsolation": true
+  },
+  "elapsedMs": {
+    "managedBackup": 8551,
+    "verify": 4067,
+    "restoreCopy": 8582,
+    "restoreThroughApi": 20303
+  },
+  "policyTargets": {
+    "format": 1,
+    "rpoMinutes": 1440,
+    "rtoMinutes": 480,
+    "maxDowntimeMinutes": 5,
+    "retentionDays": 30,
+    "timezone": "Asia/Shanghai",
+    "windows": [
+      "00:30",
+      "12:30"
+    ],
+    "rtoClock": "elapsed-24x7"
+  }
+}

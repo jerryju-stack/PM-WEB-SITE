@@ -1,0 +1,33 @@
+{
+  "before": [
+    {
+      "left": 0,
+      "pane": "task-pane",
+      "top": 43719
+    },
+    {
+      "left": 0,
+      "pane": "timeline-pane",
+      "top": 43719
+    }
+  ],
+  "after": [
+    {
+      "left": 0,
+      "pane": "task-pane",
+      "top": 43719
+    },
+    {
+      "left": 0,
+      "pane": "timeline-pane",
+      "top": 43719
+    }
+  ],
+  "input": {
+    "end": 14,
+    "focused": true,
+    "start": 14,
+    "value": "E5-SCROLL-LAST"
+  },
+  "status": "共享草稿已保存 · 19:44:06"
+}

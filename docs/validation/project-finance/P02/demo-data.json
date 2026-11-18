@@ -1,0 +1,63 @@
+{
+  "version": "P02-A-v1.1-en",
+  "fictional": true,
+  "dictionary": "P01.1",
+  "currency": "CNY",
+  "moneyUnit": "CNY major unit",
+  "periods": [
+    "Year 0",
+    "Year 1 end",
+    "Year 2 end"
+  ],
+  "discountRate": 0.1,
+  "approved": {
+    "version": "B01",
+    "ctSeconds": 30,
+    "revenue": 300000,
+    "fullCostProfit": 24000,
+    "cash": [
+      -100000,
+      60000,
+      60000
+    ]
+  },
+  "forecast": {
+    "version": "F02",
+    "ctSeconds": 36,
+    "revenue": 300000,
+    "fullCostProfit": 22000,
+    "cash": [
+      -100000,
+      58000,
+      60000
+    ]
+  },
+  "change": {
+    "people": 2,
+    "hourlyRate": 60,
+    "annualGoodUnits": 10000,
+    "cyclesPerUnit": 1,
+    "efficiency": 1,
+    "taxOrInventoryChange": 0,
+    "cashTiming": "End of Year 1"
+  },
+  "budget": {
+    "approved": 100000,
+    "confirmed": 40000,
+    "baselineEtc": 50000,
+    "forecastEtc": 52000
+  },
+  "display": {
+    "desktop": [
+      1440,
+      1000
+    ],
+    "mobile": [
+      390,
+      844
+    ],
+    "font": "Existing system font stack, tabular numerals"
+  },
+  "selectedDesign": "A",
+  "language": "en"
+}

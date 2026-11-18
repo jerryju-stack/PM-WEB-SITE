@@ -1,0 +1,87 @@
+{
+  "step": "P11",
+  "status": "passed",
+  "source": "Authorized P05 workbook and frozen source snapshot",
+  "sourceReadOnly": true,
+  "products": [
+    {
+      "product": "center",
+      "financials": "Financials RC Retr_FS1",
+      "periods": 11,
+      "checks": [
+        "Capital payments 294–300",
+        "Compensation 430",
+        "Net capital 302",
+        "CNY and USD project returns"
+      ]
+    },
+    {
+      "product": "double_buckle",
+      "financials": "Financials Dbl BK+SW",
+      "periods": 11,
+      "checks": [
+        "Capital payments 294–300",
+        "Compensation 430",
+        "Net capital 302",
+        "CNY and USD project returns"
+      ]
+    },
+    {
+      "product": "outboard",
+      "financials": "Financials RO Ret_SPR4",
+      "periods": 11,
+      "checks": [
+        "Capital payments 294–300",
+        "Compensation 430",
+        "Net capital 302",
+        "CNY and USD project returns"
+      ]
+    },
+    {
+      "product": "single_buckle",
+      "financials": "Financials Sgl BK+SW",
+      "periods": 11,
+      "checks": [
+        "Capital payments 294–300",
+        "Compensation 430",
+        "Net capital 302",
+        "CNY and USD project returns"
+      ]
+    }
+  ],
+  "currencies": [
+    "CNY",
+    "USD"
+  ],
+  "archiveChecks": {
+    "scope": 30,
+    "source_ranges": 513,
+    "control_pin": 2,
+    "bom": 28,
+    "line_labor_oh": 148,
+    "development": 104,
+    "product_totals": 28,
+    "product_cash": 176,
+    "investment_nwc": 172,
+    "product_pl": 288,
+    "commercial": 120,
+    "returns": 31,
+    "exec_cash": 88,
+    "exec_pl": 40,
+    "p06_period_scope": 4,
+    "p06_product_period": 2376,
+    "p06_quantity": 88,
+    "p06_unit_driver": 440,
+    "p06_product_returns": 64,
+    "p06_peak_period": 10,
+    "p06_product_total": 32,
+    "p06_scope": 2,
+    "p06_project_cash": 44,
+    "p06_project_cumulative": 44,
+    "p06_project_returns": 16,
+    "p06_pending_mapping": 2
+  },
+  "capitalAdditionalChecks": 132,
+  "aggregate": "Four-product cash and project NPV / IRR / payback / peak",
+  "privateAmountsExportedToRepository": false
+}

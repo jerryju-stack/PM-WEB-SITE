@@ -1,5 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
+import {indexMissingHistory} from './history-index.ts';
+import {createFinanceSchema} from './finance-schema.ts';
 export type Migration = { version: number; name: string; up: (db: DatabaseSync) => void };
 export const migrations: Migration[] = [{
   version: 1, name: 'resource_versions',
@@ -131,6 +133,38 @@ export const migrations: Migration[] = [{
       deleted_at TEXT NOT NULL, actor_uid TEXT NOT NULL REFERENCES identities(uid)
     ); CREATE INDEX timing_version_deletions_project ON timing_version_deletions(project_id);`);
   },
+}, {
+  version:9,name:'history_metadata_and_content_index',
+  up(db){
+    db.exec(`CREATE INDEX timing_versions_page ON timing_versions(project_id,saved_at DESC,id DESC);
+      CREATE INDEX timing_archives_page ON timing_archives(project_id,saved_at DESC,id DESC);
+      CREATE TABLE timing_history_index(source TEXT NOT NULL CHECK(source IN ('version','archive')),id TEXT NOT NULL,project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,digest TEXT NOT NULL,PRIMARY KEY(source,id));
+      CREATE INDEX timing_history_digest ON timing_history_index(project_id,digest);
+      CREATE TRIGGER timing_version_index_cleanup AFTER DELETE ON timing_versions BEGIN DELETE FROM timing_history_index WHERE source='version' AND id=OLD.id; END;
+      CREATE TRIGGER timing_archive_index_cleanup AFTER DELETE ON timing_archives BEGIN DELETE FROM timing_history_index WHERE source='archive' AND id=OLD.id; END;`);
+    indexMissingHistory(db);
+  },
+}, {
+  version:10,name:'resource_card_projections',
+  up(db){
+    // Separate rows avoid fetching/decoding large body JSON for lists. Triggers cover all writers,
+    // including derived Timing progress, legacy seed, attachment recovery and offline tools.
+    for(const table of ['projects','articles']){
+      const projection=table+'_cards';
+      db.exec(`CREATE TABLE ${projection}(id TEXT PRIMARY KEY REFERENCES ${table}(id) ON DELETE CASCADE,summary TEXT NOT NULL,search_text TEXT NOT NULL,category TEXT NOT NULL,status TEXT NOT NULL);`);
+      const fields=['title','description','category','date','startDate','owner','status','progress'];
+      const summary=`json_object('id',NEW.id,${fields.map(k=>`'${k}',json_extract(NEW.data,'$.${k}')`).join(',')})`;
+      const write=`INSERT INTO ${projection}(id,summary,search_text,category,status) VALUES(NEW.id,${summary},COALESCE(json_extract(NEW.data,'$.title'),'')||' '||COALESCE(json_extract(NEW.data,'$.description'),'')||' '||COALESCE(json_extract(NEW.data,'$.category'),''),COALESCE(json_extract(NEW.data,'$.category'),''),COALESCE(json_extract(NEW.data,'$.status'),'')) ON CONFLICT(id) DO UPDATE SET summary=excluded.summary,search_text=excluded.search_text,category=excluded.category,status=excluded.status;`;
+      db.exec(`CREATE TRIGGER ${projection}_insert AFTER INSERT ON ${table} BEGIN ${write} END;
+        CREATE TRIGGER ${projection}_update AFTER UPDATE OF data ON ${table} BEGIN ${write} END;`);
+      // Backfill without updating resources or their versions/audit history.
+      db.exec(`INSERT INTO ${projection} SELECT id,json_object('id',id,${fields.map(k=>`'${k}',json_extract(data,'$.${k}')`).join(',')}),COALESCE(json_extract(data,'$.title'),'')||' '||COALESCE(json_extract(data,'$.description'),'')||' '||COALESCE(json_extract(data,'$.category'),''),COALESCE(json_extract(data,'$.category'),''),COALESCE(json_extract(data,'$.status'),'') FROM ${table};
+        CREATE INDEX ${projection}_category ON ${projection}(category,id);CREATE INDEX ${projection}_status ON ${projection}(status,id);`);
+    }
+  },
+}, {
+  version:11,name:'project_finance_contract',
+  up:createFinanceSchema,
 }];
 /** Each migration and its marker commit together. Failed migrations can be retried on next open. */
 export function applyMigrations(db: DatabaseSync, steps: Migration[] = migrations) {

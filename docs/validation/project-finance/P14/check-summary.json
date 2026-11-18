@@ -1,0 +1,22 @@
+{
+  "step": "P14",
+  "recordedDate": "2026-11-18",
+  "runtimeGit": "3f89b16d07bd94f3dc6bc2b21b49b0690f7acdc8",
+  "command": "node --experimental-strip-types scripts/check.ts",
+  "typecheck": "passed",
+  "tests": 245,
+  "passed": 245,
+  "failed": 0,
+  "skipped": 0,
+  "gitDiffCheck": "passed",
+  "browserChecks": {
+    "integrated": 45,
+    "workflows": 174
+  },
+  "chineseDefinitions": {
+    "rendered": 85,
+    "contract": 139,
+    "unresolved": 0
+  },
+  "technicalAcceptance": "passed"
+}

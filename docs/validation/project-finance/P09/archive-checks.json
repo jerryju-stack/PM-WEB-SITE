@@ -1,0 +1,62 @@
+{
+  "step": "P09",
+  "input": "Authorized P05 snapshot",
+  "calculationVersion": "P09.1",
+  "historicalActuals": "to_collect",
+  "checks": [
+    {
+      "product": "double_buckle",
+      "repeatsPerPiece": 2,
+      "sharedLines": [
+        "AME!E35:G35",
+        "AME!E36:G36"
+      ],
+      "financials": "Financials Dbl BK+SW",
+      "archivedControls": [
+        "D590",
+        "C594:D595",
+        "C599:D600",
+        "C640",
+        "F102"
+      ],
+      "year": "year-2020",
+      "archivedDesign": "passed",
+      "syntheticMeasuredReplacement": "passed",
+      "independentChecks": [
+        "SOP labor",
+        "annual unit labor",
+        "annual direct labor",
+        "consolidated period cash flow",
+        "project NPV",
+        "unchanged other periods"
+      ]
+    },
+    {
+      "product": "single_buckle",
+      "repeatsPerPiece": 1,
+      "sharedLines": [
+        "AME!E35:G35",
+        "AME!E36:G36"
+      ],
+      "financials": "Financials Sgl BK+SW",
+      "archivedControls": [
+        "D590",
+        "C594:D595",
+        "C599:D600",
+        "C640",
+        "F102"
+      ],
+      "year": "year-2020",
+      "archivedDesign": "passed",
+      "syntheticMeasuredReplacement": "passed",
+      "independentChecks": [
+        "SOP labor",
+        "annual unit labor",
+        "annual direct labor",
+        "consolidated period cash flow",
+        "project NPV",
+        "unchanged other periods"
+      ]
+    }
+  ]
+}

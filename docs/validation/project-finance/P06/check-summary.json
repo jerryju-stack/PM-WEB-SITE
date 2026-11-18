@@ -1,0 +1,33 @@
+{
+  "step": "P06",
+  "recordedAt": "2026-11-18T09:44:30.427Z",
+  "node": "v24.22.1",
+  "calculationVersion": "P06.1",
+  "requestedCommand": "npm run check",
+  "command": "node --experimental-strip-types scripts/check.ts",
+  "commandEquivalence": "package.json scripts.check; npm executable unavailable in this runtime",
+  "exitCode": 0,
+  "typecheck": "passed",
+  "tests": 220,
+  "passed": 220,
+  "failed": 0,
+  "skipped": 0,
+  "cancelled": 0,
+  "p06Tests": 13,
+  "gitDiffCheck": "passed",
+  "authorizedSampleCommand": "node --experimental-strip-types scripts/verify-finance-p06.ts --record",
+  "p06ReconciliationAssertions": 3122,
+  "independentPublicExamples": "passed",
+  "httpEnvironment": "isolated local DATA_DIR; loopback permitted after sandbox EACCES",
+  "implementationSha256": {
+    "lib/finance-calculation-types.ts": "b01b52b5e05ce24a6a3ada139115c898ee3fef366311b8f935af0726daabb77e",
+    "lib/finance-calculation.ts": "bd375dd2b7472ba5afe7ded7940a8fdad1474036511f09c54064e69c3d068e90",
+    "lib/finance-cqa-calculation.ts": "b022597bdfa28e206c300c2b1b230f54ae2a06c2ba5937a3fdfed8f0fdd455a2",
+    "lib/finance-decimal.ts": "09b4fccf954a0c6f2c6e42981c1d78e7f422af440a332b41ca8646bd39d49e4a",
+    "lib/finance-preview.ts": "443551820a352a85ee26682efc697c1a0e3b0fbc2bcd7d1d9353b498d819e3b7",
+    "lib/finance-returns.ts": "087f46350ee4f54ab7d0a9098092b740ac07614892c967f00f1750d5f1daba4f",
+    "lib/finance.ts": "1e71b94193568f23c6df150f2089d9d0ece9e66e7956ab610b27763912afdccc",
+    "server.ts": "36842f8870026137bc3cb17aee45c76d6692618ed4b80a52c17e390e516b4171",
+    "src/finance-preview-state.ts": "d5e80f11d4a076b984676497ef82717cc33c039fce0e3b5381b9449a7dfa897a"
+  }
+}

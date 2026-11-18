@@ -1,0 +1,9 @@
+✔ E2 actual workers preserve XML20/1000 round trip and reject XML1001, Excel101 and Excel depth4 without truncation (862.4841ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1014.6088

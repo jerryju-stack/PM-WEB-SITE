@@ -1,0 +1,401 @@
+{
+  "base": "http://127.0.0.1:18743",
+  "version": "P03-A-en-v1",
+  "results": [
+    {
+      "device": "desktop",
+      "check": "global entry",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "six metric cards",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "three reports and ten module routes",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "filters in URL",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "deep link and filters survive refresh",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "labor preview direction and amount",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "keep editing preserves input",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "return to original metric focus",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "return to original metric scroll",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "filter context preserved across labor route",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "browser forward and back",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "validation source preview",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "browser back cancellation preserves source",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "return to original variance focus",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "return to original variance scroll",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "mouse hover definition",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "keyboard focus definition",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "Escape dismisses and keeps focus",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct route commercial",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct route bom",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct route operations",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct route factory-costs",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct route engineering",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct route prototypes",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct route validation",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct route investment",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct route returns",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct route budget",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct route compare",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "switch project",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "project card direct entry",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "browser demo draft survives refresh",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "reload discards unsaved candidate",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "unavailable project state",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct source fallback operations",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "direct source fallback validation",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "sample marker visible",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "no application writes during prototype",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "no JavaScript errors",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "global entry",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "six metric cards",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "three reports and ten module routes",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "filters in URL",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "deep link and filters survive refresh",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "labor preview direction and amount",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "keep editing preserves input",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "return to original metric focus",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "return to original metric scroll",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "filter context preserved across labor route",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "browser forward and back",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "validation source preview",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "browser back cancellation preserves source",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "return to original variance focus",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "return to original variance scroll",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "touch definition",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "touch close returns focus",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct route commercial",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct route bom",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct route operations",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct route factory-costs",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct route engineering",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct route prototypes",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct route validation",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct route investment",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct route returns",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct route budget",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct route compare",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "switch project",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "project card direct entry",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "browser demo draft survives refresh",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "reload discards unsaved candidate",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "unavailable project state",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct source fallback operations",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "direct source fallback validation",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "sample marker visible",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "no horizontal page overflow",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "no application writes during prototype",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "no JavaScript errors",
+      "status": "passed"
+    }
+  ]
+}

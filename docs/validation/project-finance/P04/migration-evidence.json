@@ -1,0 +1,68 @@
+{
+  "schemaBefore": 10,
+  "schemaAfter": 11,
+  "migrationFailureRolledBack": true,
+  "legacyPreserved": true,
+  "emptyLegacyFinance": true,
+  "secondStartupStable": true,
+  "backupVerified": true,
+  "restoreEqual": true,
+  "financeTables": [
+    {
+      "table": "finance_versions",
+      "count": 1,
+      "sha256": "7d2089fd297446d963e8e08771570385fe832bc1bcbae4e82b6cb939fb79c1d1"
+    },
+    {
+      "table": "finance_products",
+      "count": 1,
+      "sha256": "24802ab23eb710927e22a99ebf7581338883939c38b9d5db4e801b1e3df429e0"
+    },
+    {
+      "table": "finance_markets",
+      "count": 1,
+      "sha256": "f9cd6bc182bec12fcee1b454a6e9a73281b4a81ebfcfc7ed362b799e8858bad2"
+    },
+    {
+      "table": "finance_lines",
+      "count": 1,
+      "sha256": "6d7521c9ec19d325615c5f86d0b3c870f69f3606cd58ad83798087f7d1e1e48d"
+    },
+    {
+      "table": "finance_periods",
+      "count": 2,
+      "sha256": "a632c6cb33109e615a9057549900c9978e50caf8c45c39802f9b2551027669ec"
+    },
+    {
+      "table": "finance_sources",
+      "count": 1,
+      "sha256": "6084da52bd86e4aa7689caf8cec963546cc7bf1106a18207b23e55f9e0a6e82a"
+    },
+    {
+      "table": "finance_inputs",
+      "count": 1,
+      "sha256": "0980f853405888b389cda59f1c32a16e81d84ce933f0fd989f49ccdc85e6011a"
+    },
+    {
+      "table": "finance_events",
+      "count": 3,
+      "sha256": "7e573fc8eb95b6e10712ecbaf0843d383b0b2336df970329459d651bbc176f1c"
+    },
+    {
+      "table": "finance_project_state",
+      "count": 1,
+      "sha256": "5c63c1d6f73c0e8e9ca31207385bcc8f72584fb833752b35abc8e79189e5f4a3"
+    },
+    {
+      "table": "finance_changes",
+      "count": 3,
+      "sha256": "2fd173f03bb5abf4f5e307f6eccca0b787777bbba598d45f788023585f7ac15e"
+    },
+    {
+      "table": "finance_receipts",
+      "count": 3,
+      "sha256": "745de58ab8bd18fbd9eac4aa8393798a6654fbac3e625f8f9694fb05726ef82d"
+    }
+  ],
+  "foreignKeyCheck": "ok"
+}

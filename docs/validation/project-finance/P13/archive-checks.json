@@ -1,0 +1,35 @@
+{
+  "step": "P13",
+  "original": "Authorized P05 CQA archive",
+  "after": "SIMULATED · CQA later-stage rehearsal",
+  "period": "year-2020",
+  "source": "AME!F35",
+  "sharedEdit": "cycle time × 1.10",
+  "actualCrossStageReconciliation": "pending second authorized original",
+  "currencies": [
+    {
+      "currency": "CNY",
+      "productsCompared": 4,
+      "periodsCompared": 11,
+      "productsAffected": [
+        "double_buckle",
+        "single_buckle"
+      ],
+      "sameSourceBothSides": true,
+      "independentProductAndProjectTieOut": "passed",
+      "unexplainedResidual": false
+    },
+    {
+      "currency": "USD",
+      "productsCompared": 4,
+      "periodsCompared": 11,
+      "productsAffected": [
+        "double_buckle",
+        "single_buckle"
+      ],
+      "sameSourceBothSides": true,
+      "independentProductAndProjectTieOut": "passed",
+      "unexplainedResidual": false
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {performance} from 'node:perf_hooks';
 import { readFile, mkdir, open } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
@@ -14,7 +15,12 @@ import type { WriteContext } from './lib/audit.ts';
 import { resourceWriter } from './lib/resources.ts';
 import { timingDrafts } from './lib/timing-drafts.ts';
 import { timingVersions } from './lib/timing-versions.ts';
-import { timingIO } from './lib/timing-io.ts';
+import {catalog} from './lib/catalog.ts';
+import {financeService} from './lib/finance.ts';
+import {decodeCursor,encodeCursor,pageSize} from './lib/pagination.ts';
+import {timingFileService} from './lib/timing-file-service.ts';
+import {FilePool,filePoolConfig} from './lib/file-pool.ts';
+import {FileJobError,fileCancelled} from './lib/file-job-types.ts';
 import { TEMPLATE } from './lib/timing-workbook.ts';
 import { attachmentService, fileId } from './lib/attachments.ts';
 import { dataLock } from './lib/data-lock.ts';
@@ -22,15 +28,18 @@ import { requestId, errorResponse, diagnostic } from './lib/http-errors.ts';
 import { clientAddress, trustedProxies, loginLimiter } from './lib/login-security.ts';
 
 const root=dirname(fileURLToPath(import.meta.url));
+const financePrototype=process.env.FINANCE_PROTOTYPE==='1';
 const directory=resolve(process.env.DATA_DIR || join(root,'data'));
 const lock=dataLock(directory,'server');
 process.on('exit',()=>lock.release());
 const store=openStore(directory);
+const finance=financeService(store);
 const uploads=join(store.directory,'uploads'); await mkdir(uploads,{recursive:true});
 const resources=resourceWriter(store);
 const plans=timingVersions(store);
 const drafts=timingDrafts(store);
-const timingFiles=timingIO(store);
+const filePool=new FilePool(filePoolConfig()),timingFiles=timingFileService(store,filePool);
+let stopping=false;
 const accounts=accountService(store),permissions=policy(store);
 const files=attachmentService(store);
 const recovery=await files.retry();
@@ -49,6 +58,9 @@ const esc=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','
 const server=http.createServer(async(req,res)=>{
   const trace=requestId();res.setHeader('X-Request-Id',trace);
   const json=(status:number,value:any)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
+  const cancellation=new AbortController(),disconnected=()=>cancellation.abort(fileCancelled()),closed=()=>{if(!res.writableFinished)disconnected();};
+  req.on('aborted',disconnected);res.on('close',closed);
+  let releaseFileRequest:(()=>void)|undefined,fileDeadline:ReturnType<typeof setTimeout>|undefined,fileDeadlineAt=0;
   try {
     const url=new URL(req.url||'/','http://localhost'), method=req.method||'GET';
     const token=/(?:^|;\s*)session=([^;]+)/.exec(req.headers.cookie||'')?.[1];
@@ -57,9 +69,28 @@ const server=http.createServer(async(req,res)=>{
     const context:WriteContext={actorId:user?.uid??'anonymous',actorName:user?.name??'',requestId:trace,actorUid:user?.uid};
     const recheck=()=>{user=currentUser();context.actorId=user?.uid??'anonymous';context.actorName=user?.name??'';context.actorUid=user?.uid;};
     const requireUser=()=>{if(!user)fail('请先登录以查看项目详情和附件',401);};
+    const fileCall=(projectId:string,write:boolean)=>{
+      const uid=user?.uid,epoch=user?.authEpoch;
+      return {signal:cancellation.signal,guard:()=>{
+        if(stopping)throw new FileJobError('FILE_STOPPING',503,'文件处理服务正在停止，请稍后重试');
+        if(fileDeadlineAt&&performance.now()>=fileDeadlineAt)throw new FileJobError('FILE_TIMEOUT',504,'文件处理超时，未提交结果；请重试');
+        if(cancellation.signal.aborted)throw cancellation.signal.reason;
+        recheck();if(!user||user.uid!==uid||user.authEpoch!==epoch)fail('登录状态已变化，请重新登录后重试',401);
+        if(req.headers['x-timing-actor']&&req.headers['x-timing-actor']!==user.uid)fail('登录账号已变化，请刷新页面',401);
+        permissions.requireRead(user,projectId);if(write)permissions.requireCap(user,'timingEdit',projectId);
+        if(fileDeadlineAt&&performance.now()>=fileDeadlineAt)throw new FileJobError('FILE_TIMEOUT',504,'文件处理超时，未提交结果；请重试');
+      },timing:(t:{queueMs:number;executionMs:number;computeMs:number})=>res.setHeader('Server-Timing',`file_queue;dur=${t.queueMs.toFixed(2)}, file_run;dur=${t.executionMs.toFixed(2)}, file_compute;dur=${t.computeMs.toFixed(2)}`)};
+    };
     if(url.pathname.startsWith('/api/')) {
       if(!['GET','HEAD'].includes(method)&&req.headers.origin&&![`http://${req.headers.host}`,`https://${req.headers.host}`].includes(req.headers.origin))fail('请求来源无效',403);
       const parts=url.pathname.split('/').filter(Boolean);
+      const fileRequest=parts[1]==='projects'&&parts[2]&&parts[3]==='timing'&&((parts[4]==='export'&&method==='GET')||(parts[4]==='import'&&['preview','confirm'].includes(parts[5])&&method==='POST'));
+      if(fileRequest){
+        permissions.requireRead(user,parts[2]);if(parts[4]==='import')permissions.requireCap(user,'timingEdit',parts[2]);
+        releaseFileRequest=filePool.admit();
+        fileDeadlineAt=performance.now()+filePool.config.timeoutMs;
+        fileDeadline=setTimeout(()=>{cancellation.abort(new FileJobError('FILE_TIMEOUT',504,'文件处理超时，未提交结果；请重试'));if(!req.complete)req.destroy();else if(res.headersSent&&!res.writableFinished)res.destroy();},filePool.config.timeoutMs);fileDeadline.unref();
+      }
       if(parts[1]==='attachments'&&parts[2]&&method==='GET') {
         requireUser();permissions.requireRead(user,permissions.attachmentProject(parts[2]));const row=store.db.prepare('SELECT * FROM attachments WHERE id=?').get(parts[2]) as any;if(!row)fail('附件不存在',404);
         const handle=await open(join(uploads,fileId(row.id)),'r');await handle.close();
@@ -82,6 +113,9 @@ const server=http.createServer(async(req,res)=>{
       // The body can take arbitrarily long. Resolve the live session and account only
       // after it is consumed; all following authorization/business SQL is synchronous.
       recheck();
+      // Fence a mounted Timing page to its immutable actor, including cookie changes in another tab.
+      if(req.headers['x-timing-actor']&&req.headers['x-timing-actor']!==user?.uid)return json(401,{error:'登录账号已变化，请刷新页面后重试',identityChanged:true,requestId:trace});
+      if(url.pathname==='/api/session'&&method==='GET')return json(200,{user:safeUser(user)});
       if(url.pathname==='/api/login'&&method==='POST') {
         const ip=clientAddress(req.socket.remoteAddress||'',req.headers['x-forwarded-for'],proxies);
         if(!attempts.check(ip,body.id))fail('尝试过于频繁，请稍后重试',429);
@@ -94,7 +128,30 @@ const server=http.createServer(async(req,res)=>{
         res.setHeader('Set-Cookie',`session=${key}; HttpOnly; SameSite=Strict; Path=/; Max-Age=86400${process.env.COOKIE_SECURE==='1'?'; Secure':''}`);return json(200,safeUser(found));
       }
       if(url.pathname==='/api/logout'&&method==='POST'){if(token)sessions.delete(token);res.setHeader('Set-Cookie','session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return json(200,{ok:true});}
-      if(url.pathname==='/api/data'&&method==='GET')return json(200,{settings:store.get('settings','site'),projects:store.all('projects').filter(p=>permissions.card(user,p.id)).map(p=>Object.fromEntries(['id','title','description','category','date','startDate','owner','status','progress','version','taskRevision'].map(key=>[key,p[key]]).concat([['capabilities',capabilities.filter(cap=>permissions.can(user,cap,p.id))]]))),articles:store.all('articles').filter(item=>permissions.articleRead(user,item)).map(item=>({...item,canEdit:permissions.can(user,'lessonEdit',item.projectId??undefined),canDelete:permissions.can(user,'lessonDelete',item.projectId??undefined)})),users:user?.role==='admin'?store.all('users').map(safeUser):[],user:safeUser(user)});
+      if(url.pathname==='/api/data'&&method==='GET')return json(200,catalog(store,user,url.searchParams));
+      if(url.pathname==='/api/finance/projects'&&method==='GET')return json(200,finance.projects(user));
+      if(parts[1]==='projects'&&parts[2]&&parts[3]==='finance') {
+        const p=parts[2],v=parts[5];
+        if(parts.length===4&&method==='GET')return json(200,finance.project(user,p));
+        if(parts.length===5&&parts[4]==='workspace'&&method==='GET')return json(200,finance.workspace(user,p,url.searchParams));
+        if(parts.length===5&&parts[4]==='calculations'&&method==='GET')return json(200,finance.projectCalculations(user,p));
+        if(parts[4]==='versions') {
+          if(parts.length===5&&method==='POST')return json(201,finance.create(user,p,body,context));
+          if(v&&parts.length===6) {
+            if(method==='GET')return json(200,finance.get(user,p,v));
+            if(method==='PUT')return json(200,finance.save(user,p,v,body,context));
+          }
+          if(v&&parts.length===7) {
+            if(parts[6]==='changes'&&method==='GET')return json(200,finance.changes(user,p,v));
+            if(parts[6]==='calculation'&&method==='GET')return json(200,finance.calculation(user,p,v));
+            if(parts[6]==='compare'&&method==='POST')return json(200,finance.compare(user,p,v,body));
+            if(parts[6]==='preview'&&method==='POST')return json(200,url.searchParams.get('view')==='panel'?finance.panelPreview(user,p,v,body):finance.preview(user,p,v,body));
+            if(parts[6]==='freeze'&&method==='POST')return json(200,finance.freeze(user,p,v,body,context));
+            if(parts[6]==='activate'&&method==='POST')return json(200,finance.activate(user,p,v,body,context));
+          }
+        }
+        fail('Finance route or method unavailable',405);
+      }
       if(parts[1]==='projects'&&parts[2]&&parts[3]==='timing'&&parts[4]) {
         const projectId=parts[2];permissions.requireRead(user,projectId);
         if(parts[4]==='draft'&&parts.length===5&&method==='GET')return json(200,drafts.state(projectId));
@@ -109,8 +166,8 @@ const server=http.createServer(async(req,res)=>{
         }
         if(parts[4]==='export'&&parts.length===5&&method==='GET') {
           const format=url.searchParams.get('format')??'xlsx';if(!['xlsx','pdf','xml'].includes(format))fail('请选择 Excel、PDF 或 Project XML');
-          const output=timingFiles.exportPlan(projectId,url.searchParams.get('version')??'current',format),buffer=await output.buffer;
-          recheck();permissions.requireRead(user,projectId);
+          const call=fileCall(projectId,false),output=await timingFiles.exportPlan(projectId,url.searchParams.get('version')??'current',format,call),buffer=output.buffer;
+          call.guard();
           res.writeHead(200,{'Content-Type':format==='xlsx'?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':format==='xml'?'application/xml; charset=utf-8':'application/pdf','Content-Length':buffer.length,'Content-Disposition':`attachment; filename="timing.${format}"; filename*=UTF-8''${encodeURIComponent(output.filename).replaceAll("'",'%27')}`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'});res.end(buffer);return;
         }
         if(parts[4]==='template'&&parts.length===5&&method==='GET') {
@@ -118,12 +175,12 @@ const server=http.createServer(async(req,res)=>{
         }
         if(parts[4]==='import'&&parts.length===6&&method==='POST') {
           permissions.requireCap(user,'timingEdit',projectId);drafts.check(projectId,body,context);
-          if(parts[5]==='preview')return json(200,timingFiles.preview(projectId,body,context));
-          if(parts[5]==='confirm'){const {removed,...result}=timingFiles.confirm(projectId,body,context);await eraseFiles(removed);return json(200,result);}
+          if(parts[5]==='preview')return json(200,await timingFiles.preview(projectId,body,context,fileCall(projectId,true)));
+          if(parts[5]==='confirm'){const {removed,...result}=await timingFiles.confirm(projectId,body,context,fileCall(projectId,true));return json(200,result);}
           fail('接口不存在',404);
         }
         if(parts[4]==='versions') {
-          if(method==='GET'&&parts.length===5)return json(200,{versions:plans.list(projectId)});
+          if(method==='GET'&&parts.length===5)return json(200,plans.page(projectId,{limit:url.searchParams.get('limit'),cursor:url.searchParams.get('cursor')}));
           if(method==='GET'&&parts.length===6)return json(200,plans.get(projectId,parts[5]));
           if(method==='POST'&&parts.length===5){permissions.requireCap(user,'timingEdit',projectId);const result=plans.save(projectId,body,context);return json(result.replayed?200:201,result);}
           if(method==='DELETE'&&parts.length===6){permissions.requireCap(user,'timingEdit',projectId);return json(200,plans.remove(projectId,parts[5],context));}
@@ -163,7 +220,12 @@ const server=http.createServer(async(req,res)=>{
       }
       if(parts[1]==='users') {
         if(user.role!=='admin')fail('仅管理员可管理账号',403);
-        if(method==='GET')return json(200,store.all('users').map(safeUser));
+        if(method==='GET'){
+          if(!url.searchParams.has('limit')&&!url.searchParams.has('cursor'))return json(200,store.all('users').map(safeUser));
+          const limit=pageSize(url.searchParams.get('limit')),cursor=decodeCursor<string>(url.searchParams.get('cursor'),'accounts',p=>typeof p==='string');
+          const rows=store.db.prepare(`SELECT u.data FROM identities i JOIN users u ON u.id=i.login_name WHERE i.retired_at IS NULL${cursor?' AND i.uid>?':''} ORDER BY i.uid LIMIT ?`).all(...(cursor?[cursor]:[]),limit+1),users=rows.slice(0,limit).map(row=>safeAccount(JSON.parse(String(row.data))));
+          return json(200,{users,nextCursor:rows.length>limit?encodeCursor('accounts',users.at(-1)!.id):null});
+        }
         const uid=parts[2]??body.id;
         if(parts[3]==='password'&&method==='POST'){accounts.password(user,uid,body,context,true);return json(200,{ok:true});}
         if(method==='DELETE'){accounts.remove(user,uid,context);return json(200,{ok:true});}
@@ -221,14 +283,38 @@ const server=http.createServer(async(req,res)=>{
       return json(200,{ok:true});
     }
     if(method!=='GET')fail('不支持此方法',405);
-    const scripts:Record<string,string>={'/app.js':'src/app.ts','/timing.js':'src/timing.ts','/timing-layout.js':'src/timing-layout.ts','/timing-history.js':'src/timing-history.ts','/timing-io.js':'src/timing-io.ts','/schedule.js':'lib/schedule.ts','/drafts.js':'src/drafts.ts','/access-ui.js':'src/access-ui.ts'};
+    if(financePrototype&&url.pathname==='/finance-prototype.js'){
+      res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-store'});
+      return res.end(await readFile(join(root,'src/finance-prototype.js'),'utf8'));
+    }
+    if(financePrototype&&url.pathname==='/finance-prototype.css'){
+      res.writeHead(200,{'Content-Type':'text/css; charset=utf-8','Cache-Control':'no-store'});
+      return res.end(await readFile(join(root,'src/finance-prototype.css')));
+    }
+    const scripts:Record<string,string>={'/app.js':'src/app.ts','/timing.js':'src/timing.ts','/timing-layout.js':'src/timing-layout.ts','/timing-history.js':'src/timing-history.ts','/timing-io.js':'src/timing-io.ts','/task-index.ts':'lib/task-index.ts','/task-index.js':'lib/task-index.ts','/schedule.js':'lib/schedule.ts','/drafts.js':'src/drafts.ts','/access-ui.js':'src/access-ui.ts','/finance.js':'src/finance.ts','/finance-view.js':'src/finance-view.ts','/finance-impact.js':'src/finance-impact.ts','/finance-operations.js':'src/finance-operations.ts','/finance-development.js':'src/finance-development.ts','/finance-capital.js':'src/finance-capital.ts','/finance-preview-state.js':'src/finance-preview-state.ts'};
+    scripts['/finance-budget.js']='src/finance-budget.ts';
+    scripts['/finance-compare.js']='src/finance-compare.ts';
     if(scripts[url.pathname]){res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-cache'});return res.end(stripTypeScriptTypes(await readFile(join(root,scripts[url.pathname]),'utf8')));}
-    if(['/styles.css','/timing.css'].includes(url.pathname)){res.writeHead(200,{'Content-Type':'text/css; charset=utf-8','Cache-Control':'no-cache'});return res.end(await readFile(join(root,'src',url.pathname.slice(1))));}
+    if(['/styles.css','/timing.css','/finance.css'].includes(url.pathname)){res.writeHead(200,{'Content-Type':'text/css; charset=utf-8','Cache-Control':'no-cache'});return res.end(await readFile(join(root,'src',url.pathname.slice(1))));}
+    if(url.pathname==='/finance-dictionary.json')return json(200,JSON.parse(await readFile(join(root,'docs/validation/project-finance/P01/metric-dictionary.json'),'utf8')));
     if(url.pathname==='/robots.txt'){res.writeHead(200,{'Content-Type':'text/plain'});return res.end('User-agent: *\nAllow: /\nDisallow: /projects/\nDisallow: /api/\n');}
-    if(url.pathname!=='/'&&!/^\/projects\/[a-zA-Z0-9_-]+\/timing$/.test(url.pathname))fail('页面不存在',404);
+    const financePage=url.pathname==='/finance'||/^\/projects\/[a-zA-Z0-9_-]+\/finance(?:\/(?:budget|returns|compare|commercial|bom|operations|factory-costs|engineering|prototypes|validation|investment)(?:\/[a-zA-Z0-9_.:-]+)?)?$/.test(url.pathname);
+    if(url.pathname!=='/'&&!/^\/projects\/[a-zA-Z0-9_-]+\/timing$/.test(url.pathname)&&!financePage)fail('页面不存在',404);
     const settings=store.get('settings','site');let html=await readFile(join(root,'src/index.html'),'utf8');html=html.replaceAll('__TITLE__',esc(settings.title)).replaceAll('__DESCRIPTION__',esc(settings.description));
+    if(financePrototype)html=html.replace('</head>','<meta name="finance-prototype" content="enabled"><link id="finance-prototype-style" rel="stylesheet" href="/finance-prototype.css"></head>');
+    html=html.replace('</head>','<link rel="stylesheet" href="/finance.css"></head>');
     res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'"});res.end(html);
-  }catch(e:any){const failure=errorResponse(e,trace);if(failure.status>=500)console.error(diagnostic(e,trace,req.method));if(res.headersSent){res.destroy();return;}json(failure.status,failure.body);}
+  }catch(e:any){const failure=errorResponse(e,trace);if(failure.status>=500)console.error(diagnostic(e,trace,req.method));if(res.destroyed)return;if(res.headersSent){res.destroy();return;}if(failure.status===429||failure.status===503)res.setHeader('Retry-After','2');json(failure.status,failure.body);}
+  finally{
+    const release=()=>{clearTimeout(fileDeadline);releaseFileRequest?.();req.off('aborted',disconnected);res.off('close',closed);res.off('finish',release);res.off('close',release);};
+    // Keep the admission/absolute deadline through output flushing, so slow clients cannot
+    // accumulate completed file buffers while continually admitting new work.
+    if(releaseFileRequest&&!res.writableFinished&&!res.destroyed){res.once('finish',release);res.once('close',release);}else release();
+  }
 });
 const port=Number(process.env.PORT||3000);server.listen(port,'127.0.0.1',()=>{const address=server.address();console.log(`Local: http://127.0.0.1:${typeof address==='object'&&address?address.port:port}`);});
-for(const signal of ['SIGINT','SIGTERM'] as const)process.on(signal,()=>{server.close(()=>process.exit(0));server.closeAllConnections();});
+for(const signal of ['SIGINT','SIGTERM'] as const)process.on(signal,()=>{
+ if(stopping)return;stopping=true;
+ const closed=new Promise<void>(resolve=>server.close(()=>resolve()));
+ void filePool.close().then(()=>{server.closeAllConnections();return closed;}).then(()=>{store.db.close();process.exit(0);});
+});

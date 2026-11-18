@@ -1,0 +1,10 @@
+{
+  "recordedAt": "2026-11-16T10:43:00Z",
+  "case": "Chrome real browser; browser-1000 synthetic fanout depth20; scripts/e-a-browser.ts; E3 queries with pre-E4 frontend",
+  "result": "failed: save timeout; 16 samples, NOT a passing 30-sample baseline",
+  "samplesMs": [15760.099999997765,8163,8988.20000000298,8032.400000002235,8939.099999997765,8972.60000000149,8972.300000000745,7998.20000000298,8969.39999999851,8992.60000000149,8003.699999999255,8967.5,8990.199999999255,8003.400000002235,7996.70000000298,77434.89999999851],
+  "inputToTwoFramesMs": [83.79999999701977,199,8081.70000000298,7964.400000002235,7940.89999999851,7957.5,7987.20000000298,7934.400000002235,8116.79999999702,8112.5,7939.699999999255,8056,8140,7874.300000000745,7932.5,8070.5],
+  "heapBytesSample": 30864772,
+  "visibility": "visible",
+  "note": "Existing fixture observes saved status and two animation frames, including the 800ms debounce. Input samples separately observe two frames. Preserve failed run; final acceptance requires at least 30 successful warm samples. Original E-A 30-sample baseline remains archived."
+}

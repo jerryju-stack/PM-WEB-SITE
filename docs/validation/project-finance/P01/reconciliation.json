@@ -1,0 +1,29 @@
+{
+  "contract": "P01.1",
+  "mode": "pinned-sample",
+  "controlSha256": "13575788d15e93b2db298d308cf58911a56152824984dfeb5b84e77f024d5d26",
+  "sampleSha256": "58c80ce9b4d11b700e49b0e2e9baf6b5814dfcc869fe033b792a5cb2b6c14741",
+  "products": 4,
+  "periods": 11,
+  "marketBoms": 8,
+  "status": "passed",
+  "checks": {
+    "contract": 63,
+    "public_examples": 8,
+    "public_edges": 35,
+    "scope": 30,
+    "source_ranges": 513,
+    "control_pin": 2,
+    "development": 133,
+    "bom": 28,
+    "line_labor_oh": 148,
+    "product_totals": 28,
+    "product_cash": 176,
+    "investment_nwc": 172,
+    "product_pl": 288,
+    "commercial": 120,
+    "returns": 31,
+    "exec_cash": 88,
+    "exec_pl": 40
+  }
+}

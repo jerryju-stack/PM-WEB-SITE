@@ -1,0 +1,287 @@
+{
+  "step": "P08",
+  "time": "2026-11-18T10:37:24.679Z",
+  "checks": 56,
+  "results": [
+    {
+      "device": "desktop",
+      "check": "bom table is reachable",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "bom initial source value",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "bom impact answers profit, NPV and source",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "T3 unit cost and annual direct material",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "T3 detailed impact and lifecycle shown",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "bom saved calculation matches preview",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "bom saved value survives reload",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "bom returns to same source focus and scope",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "commercial table is reachable",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "commercial initial source value",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "commercial impact answers profit, NPV and source",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "commercial saved calculation matches preview",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "commercial saved value survives reload",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "commercial returns to same source focus and scope",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "factory-costs table is reachable",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "factory-costs initial source value",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "factory-costs impact answers profit, NPV and source",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "factory-costs saved calculation matches preview",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "factory-costs saved value survives reload",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "factory-costs returns to same source focus and scope",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "real CQA commercial rows have worksheet sources",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "real CQA annual reduction can be previewed across two periods",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "real CQA bom has refreshable sourced rows",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "real CQA factory-costs has refreshable sourced rows",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "business pages fit the viewport",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "no browser runtime errors",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "bom table is reachable",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "bom initial source value",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "bom impact answers profit, NPV and source",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "T3 unit cost and annual direct material",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "T3 detailed impact and lifecycle shown",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "bom saved calculation matches preview",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "bom saved value survives reload",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "bom returns to same source focus and scope",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "commercial table is reachable",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "commercial initial source value",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "commercial impact answers profit, NPV and source",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "commercial saved calculation matches preview",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "commercial saved value survives reload",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "commercial returns to same source focus and scope",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "factory-costs table is reachable",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "factory-costs initial source value",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "factory-costs impact answers profit, NPV and source",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "factory-costs saved calculation matches preview",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "factory-costs saved value survives reload",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "factory-costs returns to same source focus and scope",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "real CQA commercial rows have worksheet sources",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "real CQA annual reduction can be previewed across two periods",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "real CQA bom has refreshable sourced rows",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "real CQA factory-costs has refreshable sourced rows",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "business pages fit the viewport",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "no browser runtime errors",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "new BOM form previews a source record without writes",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "new record save uses the preview result",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "new edit reopens with stable part number and source",
+      "status": "passed"
+    },
+    {
+      "device": "reader",
+      "check": "authorized read-only viewer has no preview or add controls",
+      "status": "passed"
+    }
+  ]
+}

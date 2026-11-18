@@ -1,0 +1,22 @@
+✔ E2 pool bounds actual workers, queue and admissions; rejects overload without starting work (345.7142ms)
+✔ E2 queued cancellation removes job; active cancellation terminates before bounded replacement; snapshot is detached (32.8863ms)
+✔ E2 worker crash rejects exactly its job and next request recovers (54.8233ms)
+✔ E2 worker invalid rejects exactly its job and next request recovers (56.7266ms)
+✔ E2 total deadline includes queue; timeout reclaims workers, shutdown rejects waiting/active jobs and cannot restart (165.5438ms)
+✔ E2 queue byte budget and per-job byte bound reject oversized work; configuration has hard limits (14.624ms)
+✔ E2 real worker errors and diagnostics never emit the supplied workbook signing key (585.2674ms)
+✔ E2 late worker messages are rejected by absolute deadline even if the parent event loop delayed timers (263.1287ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ E2 preview rechecks the deadline inside its transaction after payload serialization, and rolls back (271.7428ms)
+✔ E2 confirm rechecks the deadline inside its transaction after payload serialization, and rolls back (249.8375ms)
+✔ D5 import actions stay visible and give specific feedback; changed mappings must be previewed again (1.6266ms)
+✔ E2 transfer cancellation retains file, mapping and preview, and reports uncertain confirmation without retry (1.7504ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1631.0886

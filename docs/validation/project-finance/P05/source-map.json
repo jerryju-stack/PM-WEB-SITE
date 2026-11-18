@@ -1,0 +1,175 @@
+{
+  "mappingVersion": "P05.1",
+  "sourceSha256": "58c80ce9b4d11b700e49b0e2e9baf6b5814dfcc869fe033b792a5cb2b6c14741",
+  "sourceKeyFormat": "cqa:<stable sheet identity>:<A1>",
+  "inputKeyFormats": [
+    "annual:<product>:<period>:<row>",
+    "bom:<market>:<row>:<field>",
+    "ame:<line>:<field>",
+    "pm:<product>:<cell>",
+    "development:<group>:<cell>",
+    "fx:<field>"
+  ],
+  "products": [
+    {
+      "sheet": "Financials RO Ret_SPR4",
+      "state": "visible",
+      "active": true,
+      "classification": "enabled_product",
+      "hasVolume": true,
+      "cashContributionZero": false
+    },
+    {
+      "sheet": "Financials RC Retr_FS1",
+      "state": "visible",
+      "active": true,
+      "classification": "enabled_product",
+      "hasVolume": true,
+      "cashContributionZero": false
+    },
+    {
+      "sheet": "Financials Dbl BK+SW",
+      "state": "visible",
+      "active": true,
+      "classification": "enabled_product",
+      "hasVolume": true,
+      "cashContributionZero": false
+    },
+    {
+      "sheet": "Financials Sgl BK+SW",
+      "state": "visible",
+      "active": true,
+      "classification": "enabled_product",
+      "hasVolume": true,
+      "cashContributionZero": false
+    },
+    {
+      "sheet": "Financials RC Ret",
+      "state": "hidden",
+      "active": false,
+      "classification": "excluded_template",
+      "hasVolume": false,
+      "cashContributionZero": true
+    },
+    {
+      "sheet": "Financials S BK",
+      "state": "hidden",
+      "active": false,
+      "classification": "excluded_template",
+      "hasVolume": false,
+      "cashContributionZero": true
+    },
+    {
+      "sheet": "Financials D BK",
+      "state": "hidden",
+      "active": false,
+      "classification": "excluded_template",
+      "hasVolume": false,
+      "cashContributionZero": true
+    },
+    {
+      "sheet": "Financials OE8",
+      "state": "hidden",
+      "active": false,
+      "classification": "excluded_template",
+      "hasVolume": false,
+      "cashContributionZero": true
+    },
+    {
+      "sheet": "Financials OE9",
+      "state": "hidden",
+      "active": false,
+      "classification": "excluded_template",
+      "hasVolume": false,
+      "cashContributionZero": true
+    },
+    {
+      "sheet": "Financials OE10",
+      "state": "hidden",
+      "active": false,
+      "classification": "excluded_template",
+      "hasVolume": false,
+      "cashContributionZero": true
+    },
+    {
+      "sheet": "Financials IC1",
+      "state": "hidden",
+      "active": false,
+      "classification": "excluded_template",
+      "hasVolume": false,
+      "cashContributionZero": true
+    },
+    {
+      "sheet": "Financials IC2",
+      "state": "hidden",
+      "active": false,
+      "classification": "excluded_template",
+      "hasVolume": false,
+      "cashContributionZero": true
+    },
+    {
+      "sheet": "Financials IC3",
+      "state": "hidden",
+      "active": false,
+      "classification": "excluded_template",
+      "hasVolume": false,
+      "cashContributionZero": true
+    }
+  ],
+  "dimensions": {
+    "products": 4,
+    "periods": 11,
+    "markets": 8,
+    "lines": 6
+  },
+  "preserved": {
+    "rawValue": true,
+    "rawFormula": true,
+    "sharedAnchor": true,
+    "effectiveFormula": true,
+    "excelCache": true,
+    "websiteValue": null,
+    "externalLinks": 57,
+    "externalRefresh": false
+  },
+  "annualColumns": [
+    "productKey",
+    "periodKey",
+    "originalPeriod",
+    "basis",
+    "metricKey",
+    "sourceKey",
+    "sheet",
+    "cell",
+    "sourceUnit",
+    "currency",
+    "excelValue",
+    "excelState",
+    "normalizedValue",
+    "websiteValue",
+    "websiteStatus"
+  ],
+  "coverage": {
+    "dv": "DV cost!M8:AG15",
+    "pv": "PV cost!N7:Z15; V7:X8 is covered by DV",
+    "pm": "PM!D1:K14; preserve market split and original conversion divisor"
+  },
+  "pending": [
+    {
+      "code": "station_actual",
+      "status": "to_collect"
+    },
+    {
+      "code": "prototype_actual",
+      "status": "to_collect"
+    },
+    {
+      "code": "budget_actual",
+      "status": "to_collect"
+    },
+    {
+      "code": "operating_bridge",
+      "status": "pending_finance"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "recordedAt": "2026-11-16T11:34:58.327Z",
+  "commit": "5576578ea91e9c991cfadb251d893ea9a8f99e27",
+  "directory": "C:\\Users\\curie\\AppData\\Local\\Temp\\station-e-b-committed-NJoFRl",
+  "source": "local shared clone of committed HEAD, without working-tree changes; existing locked node_modules via junction",
+  "checks": {
+    "full": true,
+    "benchmark": true
+  },
+  "sourceAfter": "M docs/samples/timing-d2-d3-baseline.pdf\n M docs/samples/timing-d2-d3-baseline.xlsx"
+}

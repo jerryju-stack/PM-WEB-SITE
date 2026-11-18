@@ -1,0 +1,3313 @@
+{
+  "method": "Original isolated fault proxy log; timestamp/method/path/fault only, no cookies, request bodies, keys or credentials. Includes early and final browser phases.",
+  "directory": "C:/Users/curie/AppData/Local/Temp/station-e-a-browser-Q4NDmn",
+  "summary": {
+    "POST /api/login": 6,
+    "GET /api/projects/browser-1000/timing": 109,
+    "POST /api/projects/browser-1000/timing/draft/start": 4,
+    "POST /api/projects/browser-1000/timing/draft/heartbeat": 112,
+    "POST /api/projects/browser-1000/timing/draft/release": 4,
+    "PATCH /api/projects/browser-1000/tasks/browser-1000-t0": 93,
+    "GET /api/projects/browser-30/timing": 50,
+    "POST /api/users": 1,
+    "POST /api/projects/browser-30/members": 1,
+    "POST /api/projects/browser-30/timing/draft/start": 15,
+    "POST /api/projects/browser-30/timing/draft/heartbeat": 92,
+    "PATCH /api/projects/browser-30/tasks/browser-30-t0": 21,
+    "GET /api/projects/browser-30/timing/versions": 12,
+    "POST /api/projects/browser-30/timing/draft/release": 11,
+    "PATCH /api/projects/browser-1000/tasks/browser-1000-t999": 1,
+    "GET /api/projects/browser-30/timing/compare": 1,
+    "DELETE /api/projects/browser-30/timing/versions/2c3f6ca9-c742-42e1-9dc4-cf384eb05ce5": 1,
+    "POST /api/projects/browser-30/timing/versions/2c3f6ca9-c742-42e1-9dc4-cf384eb05ce5/restore": 1,
+    "GET /api/projects/browser-30/timing/versions/5a7157c2-62a2-4ceb-a8ac-6c5004aa4b54": 3,
+    "GET /api/projects/browser-30/timing/export": 1,
+    "POST /api/logout": 2,
+    "DELETE /api/projects/browser-30/members": 1,
+    "POST /api/projects/browser-30/timing/draft/adopt": 5
+  },
+  "requests": [
+    {
+      "at": "2026-11-16T10:50:23.316Z",
+      "method": "POST",
+      "path": "/api/login",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:50:23.378Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:51:02.629Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:51:02.638Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:51:02.658Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:51:06.330Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:51:11.387Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:51:19.393Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:51:27.401Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:51:35.385Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:51:43.399Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:51:51.396Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:51:59.390Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:52:07.386Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:52:15.388Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:52:19.182Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:52:19.364Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:15.169Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:34.470Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:34.482Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:34.494Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:39.172Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:44.338Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:44.760Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:46.086Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:46.406Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:47.180Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:49.390Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:49.726Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:52.410Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:52.744Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:55.177Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:55.422Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:55.759Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:58.428Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:53:58.770Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:01.415Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:01.755Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:03.180Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:04.412Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:04.748Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:07.388Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:07.807Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:10.389Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:10.717Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:11.179Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:13.400Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:13.737Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:16.417Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:16.763Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:19.183Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:19.425Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:19.760Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:22.416Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:22.748Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:25.387Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:25.806Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:27.179Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:28.386Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:28.722Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:31.377Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:31.727Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:34.365Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:34.723Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:35.181Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:37.449Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:37.799Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:40.384Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:40.800Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:43.169Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:43.395Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:43.730Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:46.395Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:46.735Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:49.403Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:49.743Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:51.166Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:52.436Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:52.767Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:55.406Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:55.756Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:58.730Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:59.094Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:54:59.264Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:01.401Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:01.751Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:04.406Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:04.736Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:07.180Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:07.387Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:07.774Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:10.391Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:10.716Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:13.401Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:13.734Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:15.177Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:23.162Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:31.164Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:39.168Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:47.169Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:55:55.171Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:56:03.168Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:56:11.178Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:56:19.180Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:56:27.181Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:56:32.949Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:56:33.260Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:11.108Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:11.117Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:11.128Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:13.384Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:18.071Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:18.110Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:19.211Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:19.242Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:20.485Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:20.606Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:21.269Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:23.463Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:23.598Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:26.488Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:26.640Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:29.256Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:29.452Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:29.481Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:32.468Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:32.605Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:35.454Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:35.605Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:37.261Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:38.463Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:38.603Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:41.465Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:41.610Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:44.473Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:44.618Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:45.277Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:47.446Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:47.474Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:49.480Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:49.617Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:52.456Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:52.485Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:53.264Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:55.473Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:55.607Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:58.458Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:57:58.486Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:01.264Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:01.459Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:01.606Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:04.475Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:04.625Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:07.479Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:07.610Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:09.261Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:10.474Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:10.610Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:13.472Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:13.609Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:16.449Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:16.477Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:17.272Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:19.468Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:19.607Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:22.472Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:22.603Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:25.259Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:25.477Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:25.611Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:28.465Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:28.601Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:31.477Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:31.606Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:33.262Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:34.469Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:34.605Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:37.476Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:37.611Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:40.472Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:40.607Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:41.261Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:43.474Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:43.610Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:49.262Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:58:57.264Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:59:05.261Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:59:13.263Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:59:21.271Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:59:29.275Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:59:37.272Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:59:44.384Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T10:59:44.563Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:16:28.584Z",
+      "method": "POST",
+      "path": "/api/login",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:16:28.617Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:18:20.534Z",
+      "method": "POST",
+      "path": "/api/login",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:18:21.026Z",
+      "method": "POST",
+      "path": "/api/users",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:18:21.055Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/members",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:18:34.435Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:18:34.438Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:18:34.442Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:18:36.621Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:18:44.621Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:18:52.629Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:18:59.627Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": 400
+    },
+    {
+      "at": "2026-11-16T11:19:00.621Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:19:08.480Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": 400
+    },
+    {
+      "at": "2026-11-16T11:19:08.627Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:19:13.935Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:19:16.630Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:19:23.010Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": 400
+    },
+    {
+      "at": "2026-11-16T11:19:23.340Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": 400
+    },
+    {
+      "at": "2026-11-16T11:19:24.626Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:19:32.623Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:19:40.634Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:19:48.632Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:19:56.622Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:20:04.622Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:20:12.623Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:20:20.121Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": 409
+    },
+    {
+      "at": "2026-11-16T11:20:20.125Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:20:41.804Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:38:39.704Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:38:44.995Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:38:45.000Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:38:45.006Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:38:47.717Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:38:55.584Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": 409
+    },
+    {
+      "at": "2026-11-16T11:38:55.588Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:19.920Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:26.414Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:26.418Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:26.423Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:26.702Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:26.705Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:27.929Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:35.923Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:37.599Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:37.613Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:41.466Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:41.482Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:41.748Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:41.752Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:41.757Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:43.703Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:51.705Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:59.400Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:59.407Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:59.666Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:59.724Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:59.835Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:59.839Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:39:59.844Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:40:07.725Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:40:15.736Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:40:23.728Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:40:31.739Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:40:39.740Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:40:47.731Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:40:55.733Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:41:03.742Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:41:11.729Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:41:13.993Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": 400
+    },
+    {
+      "at": "2026-11-16T11:41:19.729Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:41:24.147Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": 400
+    },
+    {
+      "at": "2026-11-16T11:41:27.730Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:41:35.740Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:41:37.912Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": "delay"
+    },
+    {
+      "at": "2026-11-16T11:41:40.924Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:41:43.735Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:41:51.740Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:41:59.726Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:07.728Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:11.007Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:13.406Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:13.415Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:13.428Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:15.731Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:19.010Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:23.729Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:25.889Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:25.946Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:26.866Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:26.897Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:27.039Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:27.810Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:27.841Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:28.762Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:28.800Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:29.686Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:29.719Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:30.642Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:30.675Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:31.574Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:31.609Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:31.739Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:32.496Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:32.532Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:33.420Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:33.452Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:34.384Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:34.418Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:35.010Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:35.328Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:35.365Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:36.328Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:36.362Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:37.290Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:37.324Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:38.234Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:38.274Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:39.201Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:39.234Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:39.740Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:40.128Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:40.163Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:41.083Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:41.115Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:42.056Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:42.087Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:43.000Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:43.029Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:43.031Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:43.959Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:43.994Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:44.918Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:44.946Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:45.866Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:45.900Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:46.823Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:46.857Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:47.730Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:47.794Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:47.830Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:48.752Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:48.785Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:49.705Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:49.736Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:50.666Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:50.699Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:51.018Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:51.627Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:51.668Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:52.602Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:52.641Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:53.571Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:53.603Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:54.494Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:54.529Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:55.740Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:42:59.013Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:03.726Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:07.011Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:11.726Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:15.022Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:19.737Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:23.009Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:27.729Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:31.018Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:35.725Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:39.015Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:43.739Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:47.020Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:51.726Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:55.019Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:43:59.727Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:03.008Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:06.890Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-1000/tasks/browser-1000-t999",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:06.927Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:07.735Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:11.020Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:15.731Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:19.020Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:23.726Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:27.014Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:31.734Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:34.685Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:34.691Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:34.963Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:35.010Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:35.268Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50&cursor=eyJzY29wZSI6Imhpc3Rvcnk6YnJvd3Nlci0zMCIsInBvc2l0aW9uIjp7InNhdmVkIjoiMjAyNi0xMS0xNlQxMToxODoyMC45MzFaIiwiaWQiOiI2OTY0MTM0Yi1mMDYwLTQ0ODktOGNjOS00ZDc0OTZiMWIxYjgifX0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:35.561Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50&cursor=eyJzY29wZSI6Imhpc3Rvcnk6YnJvd3Nlci0zMCIsInBvc2l0aW9uIjp7InNhdmVkIjoiMjAyNi0xMS0xNlQxMToxODoyMC44NDVaIiwiaWQiOiJkNjQ3MDY5Mi05ZDkwLTQ2NWMtYjQxYi1lNzBjZTY2NGMyYjMifX0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:41.174Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/compare?from=5a7157c2-62a2-4ceb-a8ac-6c5004aa4b54&to=current",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:43.012Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:51.019Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:44:59.016Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:07.017Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:15.018Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:19.335Z",
+      "method": "DELETE",
+      "path": "/api/projects/browser-30/timing/versions/2c3f6ca9-c742-42e1-9dc4-cf384eb05ce5",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:19.344Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:24.071Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:31.021Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:40.000Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:47.026Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:55.016Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:55.526Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/versions/2c3f6ca9-c742-42e1-9dc4-cf384eb05ce5/restore",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:55.561Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:56.662Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50&cursor=eyJzY29wZSI6Imhpc3Rvcnk6YnJvd3Nlci0zMCIsInBvc2l0aW9uIjp7InNhdmVkIjoiMjAyNi0xMS0xNlQxMToxODoyMC45MzFaIiwiaWQiOiI2OTY0MTM0Yi1mMDYwLTQ0ODktOGNjOS00ZDc0OTZiMWIxYjgifX0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:57.722Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50&cursor=eyJzY29wZSI6Imhpc3Rvcnk6YnJvd3Nlci0zMCIsInBvc2l0aW9uIjp7InNhdmVkIjoiMjAyNi0xMS0xNlQxMToxODoyMC44NDVaIiwiaWQiOiJkNjQ3MDY5Mi05ZDkwLTQ2NWMtYjQxYi1lNzBjZTY2NGMyYjMifX0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:45:58.751Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions/5a7157c2-62a2-4ceb-a8ac-6c5004aa4b54",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:03.014Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:11.017Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:19.020Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:20.390Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions/5a7157c2-62a2-4ceb-a8ac-6c5004aa4b54",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:25.594Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:25.615Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions/5a7157c2-62a2-4ceb-a8ac-6c5004aa4b54",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:27.013Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:30.700Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50&cursor=eyJzY29wZSI6Imhpc3Rvcnk6YnJvd3Nlci0zMCIsInBvc2l0aW9uIjp7InNhdmVkIjoiMjAyNi0xMS0xNlQxMToxODoyMC45MzFaIiwiaWQiOiI2OTY0MTM0Yi1mMDYwLTQ0ODktOGNjOS00ZDc0OTZiMWIxYjgifX0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:35.022Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:36.437Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50&cursor=eyJzY29wZSI6Imhpc3Rvcnk6YnJvd3Nlci0zMCIsInBvc2l0aW9uIjp7InNhdmVkIjoiMjAyNi0xMS0xNlQxMToxODoyMC44NDVaIiwiaWQiOiJkNjQ3MDY5Mi05ZDkwLTQ2NWMtYjQxYi1lNzBjZTY2NGMyYjMifX0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:43.008Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:51.007Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:46:59.010Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:47:07.011Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:47:15.009Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:47:23.012Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:47:31.007Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:47:39.019Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:47:47.014Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:47:55.018Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:48:03.014Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:48:11.016Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:48:19.013Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:48:27.014Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:48:35.011Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:48:43.008Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:48:51.014Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:48:59.013Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:49:07.009Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:49:15.015Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:49:23.014Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:49:31.015Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:49:38.499Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/export?version=5a7157c2-62a2-4ceb-a8ac-6c5004aa4b54&format=xml",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:49:39.022Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:49:47.015Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:49:55.009Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:50:03.017Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:50:11.008Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:50:19.012Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:50:20.449Z",
+      "method": "POST",
+      "path": "/api/projects/browser-1000/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:50:20.453Z",
+      "method": "GET",
+      "path": "/api/projects/browser-1000/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:52:26.923Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:52:27.048Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:52:27.052Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:52:27.058Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:52:27.276Z",
+      "method": "POST",
+      "path": "/api/logout",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:52:28.052Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": 409
+    },
+    {
+      "at": "2026-11-16T11:52:28.055Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:52:41.181Z",
+      "method": "POST",
+      "path": "/api/login",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:52:50.259Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:52:51.444Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:52:51.453Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:10.836Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:10.841Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:10.853Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:14.269Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:22.265Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:30.265Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:38.272Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:42.861Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": 400
+    },
+    {
+      "at": "2026-11-16T11:53:46.264Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:53.577Z",
+      "method": "POST",
+      "path": "/api/login",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:53.608Z",
+      "method": "DELETE",
+      "path": "/api/projects/browser-30/members",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:54.266Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:53:54.269Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:54:02.997Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:54:03.003Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:54:08.607Z",
+      "method": "POST",
+      "path": "/api/logout",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:54:14.888Z",
+      "method": "POST",
+      "path": "/api/login",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:54:32.072Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:54:32.863Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:54:32.867Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:54:32.888Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:54:40.087Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:54:48.082Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:54:56.081Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:55:04.085Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:55:12.087Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:55:20.087Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:55:27.981Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:55:27.989Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:55:28.074Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:55:32.627Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/adopt",
+      "fault": "commit-drop"
+    },
+    {
+      "at": "2026-11-16T11:55:32.645Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/adopt",
+      "fault": "commit-drop"
+    },
+    {
+      "at": "2026-11-16T11:55:32.680Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:56:17.831Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:57:36.819Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:57:37.979Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:57:37.982Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:57:37.987Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:57:38.852Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:57:38.858Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:57:44.074Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/adopt",
+      "fault": "commit-drop"
+    },
+    {
+      "at": "2026-11-16T11:57:44.085Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/adopt",
+      "fault": "commit-drop"
+    },
+    {
+      "at": "2026-11-16T11:57:44.089Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:57:49.296Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:57:59.831Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:57:59.833Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:57:59.838Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:00.834Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:05.455Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/adopt",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:05.462Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing/versions?limit=50",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:05.463Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:08.834Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:16.829Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:24.826Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:32.830Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:40.830Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:48.829Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:56.445Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:58:56.461Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": 400
+    },
+    {
+      "at": "2026-11-16T11:58:56.825Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:59:04.833Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:59:12.826Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:59:13.151Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": "delay"
+    },
+    {
+      "at": "2026-11-16T11:59:16.170Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:59:20.819Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:59:28.832Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:59:36.832Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:59:44.821Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T11:59:52.823Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:00.825Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:06.280Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": "drop"
+    },
+    {
+      "at": "2026-11-16T12:00:06.282Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": "drop"
+    },
+    {
+      "at": "2026-11-16T12:00:06.284Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:22.620Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": 503
+    },
+    {
+      "at": "2026-11-16T12:00:31.881Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:31.883Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/start",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:31.889Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:32.830Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:37.557Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:37.565Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:40.833Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:48.827Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:55.959Z",
+      "method": "PATCH",
+      "path": "/api/projects/browser-30/tasks/browser-30-t0",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:00:55.968Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": 503
+    },
+    {
+      "at": "2026-11-16T12:00:56.836Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:01:04.823Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:01:12.828Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:01:20.828Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:01:28.822Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:01:36.835Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:01:44.827Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:01:52.829Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/heartbeat",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:01:57.153Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:01:57.491Z",
+      "method": "POST",
+      "path": "/api/projects/browser-30/timing/draft/release",
+      "fault": null
+    },
+    {
+      "at": "2026-11-16T12:01:57.551Z",
+      "method": "GET",
+      "path": "/api/projects/browser-30/timing",
+      "fault": null
+    }
+  ]
+}

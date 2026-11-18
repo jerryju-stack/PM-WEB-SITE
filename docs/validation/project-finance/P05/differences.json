@@ -1,0 +1,106 @@
+{
+  "sourceSha256": "58c80ce9b4d11b700e49b0e2e9baf6b5814dfcc869fe033b792a5cb2b6c14741",
+  "financialControlChecks": "passed",
+  "normalizedCacheChecks": "passed",
+  "websiteComparison": {
+    "status": "not_implemented",
+    "differences": null
+  },
+  "historicalUnexplained": [
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U61",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U64",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U67",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U70",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U71",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U72",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U77",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U78",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U79",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_missing_cache",
+      "sheet": "Exec Sum ",
+      "cell": "U81",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    },
+    {
+      "code": "excel_error",
+      "sheet": "1-2# RR OTB_SPR4.1 Reverse (EU)",
+      "cell": "AF30",
+      "status": "historical_unexplained",
+      "websiteValue": null
+    }
+  ],
+  "pending": [
+    {
+      "code": "station_actual",
+      "status": "to_collect"
+    },
+    {
+      "code": "prototype_actual",
+      "status": "to_collect"
+    },
+    {
+      "code": "budget_actual",
+      "status": "to_collect"
+    },
+    {
+      "code": "operating_bridge",
+      "status": "pending_finance"
+    }
+  ]
+}

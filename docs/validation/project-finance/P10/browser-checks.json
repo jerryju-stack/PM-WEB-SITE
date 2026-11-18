@@ -1,0 +1,137 @@
+{
+  "step": "P10",
+  "browser": "Chrome",
+  "viewports": [
+    [
+      1440,
+      1000
+    ],
+    [
+      390,
+      844
+    ]
+  ],
+  "checks": [
+    "Main-site prototype source shows four included samples",
+    "samplesOnly reconciles T4 year, budget, expense, cash and NPV",
+    "Cross-link opens validation package source with its included batch",
+    "retestOnly reconciles T4 year, budget, expense, cash and NPV",
+    "combined reconciles T4 year, budget, expense, cash and NPV",
+    "Combined preview includes both source keys and a trace to NPV",
+    "Web save reproduces preview digest",
+    "Saved combined forecast displays the 10,000 ceiling and 1,200 remaining",
+    "2027 row is visible after a direct reload",
+    "Explicit source and module returns restore the dashboard URL",
+    "Project Returns shows persisted Year 1 cash after combined expense",
+    "Engineering source traces role, phase, hours, travel and amount",
+    "Engineering entry accepts new role, phase, hours and rate",
+    "Web save reproduces preview digest",
+    "Mobile source is within the viewport",
+    "Quality occurrence is 2,000 in 2027 and payment moves from 2027 to 2028",
+    "Web save reproduces preview digest",
+    "Quality can read but cannot change the prototype source",
+    "Real CQA shows archived DV/PV references and PV overlap with read-only access",
+    "No uncaught script errors"
+  ],
+  "reconciliation": {
+    "samplesOnly": {
+      "gross": [
+        "5000.00",
+        "6800.00",
+        "1800.00"
+      ],
+      "developmentBudget": [
+        "10000.00",
+        "10000.00",
+        "0.00"
+      ],
+      "remaining": [
+        "5000.00",
+        "3200.00",
+        "-1800.00"
+      ],
+      "engineering": [
+        "5000.00",
+        "6800.00",
+        "1800.00"
+      ],
+      "developmentCash": [
+        "-5000.00",
+        "-6800.00",
+        "-1800.00"
+      ],
+      "projectCash": [
+        "105000.00",
+        "103200.00",
+        "-1800.00"
+      ],
+      "npvDelta": "-1636.36"
+    },
+    "retestOnly": {
+      "gross": [
+        "5000.00",
+        "7000.00",
+        "2000.00"
+      ],
+      "developmentBudget": [
+        "10000.00",
+        "10000.00",
+        "0.00"
+      ],
+      "remaining": [
+        "5000.00",
+        "3000.00",
+        "-2000.00"
+      ],
+      "engineering": [
+        "5000.00",
+        "7000.00",
+        "2000.00"
+      ],
+      "developmentCash": [
+        "-5000.00",
+        "-7000.00",
+        "-2000.00"
+      ],
+      "projectCash": [
+        "105000.00",
+        "103000.00",
+        "-2000.00"
+      ],
+      "npvDelta": "-1818.18"
+    },
+    "combined": {
+      "gross": [
+        "5000.00",
+        "8800.00",
+        "3800.00"
+      ],
+      "developmentBudget": [
+        "10000.00",
+        "10000.00",
+        "0.00"
+      ],
+      "remaining": [
+        "5000.00",
+        "1200.00",
+        "-3800.00"
+      ],
+      "engineering": [
+        "5000.00",
+        "8800.00",
+        "3800.00"
+      ],
+      "developmentCash": [
+        "-5000.00",
+        "-8800.00",
+        "-3800.00"
+      ],
+      "projectCash": [
+        "105000.00",
+        "101200.00",
+        "-3800.00"
+      ],
+      "npvDelta": "-3454.55"
+    }
+  }
+}

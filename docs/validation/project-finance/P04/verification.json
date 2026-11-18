@@ -1,0 +1,26 @@
+{
+  "step": "P04",
+  "sample": "synthetic only",
+  "recordedAt": "2026-11-17T14:34:13.936Z",
+  "node": "v24.22.1",
+  "command": "node --experimental-strip-types scripts/verify-finance-p04.ts --record",
+  "tests": 9,
+  "passed": 9,
+  "failed": 0,
+  "skipped": 0,
+  "checks": [
+    "schema 10 to 11 and failed-DDL rollback",
+    "legacy rows preserved and finance empty",
+    "canonical fixed decimal and currency scales",
+    "source provenance and separate budget/incurred/payment events",
+    "administrator, Viewer, duty editor and explicit approver",
+    "cross-project and cross-module denial",
+    "live revocation including in-flight HTTP body and successful receipt retries",
+    "read/preview/write HTTP enforcement and public card redaction",
+    "concurrent revision and project-state conflicts",
+    "draft clone, immutable frozen baseline and audit evidence",
+    "idempotent receipts and changed-body conflict",
+    "audit/receipt failure atomic rollback and successful retry",
+    "backup/restore table hashes and tampered evidence rejection"
+  ]
+}

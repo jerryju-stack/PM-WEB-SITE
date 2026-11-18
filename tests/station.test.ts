@@ -19,13 +19,13 @@ test('JSON 迁移、八阶段、权限、完整排期、附件、重启持久化
  let lease:any;
  const call=async(path:string,body?:any,cookie='',method='POST')=>{if(lease&&body&&/^projects\/[^/]+\/tasks(?:\/[^/]+)?$/.test(path))body={...body,leaseToken:lease.token,draftId:lease.id};const r=await fetch(base+'/api/'+path,{method:body?method:'GET',headers:{'Content-Type':'application/json',Cookie:cookie},body:body?JSON.stringify(body):undefined});return{status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]||''};};
  try{
- await start();const publicData=await call('data');assert.equal(publicData.data.settings.title,'Project Station');assert.equal(publicData.data.projects[0].title,'迁移项目');assert.ok(!('content' in publicData.data.projects[0]));assert.equal(publicData.data.articles[0].content,'## 复盘');assert.ok(!JSON.stringify(publicData.data).includes('"hash"'));assert.equal((await call('projects/legacy-project/timing')).status,401);
+ await start();const publicData=await call('data');assert.equal(publicData.data.settings.title,'Project Station');assert.equal(publicData.data.projects[0].title,'迁移项目');assert.ok(!('content' in publicData.data.projects[0]));assert.ok(!('content' in publicData.data.articles[0]));assert.equal((await call('articles/article')).data.content,'## 复盘');assert.ok(!JSON.stringify(publicData.data).includes('"hash"'));assert.equal((await call('projects/legacy-project/timing')).status,401);
  assert.ok((await readdir(directory)).some(f=>f.startsWith('store.pre-sqlite-')));
  assert.equal((await call('login',{id:'admin',password:'wrong'})).status,401);
  let admin=(await call('login',{id:'admin',password:'Admin-Password-2026'})).cookie;assert.ok(admin);
  for(const role of ['editor','viewer'])assert.equal((await call('users',{id:role,name:role,role,password:'Member-Password-2026'},admin)).status,200);
  const editor=(await call('login',{id:'editor',password:'Member-Password-2026'})).cookie,viewer=(await call('login',{id:'viewer',password:'Member-Password-2026'})).cookie;
- const accounts=(await call('data',undefined,admin)).data.users;const editorUid=accounts.find((u:any)=>u.loginName==='editor').id;
+ const accounts=(await call('users',undefined,admin)).data;const editorUid=accounts.find((u:any)=>u.loginName==='editor').id;
  assert.equal((await call('projects/legacy-project/members',{userUid:editorUid,groupId:'manager'},admin)).status,200);
  const getTiming=async()=>lease?{data:await (await fetch(base+'/api/projects/legacy-project/timing',{headers:{Cookie:lease.cookie,'X-Timing-Lease':lease.token}})).json()}:call('projects/legacy-project/timing',undefined,admin);
  const enter=async(cookie:string)=>{const r=await call('projects/legacy-project/timing/draft/start',{},cookie);assert.equal(r.status,200);lease={token:r.data.leaseToken,id:r.data.draft.id,cookie};};

@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import {FileJobError} from './file-job-types.ts';
 export const requestId=()=>randomUUID(); // Never accept caller-provided log identifiers.
 export function errorResponse(error:any,id:string) {
-  const status=[400,401,403,404,405,409,413,429].includes(error?.status)?error.status:500;
-  const category=({400:'input',401:'authentication',403:'permission',404:'not_found',405:'method',409:'conflict',413:'input',429:'rate_limit'} as Record<number,string>)[status]??'internal';
+  const status=[400,401,403,404,405,409,413,429,...(error instanceof FileJobError?[499,503,504]:[])].includes(error?.status)?error.status:500;
+  const category=({400:'input',401:'authentication',403:'permission',404:'not_found',405:'method',409:'conflict',413:'input',429:'rate_limit',499:'cancelled',503:'unavailable',504:'timeout'} as Record<number,string>)[status]??'internal';
   return {status,body:{error:status===500?'内部错误，请稍后重试':String(error.message),category,requestId:id}};
 }
 export function diagnostic(error:any,id:string,method:string|undefined) {

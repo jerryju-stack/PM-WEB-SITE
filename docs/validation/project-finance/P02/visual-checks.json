@@ -1,0 +1,98 @@
+[
+  {
+    "design": "A",
+    "language": "en",
+    "version": "P02-v1.1",
+    "desktop": [
+      1440,
+      1000
+    ],
+    "mobile": [
+      390,
+      844
+    ],
+    "metricGroups": 6,
+    "consoleErrors": [],
+    "mobileOverflow": false,
+    "preview": {
+      "ct": [
+        30,
+        36
+      ],
+      "costDelta": 2000,
+      "npvDelta": -1818.18,
+      "favorableCt": 24
+    },
+    "reports": [
+      "budget",
+      "returns",
+      "compare"
+    ],
+    "definitions": "English definitions aligned with P01",
+    "status": "passed"
+  },
+  {
+    "design": "B",
+    "language": "en",
+    "version": "P02-v1.1",
+    "desktop": [
+      1440,
+      1000
+    ],
+    "mobile": [
+      390,
+      844
+    ],
+    "metricGroups": 6,
+    "consoleErrors": [],
+    "mobileOverflow": false,
+    "preview": {
+      "ct": [
+        30,
+        36
+      ],
+      "costDelta": 2000,
+      "npvDelta": -1818.18,
+      "favorableCt": 24
+    },
+    "reports": [
+      "budget",
+      "returns",
+      "compare"
+    ],
+    "definitions": "English definitions aligned with P01",
+    "status": "passed"
+  },
+  {
+    "design": "C",
+    "language": "en",
+    "version": "P02-v1.1",
+    "desktop": [
+      1440,
+      1000
+    ],
+    "mobile": [
+      390,
+      844
+    ],
+    "metricGroups": 6,
+    "consoleErrors": [],
+    "mobileOverflow": false,
+    "preview": {
+      "ct": [
+        30,
+        36
+      ],
+      "costDelta": 2000,
+      "npvDelta": -1818.18,
+      "favorableCt": 24
+    },
+    "reports": [
+      "budget",
+      "returns",
+      "compare"
+    ],
+    "definitions": "English definitions aligned with P01",
+    "status": "passed"
+  }
+]

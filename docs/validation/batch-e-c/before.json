@@ -1,0 +1,72 @@
+{
+  "at": "2026-11-16T10:30:33.892Z",
+  "directory": "C:\\Users\\curie\\AppData\\Local\\Temp\\station-e-c-m0A51H",
+  "environment": {
+    "node": "v24.22.1",
+    "os": "10.0.26200",
+    "cpu": "AMD Ryzen 7 9700X 8-Core Processor             "
+  },
+  "method": "Same synthetic tasks, 100/1000 history counts; cold +30 warm metadata reads. Adoption one measured transaction per matrix cell, not P95. 500 articles with fixed 12000-byte bodies; cold +30 HTTP aggregate reads. SQLite/HTTP isolated.",
+  "results": [
+    {
+      "tasks": 100,
+      "versions": 100,
+      "queries": 102,
+      "snapshotBytes": 3406700,
+      "responseBytes": 25793,
+      "coldMs": 8.732099999999974,
+      "samples": 30,
+      "p95Ms": 6.942800000000005,
+      "maxMs": 8.211100000000016,
+      "adoptMs": 14.297399999999982,
+      "rssBytes": 163328000
+    },
+    {
+      "tasks": 100,
+      "versions": 1000,
+      "queries": 1002,
+      "snapshotBytes": 34448000,
+      "responseBytes": 260894,
+      "coldMs": 71.42970000000003,
+      "samples": 30,
+      "p95Ms": 75.52549999999997,
+      "maxMs": 78.7491,
+      "adoptMs": 68.5326,
+      "rssBytes": 617201664
+    },
+    {
+      "tasks": 1000,
+      "versions": 100,
+      "queries": 102,
+      "snapshotBytes": 34666700,
+      "responseBytes": 25993,
+      "coldMs": 67.9335000000001,
+      "samples": 30,
+      "p95Ms": 66.5644000000002,
+      "maxMs": 67.11209999999937,
+      "adoptMs": 163.0029000000004,
+      "rssBytes": 756928512
+    },
+    {
+      "tasks": 1000,
+      "versions": 1000,
+      "queries": 1002,
+      "snapshotBytes": 350648000,
+      "responseBytes": 262894,
+      "coldMs": 581.8643999999986,
+      "samples": 30,
+      "p95Ms": 695.4799999999996,
+      "maxMs": 725.6404000000002,
+      "adoptMs": 595.8292000000001,
+      "rssBytes": 2860703744
+    }
+  ],
+  "http": {
+    "coldMs": 57.721300000001065,
+    "samples": 30,
+    "p95Ms": 62.452400000001944,
+    "maxMs": 142.630799999999,
+    "maxResponseBytes": 6099797
+  },
+  "maxRssBytes": 3721752576
+}

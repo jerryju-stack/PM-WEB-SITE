@@ -1,0 +1,84 @@
+{
+  "at": "2026-11-16T12:47:34.684Z",
+  "allStopped": true,
+  "fixtures": [
+    {
+      "directory": "C:/Users/curie/AppData/Local/Temp/station-e-a-browser-Q4NDmn",
+      "proxyPid": 28388,
+      "port": 12522,
+      "proxyAlive": false,
+      "server": {
+        "pid": 27764,
+        "purpose": "server",
+        "createdAt": "2026-11-16T10:49:55.364Z",
+        "alive": false
+      },
+      "portClosed": true
+    },
+    {
+      "directory": "C:/Users/curie/AppData/Local/Temp/station-e-a-browser-BBiQIY",
+      "proxyPid": 25844,
+      "port": 10991,
+      "proxyAlive": false,
+      "server": {
+        "pid": 26412,
+        "purpose": "server",
+        "createdAt": "2026-11-16T12:03:20.034Z",
+        "alive": false
+      },
+      "portClosed": true
+    },
+    {
+      "directory": "C:/Users/curie/AppData/Local/Temp/station-e-a-browser-ni5EVs",
+      "proxyPid": 31364,
+      "port": 6946,
+      "proxyAlive": false,
+      "server": {
+        "pid": 31732,
+        "purpose": "server",
+        "createdAt": "2026-11-16T12:19:31.626Z",
+        "alive": false
+      },
+      "portClosed": true
+    },
+    {
+      "directory": "C:/Users/curie/AppData/Local/Temp/station-e-a-browser-MzRFpn",
+      "proxyPid": 2892,
+      "port": 8582,
+      "proxyAlive": false,
+      "server": {
+        "pid": 26960,
+        "purpose": "server",
+        "createdAt": "2026-11-16T12:26:44.643Z",
+        "alive": false
+      },
+      "portClosed": true
+    },
+    {
+      "directory": "C:/Users/curie/AppData/Local/Temp/station-e-a-browser-ubD6qF",
+      "proxyPid": 30348,
+      "port": 9809,
+      "proxyAlive": false,
+      "server": {
+        "pid": 19944,
+        "purpose": "server",
+        "createdAt": "2026-11-16T12:35:09.104Z",
+        "alive": false
+      },
+      "portClosed": true
+    },
+    {
+      "directory": "C:/Users/curie/AppData/Local/Temp/station-e-a-browser-C0VbIy",
+      "proxyPid": 7928,
+      "port": 13025,
+      "proxyAlive": false,
+      "server": {
+        "pid": 32044,
+        "purpose": "server",
+        "createdAt": "2026-11-16T12:40:30.878Z",
+        "alive": false
+      },
+      "portClosed": true
+    }
+  ]
+}

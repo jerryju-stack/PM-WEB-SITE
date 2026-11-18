@@ -1,0 +1,43 @@
+{
+  "step": "P13",
+  "browser": "Chrome desktop and 390px",
+  "checks": [
+    "Dashboard has direct entry for commercial",
+    "Dashboard has direct entry for bom",
+    "Dashboard has direct entry for operations",
+    "Dashboard has direct entry for factory-costs",
+    "Dashboard has direct entry for engineering",
+    "Dashboard has direct entry for prototypes",
+    "Dashboard has direct entry for validation",
+    "Dashboard has direct entry for investment",
+    "Dashboard has direct entry for returns",
+    "Dashboard has direct entry for budget",
+    "Dashboard opens the selected frozen version before the current draft",
+    "Unchanged draft displays zero profit and NPV changes",
+    "Year 0 cutoff solves using the supplied cash series",
+    "Single selling price preview shows +2,000 profit and +1,818.18 NPV",
+    "Discarding the candidate leaves saved comparison at zero",
+    "Saved revision matches the preview calculation digest",
+    "Profit bridge reports price contribution and exact reconciliation",
+    "NPV reports compatible money with a separately recalculated IRR",
+    "Bridge link resolves the saved commercial row, revision and sales evidence",
+    "Explicit return restores exact comparison URL, expanded driver and link focus",
+    "Browser forward restores exact source URL",
+    "Saved comparison is reproducible after full reopen",
+    "Reversing frozen and draft versions reverses the signed NPV change",
+    "Desktop comparison has no page errors",
+    "Read-only user loads the authorized CQA original and the labeled simulated revision",
+    "One shared source contributes to two labeled products",
+    "Fresh-tab source preserves AME cell and read-only access",
+    "Fresh-tab source reconstructs both CQA selections in its return link",
+    "Unassigned project stays unavailable for the CQA reader",
+    "Narrow comparison has intrinsically scrollable tables without viewport overflow"
+  ],
+  "numbers": {
+    "syntheticGains": {
+      "profit": "2000.00",
+      "npv": "1818.18",
+      "irrPointChange": "+20.00 pp"
+    }
+  }
+}

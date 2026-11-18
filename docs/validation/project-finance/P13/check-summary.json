@@ -1,0 +1,18 @@
+{
+  "step": "P13",
+  "recordedDate": "2026-11-18",
+  "command": "node --experimental-strip-types scripts/check.ts",
+  "typecheck": "passed",
+  "tests": 245,
+  "passed": 245,
+  "failed": 0,
+  "skipped": 0,
+  "gitDiffCheck": "passed",
+  "p13Tests": 6,
+  "browserChecks": 30,
+  "archive": [
+    "CNY",
+    "USD"
+  ],
+  "actualCrossStage": "pending second authorized original"
+}

@@ -1,0 +1,60 @@
+{
+  "scope": "Control-flow probes execute extracted current source with injected dependencies; these are not browser tests.",
+  "ui": {
+    "failedExit": {
+      "calls": [
+        "release",
+        "reload"
+      ],
+      "leaseToken": "",
+      "canEdit": false
+    },
+    "reenter": {
+      "pendingInline": 0,
+      "localDraftRetained": false
+    },
+    "escape": {
+      "selected": null,
+      "renders": 1
+    }
+  },
+  "performance": [
+    {
+      "operation": "schedule",
+      "tasks": 100,
+      "medianMs": 0.88
+    },
+    {
+      "operation": "schedule",
+      "tasks": 500,
+      "medianMs": 5.74
+    },
+    {
+      "operation": "schedule",
+      "tasks": 1000,
+      "medianMs": 10.67
+    },
+    {
+      "operation": "xlsx",
+      "tasks": 100,
+      "totalMs": 617.96,
+      "timerDelayMs": 617.94,
+      "bytes": 232639
+    },
+    {
+      "operation": "pdf",
+      "tasks": 100,
+      "totalMs": 83.45,
+      "timerDelayMs": 83.44,
+      "bytes": 81015
+    },
+    {
+      "operation": "versions.list",
+      "versions": 100,
+      "tasksPerVersion": 100,
+      "sqlPrepares": 102,
+      "snapshotBytesRead": 2272600,
+      "ms": 3.88
+    }
+  ]
+}

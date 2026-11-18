@@ -401,3 +401,8 @@ body.panning-timeline,body.panning-timeline * { cursor: grabbing !important; use
 .timing-workspace .version-row-actions{display:flex;gap:8px;flex-wrap:wrap}
 .timing-workspace [data-history-restore]{margin-left:10px}
 @media(max-width:760px){.timing-workspace .plan-preview-bar{padding:12px;gap:12px}.timing-workspace .plan-preview-bar>.plan-preview-summary{flex-basis:100%}.timing-workspace .plan-preview-controls{width:100%;justify-content:space-between;gap:10px}.timing-workspace .plan-preview-tools,.timing-workspace .plan-preview-edit{flex-wrap:wrap}.timing-workspace .plan-preview-edit{padding-left:0;border-left:0;margin-left:auto}}
+.timing-draft-choice.timing-recovery{width:min(1000px,92vw);max-width:1000px;max-height:85vh;overflow:auto;border:1px solid var(--border,#777);border-radius:12px;padding:24px}
+.recovery-comparisons{max-height:55vh;overflow:auto;margin:16px 0}
+.recovery-comparisons table{width:100%;table-layout:fixed;border-collapse:collapse}
+.recovery-comparisons th,.recovery-comparisons td{padding:9px;border:1px solid rgba(128,128,128,.3);text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;vertical-align:top}
+.recovery-comparisons th:first-child{width:18%}

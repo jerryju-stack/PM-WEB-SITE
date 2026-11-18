@@ -44,6 +44,7 @@ export function resourceWriter(store: Store) {
       const current=find(collection,id),raw=objectInput(value),expected=versionInput(raw.version);
       if(current.version!==expected)invalid('内容已更新，请查看最新数据后重新确认删除',409);
       if(collection==='projects'&&versionInput(raw.taskRevision,'任务')!==(current as Project).taskRevision)invalid('任务已更新，请查看最新数据后重新确认删除',409);
+      if(collection==='projects'&&store.db.prepare('SELECT 1 FROM finance_versions WHERE project_id=?').get(id))invalid('Project has financial history; retain the project and its evidence',409);
       const tasks=collection==='projects'?store.tasks(id):[];
       const attachments=collection==='projects'?store.db.prepare('SELECT a.* FROM attachments a JOIN tasks t ON a.task_id=t.id WHERE t.project_id=?').all(id) as any[]:[];
       store.db.prepare('DELETE FROM '+collection+' WHERE id=? AND version=?').run(id,expected);

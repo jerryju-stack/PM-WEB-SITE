@@ -5,6 +5,10 @@ import { audit } from './audit.ts';
 import { invalid, objectInput, versionInput } from './contracts.ts';
 import type { Project } from './contracts.ts';
 import type { Task } from './schedule.ts';
+import {decodeCursor,encodeCursor,pageSize} from './pagination.ts';
+import type {PageOptions} from './pagination.ts';
+import {indexMissingHistory,planDigest,recordHistory} from './history-index.ts';
+import {taskIndex} from './task-index.ts';
 
 export type VersionKind = 'baseline' | 'version' | 'final';
 export type SaveVersionRequest = {kind:VersionKind;name:string;reason:string;revision:number;projectVersion:number;requestKey:string};
@@ -21,6 +25,22 @@ const metadata = (row:any):TimingVersion => ({ id:row.id,projectId:row.project_i
 
 
 export function timingVersions(store:Store) {
+  const columns='v.id,v.project_id,v.kind,v.sequence,v.name,v.reason,v.saved_at,v.actor_uid,v.actor_name,v.revision,v.project_version';
+  const visible=`SELECT ${columns},a.source_version,a.source_revision FROM timing_versions v LEFT JOIN timing_adoptions a ON a.version_id=v.id WHERE v.project_id=? AND NOT EXISTS(SELECT 1 FROM timing_version_deletions d WHERE d.project_id=v.project_id AND d.version_id=v.id)
+    UNION ALL SELECT ${columns},v.source_version,v.source_revision FROM timing_archives v WHERE v.project_id=? AND NOT EXISTS(SELECT 1 FROM timing_version_deletions d WHERE d.project_id=v.project_id AND d.version_id=v.id)`;
+  function page(projectId:string,options:PageOptions={}){
+    const limit=pageSize(options.limit),scope='history:'+projectId,cursor=decodeCursor<{saved:string;id:string}>(options.cursor,scope,p=>p&&typeof p.saved==='string'&&typeof p.id==='string');
+    const rows=store.db.prepare(`SELECT * FROM (${visible})${cursor?' WHERE (saved_at,id)<(?,?)':''} ORDER BY saved_at DESC,id DESC LIMIT ?`).all(projectId,projectId,...(cursor?[cursor.saved,cursor.id]:[]),limit+1);
+    const last=rows[limit-1];return {versions:rows.slice(0,limit).map(metadata),nextCursor:rows.length>limit?encodeCursor(scope,{saved:last.saved_at,id:last.id}):null};
+  }
+  function hasEquivalent(projectId:string,plan:PlanSnapshot){
+    // Migration indexes old snapshots; this fallback covers offline/fixture inserts as well.
+    indexMissingHistory(store.db,projectId);
+    const digest=planDigest(plan),candidates=store.db.prepare(`SELECT v.snapshot FROM timing_history_index h JOIN timing_versions v ON h.source='version' AND h.id=v.id WHERE h.project_id=? AND h.digest=? AND NOT EXISTS(SELECT 1 FROM timing_version_deletions d WHERE d.project_id=h.project_id AND d.version_id=h.id)
+      UNION ALL SELECT v.snapshot FROM timing_history_index h JOIN timing_archives v ON h.source='archive' AND h.id=v.id WHERE h.project_id=? AND h.digest=? AND v.kind<>'unadopted' AND NOT EXISTS(SELECT 1 FROM timing_version_deletions d WHERE d.project_id=h.project_id AND d.version_id=h.id)`);
+    for(const row of candidates.iterate(projectId,digest,projectId,digest)){const diff=comparePlans(JSON.parse(String(row.snapshot)),plan);if(!diff.summary.added&&!diff.summary.removed&&!diff.summary.changed&&!diff.projectChanges.length)return true;}
+    return false;
+  }
   const row = (projectId:string,id:string) => store.db.prepare('SELECT v.*,a.source_version,a.source_revision FROM timing_versions v LEFT JOIN timing_adoptions a ON a.version_id=v.id WHERE v.project_id=? AND v.id=?').get(projectId,id) ?? store.db.prepare('SELECT * FROM timing_archives WHERE project_id=? AND id=?').get(projectId,id);
   const isDeleted=(projectId:string,id:string)=>!!store.db.prepare('SELECT 1 FROM timing_version_deletions WHERE project_id=? AND version_id=?').get(projectId,id);
   function remove(projectId:string,id:string,context:WriteContext){
@@ -71,6 +91,7 @@ export function timingVersions(store:Store) {
       const id=randomUUID(),savedAt=new Date().toISOString();
       store.db.prepare('INSERT INTO timing_versions(id,project_id,kind,sequence,name,reason,saved_at,actor_uid,actor_name,revision,project_version,request_key,request_data,snapshot) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
         .run(id,projectId,kind,sequence,name,reason,savedAt,context.actorUid!,context.actorName,revision,projectVersion,key,requestData,JSON.stringify(plan));
+      recordHistory(store.db,'version',id,projectId,plan);
       const version=metadata(row(projectId,id));
       audit(store.db,context,'timing-versions',id,null,{id,projectId,kind,name},{revision,projectVersion});
       return {version,replayed:false};
@@ -81,19 +102,15 @@ export function timingVersions(store:Store) {
     const left=select(from),right=select(to);
     return {from:{...left,plan:undefined,revision:left.plan.project.taskRevision},to:{...right,plan:undefined,revision:right.plan.project.taskRevision},...comparePlans(left.plan,right.plan)};
   }
-  return {current,get,save,compare,remove,restore,list:(projectId:string)=>[...store.db.prepare('SELECT v.*,a.source_version,a.source_revision FROM timing_versions v LEFT JOIN timing_adoptions a ON a.version_id=v.id WHERE v.project_id=?').all(projectId),...store.db.prepare('SELECT * FROM timing_archives WHERE project_id=?').all(projectId)].filter((v:any)=>!isDeleted(projectId,v.id)).sort((a:any,b:any)=>String(b.saved_at).localeCompare(String(a.saved_at))).map(metadata)};
+  // Offline compatibility: metadata only. HTTP consumers always use bounded page().
+  return {current,get,save,compare,remove,restore,page,hasEquivalent,list:(projectId:string)=>store.db.prepare(`SELECT * FROM (${visible}) ORDER BY saved_at DESC,id DESC`).all(projectId,projectId).map(metadata)};
 }
 
 export type PlanChange = {field:string;label:string;before:string;after:string;delta?:number|null};
 export type TaskDifference = {id:string;title:string;type:'added'|'removed'|'changed';before:Task|null;after:Task|null;changes:PlanChange[]};
 function hierarchy(tasks:Task[]) {
   const result=new Map<string,{wbs:string;path:string[]}>();
-  function visit(parent:string|null,prefix:string,path:string[]){
-    tasks.filter(t=>t.parentId===parent).sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id)).forEach((t,i)=>{
-      const wbs=prefix?`${prefix}.${i+1}`:String(i+1);result.set(t.id,{wbs,path});visit(t.id,wbs,[...path,t.id]);
-    });
-  }
-  visit(null,'',[]);return result;
+  for(const row of taskIndex(tasks).rows()){const parent=row.task.parentId;result.set(row.task.id,{wbs:row.wbs,path:parent?[...result.get(parent)!.path,parent]:[]});}return result;
 }
 export function comparePlans(from:PlanSnapshot,to:PlanSnapshot) {
   const left=new Map(from.tasks.map(t=>[t.id,t])),right=new Map(to.tasks.map(t=>[t.id,t]));

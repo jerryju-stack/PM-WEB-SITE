@@ -6,6 +6,7 @@ import {DAY,dateValue} from '../lib/schedule.ts';
 
 // Run the real renderer with a small DOM fixture; no browser/layout engine is implied.
 const source=stripTypeScriptTypes(readFileSync(new URL('../src/timing.ts',import.meta.url),'utf8'))
+ .replace("'/task-index.js'",JSON.stringify(new URL('../lib/task-index.ts',import.meta.url).href))
  .replace("'/schedule.js'",JSON.stringify(new URL('../lib/schedule.ts',import.meta.url).href))
  .replace("'/drafts.js'",JSON.stringify(new URL('../src/drafts.ts',import.meta.url).href))
  .replace("'/timing-layout.js'",JSON.stringify(new URL('../src/timing-layout.ts',import.meta.url).href))
@@ -42,7 +43,8 @@ test('D6 actual zoom handlers, collapse, date refresh and ResizeObserver preserv
  let html='',timeline='',width=640,resize=()=>{},renders=0,captured=false,frameId=0;
  const frames=new Map<number,FrameRequestCallback>(),classes=new Set<string>();
  const events=new Map<string,Function>();
- const node=(selector:string)=>({addEventListener:(event:string,fn:Function,options?:{signal?:AbortSignal})=>{const key=selector+':'+event;events.set(key,fn);options?.signal?.addEventListener('abort',()=>{if(events.get(key)===fn)events.delete(key);},{once:true});}});
+ const registrations=new Map<string,{fn:Function;signal?:AbortSignal}[]>();
+ const node=(selector:string)=>({contains:()=>true,addEventListener:(event:string,fn:Function,options?:{signal?:AbortSignal})=>{const key=selector+':'+event,entries=registrations.get(key)??[];entries.push({fn,signal:options?.signal});registrations.set(key,entries);events.set(key,(value:any)=>{const results=entries.filter(entry=>!entry.signal?.aborted).map(entry=>entry.fn(value));return Promise.all(results);});options?.signal?.addEventListener('abort',()=>{if(entries.every(entry=>entry.signal?.aborted))events.delete(key);},{once:true});}});
  const left={...node('left'),scrollLeft:0,scrollTop:88};
  const right={...node('right'),scrollLeft:0,scrollTop:88,scrollWidth:100000,clientHeight:350,get clientWidth(){return width;},set innerHTML(v:string){timeline=v;},querySelectorAll:()=>[],getBoundingClientRect:()=>({left:0,top:0}),setPointerCapture:()=>captured=true,hasPointerCapture:()=>captured,releasePointerCapture:()=>captured=false};
  const root={...node('root'),set innerHTML(v:string){html=v;renders++;timeline=v.slice(v.indexOf('<div class="timeline-canvas'));},querySelectorAll:()=>[]};
@@ -52,7 +54,7 @@ test('D6 actual zoom handlers, collapse, date refresh and ResizeObserver preserv
  const tasks=[task('summary','2025-01-01','2028-12-31',null,'summary'),task('first','2025-01-01','2025-01-01','summary','milestone'),task('last','2028-12-31','2028-12-31','summary','milestone')];
  const values={document:{body:{classList:{add:(name:string)=>classes.add(name),remove:(name:string)=>classes.delete(name)}},activeElement:null,...node('document'),querySelector:(s:string)=>s==='#app'?root:s==='.task-pane'?left:s==='.timeline-pane'?right:null,querySelectorAll:(s:string)=>[node(s)]},window:node('window'),ResizeObserver:class{constructor(fn:()=>void){resize=fn;}observe(){}disconnect(){}},fetch:async()=>({ok:true,json:async()=>({tasks,project:{title:'fixture',owner:'test',startDate:'2025-01-01'},attachments:[],capabilities:[],members:[],revision:0})}),requestAnimationFrame:(fn:FrameRequestCallback)=>{frames.set(++frameId,fn);return frameId;},cancelAnimationFrame:(id:number)=>frames.delete(id)};
  for(const k of globals)Object.defineProperty(globalThis,k,{configurable:true,value:values[k]});
- const click=async(s:string,dataset={})=>events.get(s+':click')!({currentTarget:{dataset}});
+ const click=async(s:string,dataset={})=>events.get('root:click')!({target:{closest:(selector:string)=>selector===s?{dataset}:null}});
  try{
   await timing.mountTiming({projectId:'d6-test',user:{id:'test'},settings:{}});
   assert.match(timeline,new RegExp('width:'+timing.scrollableProjectBounds(tasks,'week',width,'2025-01-01').width+'px'));assert.doesNotMatch(timeline,/offscreen-task/);
@@ -65,7 +67,7 @@ test('D6 actual zoom handlers, collapse, date refresh and ResizeObserver preserv
   for(const [zoom,scale] of [['day',32],['week',12],['month',5]]){await click('[data-zoom]',{zoom});assert.match(timeline,new RegExp('--day-width:'+scale+'px'));assert.doesNotMatch(timeline,/project-timeline|offscreen-task/);}
   right.scrollLeft=123;const before=renders;width=5000;resize();assert.equal(renders,before);assert.ok(Number(timeline.match(/style="width:(\d+)px/)![1])>=width);assert.equal(right.scrollLeft,123);
   const pan=(target:any={closest:()=>null})=>events.get('right:pointerdown')!({button:0,pointerId:1,clientX:200,clientY:100,currentTarget:right,target,preventDefault(){}});
-  pan({closest:()=>({})});assert.equal(captured,false); // Tasks and controls retain their own actions.
+  pan({closest:(selector:string)=>selector==='[data-bar],button,input,select,a'?{}:null});assert.equal(captured,false); // Tasks and controls retain their own actions.
   pan();assert.ok(captured);events.get('right:pointermove')!({pointerId:1,clientX:100});assert.equal(frames.size,1);
   const pending=[...frames.values()];frames.clear();pending.forEach(fn=>fn(0));assert.equal(right.scrollLeft,223);assert.equal(renders,before);
   events.get('right:pointermove')!({pointerId:1,clientX:90});events.get('right:pointerup')!({pointerId:1,clientX:80});assert.equal(frames.size,0);assert.equal(right.scrollLeft,243);assert.ok(!captured);assert.ok(!classes.has('panning-timeline'));assert.equal(events.has('right:pointermove'),false);

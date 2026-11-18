@@ -1,3 +1,4 @@
+import {taskIndex} from './task-index.ts';
 export type Task = {
   id: string; projectId: string; parentId: string | null; order: number;
   title: string; kind: 'summary' | 'task' | 'milestone'; owner: string;
@@ -22,12 +23,15 @@ export function nextWorkday(value: string, strictly = false): string {
 }
 export function finish(start: string, duration: number): string {
   let n = dateValue(nextWorkday(start));
-  for (let remaining = Math.max(0, duration - 1); remaining > 0;) { n += DAY; if (isWorkday(n)) remaining--; }
+  let remaining=Math.max(0,duration-1);
+  if(Number.isInteger(remaining)){const weeks=Math.floor(remaining/5);n+=weeks*7*DAY;remaining-=weeks*5;}
+  for (; remaining > 0;) { n += DAY; if (isWorkday(n)) remaining--; }
   const result = iso(n); dateValue(result); return result;
 }
 export function workdays(start: string, end: string): number {
   let n = dateValue(start), stop = dateValue(end), count = 0;
   if (stop < n) throw inputError('结束日期不能早于开始日期');
+  const weeks=Math.floor(((stop-n)/DAY+1)/7);count=weeks*5;n+=weeks*7*DAY;
   for (; n <= stop; n += DAY) if (isWorkday(n)) count++;
   return count;
 }
@@ -58,8 +62,8 @@ export const progressPercent = (total: ProgressTotals): number => {
 export const projectProgress = (tasks: Task[]): number => progressPercent(sumTotals(tasks.filter(t => t.kind !== 'summary').map(leafTotals)));
 
 export function schedule(input: Task[]): Task[] {
-  const tasks = structuredClone(input), byId = new Map(tasks.map(t => [t.id, t]));
-  const children = (id: string) => tasks.filter(t => t.parentId === id);
+  const tasks = structuredClone(input), index=taskIndex(tasks),byId=index.byId;
+  const children = (id: string) => index.children.get(id)??[];
   if (byId.size !== tasks.length) throw inputError('任务编号重复');
   for (const t of tasks) {
     if (!t.title.trim() || t.title.length > 200) throw inputError('任务名称不能为空且最多 200 字');

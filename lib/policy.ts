@@ -4,16 +4,40 @@ import { invalid } from './contracts.ts';
 import { audit } from './audit.ts';
 import type { WriteContext } from './audit.ts';
 import { randomUUID } from 'node:crypto';
-export const capabilities=['projectCreate','projectEdit','projectDelete','timingRead','timingEdit','attachmentUpload','attachmentDelete','lessonCreate','lessonEdit','lessonDelete','lessonsRead','membersRead','membersManage'] as const;
+import {financeCapabilities} from './finance-schema.ts';
+export const capabilities=['projectCreate','projectEdit','projectDelete','timingRead','timingEdit','attachmentUpload','attachmentDelete','lessonCreate','lessonEdit','lessonDelete','lessonsRead','membersRead','membersManage',...financeCapabilities] as const;
 export type Capability=typeof capabilities[number];
 export function policy(store:Store) {
+  /** Synchronous request-local projection only. Never retain it across await or a mutation. */
+  function snapshot(user:any){
+    const live=user&&accountByUid(store,user.uid),groups=new Map<string,Capability[]>();
+    for(const row of store.db.prepare('SELECT id,capabilities FROM permission_groups').all()){
+      try{const caps=JSON.parse(String(row.capabilities));if(Array.isArray(caps)&&caps.every(c=>capabilities.includes(c)))groups.set(String(row.id),caps);}catch{}
+    }
+    const memberships=new Map<string,Capability[]>();
+    if(live)for(const row of store.db.prepare('SELECT project_id,group_id FROM project_members WHERE user_uid=?').all(live.uid)){const caps=groups.get(String(row.group_id));if(caps)memberships.set(String(row.project_id),caps);}
+    const can=(cap:Capability,projectId?:string)=>{
+      if(!live)return false;if(live.role==='admin')return true;
+      if(live.role==='viewer'&&!['timingRead','lessonsRead','membersRead','financeRead','financePreview'].includes(cap))return false;
+      if(projectId)return !!memberships.get(projectId)?.includes(cap);
+      if(cap==='projectCreate'&&[...memberships.values()].some(c=>c.includes(cap)))return true;
+      return !!groups.get(live.groupId??(live.role==='viewer'?'viewer':'editor'))?.includes(cap);
+    };
+    const cardIds:string[]=[],lessonIds:string[]=[];
+    for(const row of store.db.prepare('SELECT project_id,cards,lessons FROM project_access').all()){
+      const id=String(row.project_id);
+      if(row.cards==='public'||(live&&(live.role==='admin'||memberships.has(id))))cardIds.push(id);
+      if(live&&(row.lessons==='authenticated'||can('lessonsRead',id)))lessonIds.push(id);
+    }
+    return {can,cardIds,lessonIds};
+  }
   const group=(id:string)=>{const row=store.db.prepare('SELECT * FROM permission_groups WHERE id=?').get(id);if(!row)return null;let caps:unknown;try{caps=JSON.parse(String(row.capabilities));}catch{return null;}return Array.isArray(caps)&&caps.every(c=>capabilities.includes(c))?{id:String(row.id),name:String(row.name),capabilities:caps as Capability[]}:null;};
   const valid=(user:any)=>user&&accountByUid(store,user.uid);
   const memberGroup=(user:any,projectId:string)=>{const row=user&&store.db.prepare('SELECT group_id FROM project_members WHERE project_id=? AND user_uid=?').get(projectId,user.uid);return row?group(String(row.group_id)):null;};
   function can(user:any,cap:Capability,projectId?:string) {
     if(!valid(user))return false;
     if(user.role==='admin')return true;
-    if(user.role==='viewer'&&!['timingRead','lessonsRead','membersRead'].includes(cap))return false;
+    if(user.role==='viewer'&&!['timingRead','lessonsRead','membersRead','financeRead','financePreview'].includes(cap))return false;
     if(projectId)return !!memberGroup(user,projectId)?.capabilities.includes(cap);
     if(cap==='projectCreate'&&store.db.prepare('SELECT project_id FROM project_members WHERE user_uid=?').all(user.uid).some(row=>memberGroup(user,String(row.project_id))?.capabilities.includes(cap)))return true;
     return !!group(user.groupId??(user.role==='viewer'?'viewer':'editor'))?.capabilities.includes(cap);
@@ -49,5 +73,5 @@ export function policy(store:Store) {
       store.db.prepare('INSERT INTO permission_groups VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,capabilities=excluded.capabilities').run(key,next.name,JSON.stringify(next.capabilities));audit(store.db,context,'groups',key,before,next);return next;
     });
   }
-  return {can,card,read,requireRead,requireCap,articleRead,attachmentProject,taskProject,members,setMember,setAccess,saveGroup,access,group,groups:()=>store.db.prepare('SELECT id FROM permission_groups').all().map(row=>group(String(row.id)))};
+  return {can,card,read,requireRead,requireCap,articleRead,attachmentProject,taskProject,members,setMember,setAccess,saveGroup,access,group,snapshot,groups:()=>store.db.prepare('SELECT id FROM permission_groups').all().map(row=>group(String(row.id)))};
 }

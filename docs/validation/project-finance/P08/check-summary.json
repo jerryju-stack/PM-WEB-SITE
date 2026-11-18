@@ -1,0 +1,33 @@
+{
+  "step": "P08",
+  "recordedAt": "2026-11-18T10:37:44.161Z",
+  "node": "v24.22.1",
+  "calculationVersion": "P08.1",
+  "command": "node --experimental-strip-types scripts/check.ts",
+  "exitCode": 0,
+  "typecheck": "passed",
+  "tests": 226,
+  "passed": 226,
+  "failed": 0,
+  "skipped": 0,
+  "p08Tests": 6,
+  "gitDiffCheck": "passed",
+  "browser": {
+    "assertions": 56,
+    "command": "node scripts/verify-finance-p08-browser.mjs",
+    "passed": true,
+    "viewports": [
+      "1440×1000",
+      "390×844"
+    ]
+  },
+  "archive": {
+    "checks": 6,
+    "command": "node --experimental-strip-types scripts/verify-finance-p08-archive.ts --record"
+  },
+  "priorP06Reconciliation": {
+    "command": "node --experimental-strip-types scripts/verify-finance-p06.ts",
+    "status": "passed",
+    "p06Assertions": 3122
+  }
+}

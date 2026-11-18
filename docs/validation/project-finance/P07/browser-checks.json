@@ -1,0 +1,417 @@
+{
+  "base": "http://127.0.0.1:18747",
+  "recordedAt": "2026-11-18T09:58:15.378Z",
+  "checks": 82,
+  "results": [
+    {
+      "device": "desktop",
+      "check": "normal website login and global finance entry",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "six real metric cards",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "approved P05 baseline selected",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "frozen baseline does not appear as a current forecast",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "sourced USD NPV displayed",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "cash series visible",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "missing actuals are explicit",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "CQA operating basis separated",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "project card opens same baseline and value",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "Timing remains available",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "Chinese NPV definition",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "definition close restores focus",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "keyboard definition opens",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "Escape closes definition and keeps focus",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "source trace contains calculation version and workbook cell",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "source deep-link refresh restores period and product",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "uses server preview",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "impact path, before/candidate and effective period visible",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "frozen baseline cannot be saved",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "declining return retains candidate",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "explicit return restores source row focus and filters",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "browser forward restores source",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "explicit return restores originating metric",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "refreshable commercial",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "refreshable bom",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "refreshable operations",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "refreshable factory-costs",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "refreshable engineering",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "refreshable prototypes",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "refreshable validation",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "refreshable investment",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "refreshable returns",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "refreshable budget",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "refreshable compare",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "empty project displays no fabricated cards",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "synthetic current and baseline comparison has calculated delta",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "page has no horizontal overflow",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "editable draft can save a preview",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "draft save via P06",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "saved draft survives reload",
+      "status": "passed"
+    },
+    {
+      "device": "desktop",
+      "check": "no browser JavaScript errors",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "normal website login and global finance entry",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "six real metric cards",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "approved P05 baseline selected",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "frozen baseline does not appear as a current forecast",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "sourced USD NPV displayed",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "cash series visible",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "missing actuals are explicit",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "CQA operating basis separated",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "project card opens same baseline and value",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "Timing remains available",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "Chinese NPV definition",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "definition close restores focus",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "source trace contains calculation version and workbook cell",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "source deep-link refresh restores period and product",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "uses server preview",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "impact path, before/candidate and effective period visible",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "frozen baseline cannot be saved",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "declining return retains candidate",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "explicit return restores source row focus and filters",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "browser forward restores source",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "explicit return restores originating metric",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "refreshable commercial",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "refreshable bom",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "refreshable operations",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "refreshable factory-costs",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "refreshable engineering",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "refreshable prototypes",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "refreshable validation",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "refreshable investment",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "refreshable returns",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "refreshable budget",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "refreshable compare",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "empty project displays no fabricated cards",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "synthetic current and baseline comparison has calculated delta",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "page has no horizontal overflow",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "editable draft can save a preview",
+      "status": "passed"
+    },
+    {
+      "device": "mobile",
+      "check": "no browser JavaScript errors",
+      "status": "passed"
+    },
+    {
+      "device": "reader",
+      "check": "single authorized project opens directly",
+      "status": "passed"
+    },
+    {
+      "device": "reader",
+      "check": "read-only role cannot edit or preview",
+      "status": "passed"
+    },
+    {
+      "device": "outside",
+      "check": "direct link does not expose name or metrics",
+      "status": "passed"
+    },
+    {
+      "device": "outside",
+      "check": "workspace data rejects direct unauthorized read",
+      "status": "passed"
+    }
+  ]
+}

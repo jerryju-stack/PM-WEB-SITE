@@ -1,0 +1,299 @@
+{
+  "method": "PDFPlumber independent Unicode glyph extraction, page bounds and actual drawn table/Gantt row geometry; all pages rendered with Poppler. Contact sheet and selected full pages require visual review.",
+  "results": [
+    {
+      "case": "depth-1",
+      "pages": 1,
+      "tasks": 1,
+      "allTitlesExtracted": true,
+      "withinPage": true,
+      "rowAlignment": [
+        {
+          "page": 1,
+          "rows": 1,
+          "bars": 0,
+          "milestones": 1,
+          "lastRowBottom": 312.48
+        }
+      ]
+    },
+    {
+      "case": "depth-3",
+      "pages": 1,
+      "tasks": 3,
+      "allTitlesExtracted": true,
+      "withinPage": true,
+      "rowAlignment": [
+        {
+          "page": 1,
+          "rows": 3,
+          "bars": 2,
+          "milestones": 1,
+          "lastRowBottom": 662.28
+        }
+      ]
+    },
+    {
+      "case": "depth-15",
+      "pages": 7,
+      "tasks": 15,
+      "allTitlesExtracted": true,
+      "withinPage": true,
+      "rowAlignment": [
+        {
+          "page": 1,
+          "rows": 3,
+          "bars": 3,
+          "milestones": 0,
+          "lastRowBottom": 662.28
+        },
+        {
+          "page": 2,
+          "rows": 3,
+          "bars": 3,
+          "milestones": 0,
+          "lastRowBottom": 740.472
+        },
+        {
+          "page": 3,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 4,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 5,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 6,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 7,
+          "rows": 1,
+          "bars": 0,
+          "milestones": 1,
+          "lastRowBottom": 364.608
+        }
+      ]
+    },
+    {
+      "case": "depth-16",
+      "pages": 7,
+      "tasks": 16,
+      "allTitlesExtracted": true,
+      "withinPage": true,
+      "rowAlignment": [
+        {
+          "page": 1,
+          "rows": 3,
+          "bars": 3,
+          "milestones": 0,
+          "lastRowBottom": 662.28
+        },
+        {
+          "page": 2,
+          "rows": 3,
+          "bars": 3,
+          "milestones": 0,
+          "lastRowBottom": 740.472
+        },
+        {
+          "page": 3,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 4,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 5,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 6,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 7,
+          "rows": 2,
+          "bars": 1,
+          "milestones": 1,
+          "lastRowBottom": 585.12
+        }
+      ]
+    },
+    {
+      "case": "depth-20",
+      "pages": 9,
+      "tasks": 20,
+      "allTitlesExtracted": true,
+      "withinPage": true,
+      "rowAlignment": [
+        {
+          "page": 1,
+          "rows": 3,
+          "bars": 3,
+          "milestones": 0,
+          "lastRowBottom": 662.28
+        },
+        {
+          "page": 2,
+          "rows": 3,
+          "bars": 3,
+          "milestones": 0,
+          "lastRowBottom": 740.472
+        },
+        {
+          "page": 3,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 4,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 5,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 6,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 7,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 8,
+          "rows": 2,
+          "bars": 2,
+          "milestones": 0,
+          "lastRowBottom": 585.12
+        },
+        {
+          "page": 9,
+          "rows": 2,
+          "bars": 1,
+          "milestones": 1,
+          "lastRowBottom": 585.12
+        }
+      ]
+    },
+    {
+      "case": "empty",
+      "pages": 1,
+      "tasks": 0,
+      "allTitlesExtracted": true,
+      "withinPage": true,
+      "rowAlignment": [
+        {
+          "page": 1,
+          "rows": 0,
+          "bars": 0,
+          "milestones": 0,
+          "lastRowBottom": 144.096
+        }
+      ]
+    },
+    {
+      "case": "long-range",
+      "pages": 7,
+      "tasks": 37,
+      "allTitlesExtracted": true,
+      "withinPage": true,
+      "rowAlignment": [
+        {
+          "page": 1,
+          "rows": 6,
+          "bars": 10,
+          "milestones": 1,
+          "lastRowBottom": 744.616
+        },
+        {
+          "page": 2,
+          "rows": 5,
+          "bars": 10,
+          "milestones": 0,
+          "lastRowBottom": 709.448
+        },
+        {
+          "page": 3,
+          "rows": 5,
+          "bars": 10,
+          "milestones": 0,
+          "lastRowBottom": 709.448
+        },
+        {
+          "page": 4,
+          "rows": 5,
+          "bars": 10,
+          "milestones": 0,
+          "lastRowBottom": 709.448
+        },
+        {
+          "page": 5,
+          "rows": 5,
+          "bars": 10,
+          "milestones": 0,
+          "lastRowBottom": 709.448
+        },
+        {
+          "page": 6,
+          "rows": 5,
+          "bars": 10,
+          "milestones": 0,
+          "lastRowBottom": 709.448
+        },
+        {
+          "page": 7,
+          "rows": 6,
+          "bars": 10,
+          "milestones": 1,
+          "lastRowBottom": 744.616
+        }
+      ]
+    }
+  ]
+}

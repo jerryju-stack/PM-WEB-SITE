@@ -1,0 +1,91 @@
+{
+  "at": "2026-11-16T12:53:52.734Z",
+  "commit": "a4b4331453c1e0f973b6e3fa6ca9a626283327f3",
+  "backendMeasurementCommit": "5740bd8481bf83080eac492b58b17e01a45c825f",
+  "allMeasuredBackendHashesMatch": true,
+  "matching": {
+    "server.ts": true,
+    "scripts/benchmark-e-b.ts": true,
+    "scripts/e-a-fixtures.ts": true,
+    "lib/file-pool.ts": true,
+    "lib/file-worker.ts": true,
+    "lib/file-job-types.ts": true,
+    "lib/timing-file-compute.ts": true,
+    "lib/timing-file-service.ts": true,
+    "lib/timing-io.ts": true,
+    "lib/timing-drafts.ts": true,
+    "lib/timing-pdf.ts": true,
+    "lib/timing-project.ts": true,
+    "lib/timing-workbook.ts": true,
+    "lib/timing-xml.ts": true,
+    "lib/timing-formulas.ts": true,
+    "lib/schedule.ts": true,
+    "lib/task-index.ts": true,
+    "lib/timing-versions.ts": true,
+    "lib/history-index.ts": true,
+    "lib/contracts.ts": true,
+    "pnpm-lock.yaml": true,
+    "assets/Timing_Sample_v3_Print.xlsx": true,
+    "assets/fonts/NotoSansCJKsc-Regular.otf": true
+  },
+  "pdf": {
+    "method": "Reviewed33-page artifacts generated before the implementation commit; PDF/fixture/validator sources unchanged since5740bd8. Client-only row refinement does not invalidate the rendering.",
+    "sources": {
+      "lib/timing-pdf.ts": "51b2d366080b679326c7058a893619096c9930264c75e3946fda6184baebe683",
+      "lib/timing-workbook.ts": "31095a841f44b4de3d6e2b66eefb3e15254439bdf4a30487cf303882244e8999",
+      "lib/timing-xml.ts": "6a21fdd009fb896f5a0489f8d5154b3f54e1dc88f527059f77d97f58878adc75",
+      "lib/timing-formulas.ts": "57b193d54ac88162e08e4f1270652db2d0f22c6d4c566de1c73428b10dd41a17",
+      "lib/schedule.ts": "6e2f1e99c36bf88ceb0b504a7797b4545d08d54cae56e92e991767d007c86eac",
+      "lib/task-index.ts": "c92612895abff43bdb6c1da6264ace1434bf0b5ddfa0465a044d2deb71eeb643",
+      "scripts/e-pdf-fixtures.ts": "edefb80eaa19d112e28ee794cd1c2b5e1c5e5e6f66ef274fab693b41803a123c",
+      "scripts/validate-e-pdf.py": "129570fb90262a969db8143eb02f7294088c29451ce99177694141828d0446fe",
+      "assets/fonts/NotoSansCJKsc-Regular.otf": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b",
+      "assets/Timing_Sample_v3_Print.xlsx": "dea2319ccb74866564d7bcd6bcbbab6c5d14f36da1e0d37d391fe8138938fb37",
+      "pnpm-lock.yaml": "96cf9798df670bfb82a15bb9d3d8c927c3d73fbe0da8e51a0df2bd0427043cff"
+    },
+    "files": [
+      {
+        "name": "depth-1.pdf",
+        "sha256": "d2e4d4bb0e4c4d9e7d2155c61f48e9e1592c8c6513379ef4846cc3e20b96ae57",
+        "bytes": 70681,
+        "modifiedAt": "2026-11-16T11:06:41.811Z"
+      },
+      {
+        "name": "depth-15.pdf",
+        "sha256": "f687825bc9741bff0a8df289c3a4bfe173f0b10e1797d439746a3d27641341d4",
+        "bytes": 81352,
+        "modifiedAt": "2026-11-16T11:06:41.915Z"
+      },
+      {
+        "name": "depth-16.pdf",
+        "sha256": "e92461e47b6b5f751acd4f785b8aa216fa410b2c0f4614738fae6609d8f534aa",
+        "bytes": 81628,
+        "modifiedAt": "2026-11-16T11:06:41.959Z"
+      },
+      {
+        "name": "depth-20.pdf",
+        "sha256": "68932a791cb47508eb259439a74cd6cd1afca24dce4d2ccb010d3eac4c3acfbe",
+        "bytes": 85103,
+        "modifiedAt": "2026-11-16T11:06:41.995Z"
+      },
+      {
+        "name": "depth-3.pdf",
+        "sha256": "ac0e4a70ec37bed6a7f325019c19ceabb6492ed8dd00f0cf97428de2e1f4244b",
+        "bytes": 71257,
+        "modifiedAt": "2026-11-16T11:06:41.858Z"
+      },
+      {
+        "name": "empty.pdf",
+        "sha256": "a950574a25bc2ecd866e41e331cf98d496c3ec7ceb3bc6de2eca843edbe1a54c",
+        "bytes": 67783,
+        "modifiedAt": "2026-11-16T11:06:42.023Z"
+      },
+      {
+        "name": "long-range.pdf",
+        "sha256": "6baad6ff13b684368d56228e6c23d173998145c5210bdd6d89b3ccc98d673350",
+        "bytes": 88242,
+        "modifiedAt": "2026-11-16T11:06:42.087Z"
+      }
+    ]
+  }
+}

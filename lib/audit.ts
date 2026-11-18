@@ -6,7 +6,7 @@ export const internalContext: WriteContext = { actorId: 'system:internal', actor
 export function auditValue(value: any) {
   if (!value) return null;
   const result: Record<string, unknown> = {};
-  for (const key of ['id','uid','role','status','groupId','userUid','capabilities','cards','timing','lessons','projectId','parentId','task_id','title','name','owner','kind','order','start','end','duration','progress','predecessors','date','startDate','category','size','sha256']) {
+  for (const key of ['id','uid','role','status','groupId','userUid','capabilities','cards','timing','lessons','projectId','parentId','task_id','title','name','owner','kind','order','start','end','duration','progress','predecessors','date','startDate','category','size','sha256','revision','snapshotSha256','changeSetId']) {
     if (value[key] !== undefined) result[key] = value[key];
   }
   for (const key of ['content','notes','description']) if (typeof value[key] === 'string') result[key] = { length: value[key].length, sha256: createHash('sha256').update(value[key]).digest('hex') };

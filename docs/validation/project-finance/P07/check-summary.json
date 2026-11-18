@@ -1,0 +1,28 @@
+{
+  "step": "P07",
+  "recordedAt": "2026-11-18T09:59:18.743Z",
+  "node": "v24.22.1",
+  "command": "node --experimental-strip-types scripts/check.ts",
+  "typecheck": "passed",
+  "tests": 220,
+  "passed": 220,
+  "failed": 0,
+  "skipped": 0,
+  "gitDiffCheck": "passed",
+  "browser": {
+    "command": "node scripts/verify-finance-p07.mjs",
+    "verifySave": true,
+    "assertions": 82,
+    "passed": true,
+    "viewports": [
+      "1440×1000",
+      "390×844"
+    ],
+    "data": "P05 isolated restored baseline and independent synthetic draft",
+    "auth": [
+      "admin",
+      "project finance reader",
+      "viewer without access"
+    ]
+  }
+}

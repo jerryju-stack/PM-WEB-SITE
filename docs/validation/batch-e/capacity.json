@@ -1,0 +1,238 @@
+{
+  "recordedAt": "2026-11-16T12:17:43.575Z",
+  "commit": "5740bd8481bf83080eac492b58b17e01a45c825f",
+  "environment": {
+    "node": "v24.22.1",
+    "platform": "win32",
+    "os": "10.0.26200",
+    "cpu": "AMD Ryzen 7 9700X 8-Core Processor             ",
+    "logicalCpus": 16,
+    "ramBytes": 50634108928
+  },
+  "directory": "C:\\Users\\curie\\AppData\\Local\\Temp\\station-e-a-bench-h0t7kx",
+  "method": "One first-call sample per operation in this process (not OS cache cold); 30 sequential warm samples. HTTP file rounds launch five requests plus heartbeats every 25ms. Child RSS/heap sampled every 50ms, process.resourceUsage maxRSS supplements synchronous peaks. No browser timings implied.",
+  "budgets": {
+    "heartbeatP95Ms": 1000,
+    "homeAndVersionsP95Ms": 500,
+    "editToInteractiveP95Ms": 500,
+    "leaseMs": 30000
+  },
+  "results": [
+    {
+      "name": "schedule",
+      "tasks": 100,
+      "shape": "chain",
+      "depth": 20,
+      "coldMs": 1.5331000000000188,
+      "samples": 30,
+      "p95Ms": 1.0953000000000088,
+      "maxMs": 1.1631999999999891,
+      "processPeakRssBytes": 80388096
+    },
+    {
+      "name": "schedule",
+      "tasks": 100,
+      "shape": "fanout",
+      "depth": 20,
+      "coldMs": 1.2092999999999847,
+      "samples": 30,
+      "p95Ms": 1.0150000000000148,
+      "maxMs": 1.322400000000016,
+      "processPeakRssBytes": 84983808
+    },
+    {
+      "name": "schedule",
+      "tasks": 100,
+      "shape": "long",
+      "depth": 20,
+      "coldMs": 0.752600000000001,
+      "samples": 30,
+      "p95Ms": 0.8620999999999981,
+      "maxMs": 1.0951000000000022,
+      "processPeakRssBytes": 85585920
+    },
+    {
+      "name": "schedule",
+      "tasks": 500,
+      "shape": "chain",
+      "depth": 20,
+      "coldMs": 5.296800000000019,
+      "samples": 30,
+      "p95Ms": 5.587599999999952,
+      "maxMs": 5.642699999999991,
+      "processPeakRssBytes": 97480704
+    },
+    {
+      "name": "schedule",
+      "tasks": 500,
+      "shape": "fanout",
+      "depth": 20,
+      "coldMs": 6.2012000000000285,
+      "samples": 30,
+      "p95Ms": 5.211500000000001,
+      "maxMs": 5.272100000000023,
+      "processPeakRssBytes": 113528832
+    },
+    {
+      "name": "schedule",
+      "tasks": 500,
+      "shape": "long",
+      "depth": 20,
+      "coldMs": 4.317700000000059,
+      "samples": 30,
+      "p95Ms": 4.242900000000077,
+      "maxMs": 4.796100000000024,
+      "processPeakRssBytes": 119255040
+    },
+    {
+      "name": "schedule",
+      "tasks": 1000,
+      "shape": "chain",
+      "depth": 20,
+      "coldMs": 13.912000000000035,
+      "samples": 30,
+      "p95Ms": 10.518500000000017,
+      "maxMs": 10.828599999999938,
+      "processPeakRssBytes": 119255040
+    },
+    {
+      "name": "schedule",
+      "tasks": 1000,
+      "shape": "fanout",
+      "depth": 20,
+      "coldMs": 9.248699999999872,
+      "samples": 30,
+      "p95Ms": 10.045799999999872,
+      "maxMs": 11.308099999999968,
+      "processPeakRssBytes": 153759744
+    },
+    {
+      "name": "schedule",
+      "tasks": 1000,
+      "shape": "long",
+      "depth": 20,
+      "coldMs": 8.622899999999845,
+      "samples": 30,
+      "p95Ms": 7.675899999999956,
+      "maxMs": 12.000299999999925,
+      "processPeakRssBytes": 165830656
+    },
+    {
+      "name": "versions.list",
+      "tasks": 100,
+      "versions": 100,
+      "queries": 1,
+      "snapshotBytes": 0,
+      "coldMs": 0.2962999999999738,
+      "samples": 30,
+      "p95Ms": 0.2119000000000142,
+      "maxMs": 0.21440000000006876,
+      "processPeakRssBytes": 165830656
+    },
+    {
+      "name": "versions.list",
+      "tasks": 100,
+      "versions": 1000,
+      "queries": 1,
+      "snapshotBytes": 0,
+      "coldMs": 2.9806999999998425,
+      "samples": 30,
+      "p95Ms": 3.083499999999731,
+      "maxMs": 3.114699999999857,
+      "processPeakRssBytes": 165830656
+    },
+    {
+      "name": "versions.list",
+      "tasks": 1000,
+      "versions": 100,
+      "queries": 1,
+      "snapshotBytes": 0,
+      "coldMs": 0.24990000000025248,
+      "samples": 30,
+      "p95Ms": 0.23949999999967986,
+      "maxMs": 0.31029999999964275,
+      "processPeakRssBytes": 165830656
+    },
+    {
+      "name": "versions.list",
+      "tasks": 1000,
+      "versions": 1000,
+      "queries": 1,
+      "snapshotBytes": 0,
+      "coldMs": 5.8573999999998705,
+      "samples": 30,
+      "p95Ms": 7.266999999999825,
+      "maxMs": 7.291699999999764,
+      "processPeakRssBytes": 165830656
+    },
+    {
+      "name": "http.home",
+      "projects": 11,
+      "articles": 0,
+      "coldMs": 2.67450000000008,
+      "samples": 30,
+      "p95Ms": 1.3672999999998865,
+      "maxMs": 1.4467999999997119,
+      "processPeakRssBytes": 179326976
+    },
+    {
+      "name": "http.versions",
+      "tasks": 100,
+      "versions": 1000,
+      "coldMs": 1.2373999999999796,
+      "samples": 30,
+      "p95Ms": 1.1216999999996915,
+      "maxMs": 1.6703999999999724,
+      "processPeakRssBytes": 179326976
+    },
+    {
+      "name": "http.versions",
+      "tasks": 1000,
+      "versions": 1000,
+      "coldMs": 1.1041000000004715,
+      "samples": 30,
+      "p95Ms": 1.0461999999997715,
+      "maxMs": 1.9673000000002503,
+      "processPeakRssBytes": 179326976
+    },
+    {
+      "name": "http.five-files",
+      "coldMs": 918.3022999999994,
+      "samples": 30,
+      "p95Ms": 870.9542000000001,
+      "maxMs": 880.9509999999991,
+      "heartbeat": {
+        "samples": 686,
+        "p95Ms": 7.422600000001694,
+        "maxMs": 18.185699999999997
+      },
+      "files": {
+        "xlsx": {
+          "samples": 60,
+          "p95Ms": 858.8811999999998,
+          "maxMs": 880.6463999999996
+        },
+        "xml": {
+          "samples": 60,
+          "p95Ms": 113.60289999999986,
+          "maxMs": 115.15490000000136
+        },
+        "pdf": {
+          "samples": 30,
+          "p95Ms": 102.19160000000011,
+          "maxMs": 102.95950000000084
+        }
+      },
+      "leaseSurvived": true
+    }
+  ],
+  "memory": {
+    "harnessPeakRssBytes": 179326976,
+    "harnessMaxRssBytes": 186593280,
+    "childPeakRssBytes": 505708544,
+    "childPeakHeapBytes": 47164352,
+    "eventLoopMaxMs": 29.753343,
+    "eventLoopP95MaxMs": 29.753343
+  },
+  "errors": ""
+}

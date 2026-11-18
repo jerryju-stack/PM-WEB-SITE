@@ -1,0 +1,9 @@
+{
+  "command": "node --experimental-strip-types scripts/check.ts",
+  "exitCode": 0,
+  "typecheck": "passed",
+  "tests": 191,
+  "passed": 191,
+  "failed": 0,
+  "gitDiffCheck": "passed"
+}

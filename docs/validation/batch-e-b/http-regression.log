@@ -1,0 +1,48 @@
+✔ E2 real HTTP preview rejects member-remove changed while computed worker result is held, without partial writes (607.856ms)
+✔ E2 real HTTP preview rejects member-downgrade changed while computed worker result is held, without partial writes (555.6053ms)
+✔ E2 real HTTP preview rejects password-reset changed while computed worker result is held, without partial writes (582.0771ms)
+✔ E2 real HTTP preview rejects password-change changed while computed worker result is held, without partial writes (601.8872ms)
+✔ E2 real HTTP preview rejects logout changed while computed worker result is held, without partial writes (550.1021ms)
+✔ E2 real HTTP preview rejects disable changed while computed worker result is held, without partial writes (572.9993ms)
+✔ E2 real HTTP preview rejects lease-expired changed while computed worker result is held, without partial writes (574.0511ms)
+✔ E2 real HTTP preview rejects lease-replaced changed while computed worker result is held, without partial writes (584.262ms)
+✔ E2 real HTTP preview rejects draft-revision changed while computed worker result is held, without partial writes (600.0502ms)
+✔ E2 real HTTP preview rejects project-version changed while computed worker result is held, without partial writes (572.7886ms)
+✔ E2 real HTTP preview rejects execution-revision changed while computed worker result is held, without partial writes (553.9955ms)
+✔ E2 real HTTP preview rejects draft-replaced changed while computed worker result is held, without partial writes (553.2849ms)
+✔ E2 real HTTP confirm rejects member-remove changed while computed worker result is held, without partial writes (566.6812ms)
+✔ E2 real HTTP confirm rejects member-downgrade changed while computed worker result is held, without partial writes (575.4774ms)
+✔ E2 real HTTP confirm rejects password-reset changed while computed worker result is held, without partial writes (627.6005ms)
+✔ E2 real HTTP confirm rejects password-change changed while computed worker result is held, without partial writes (629.8332ms)
+✔ E2 real HTTP confirm rejects logout changed while computed worker result is held, without partial writes (583.1322ms)
+✔ E2 real HTTP confirm rejects disable changed while computed worker result is held, without partial writes (591.78ms)
+✔ E2 real HTTP confirm rejects lease-expired changed while computed worker result is held, without partial writes (614.4679ms)
+✔ E2 real HTTP confirm rejects lease-replaced changed while computed worker result is held, without partial writes (592.0598ms)
+✔ E2 real HTTP confirm rejects draft-revision changed while computed worker result is held, without partial writes (568.4585ms)
+✔ E2 real HTTP confirm rejects project-version changed while computed worker result is held, without partial writes (581.5114ms)
+✔ E2 real HTTP confirm rejects execution-revision changed while computed worker result is held, without partial writes (577.1925ms)
+✔ E2 real HTTP confirm rejects draft-replaced changed while computed worker result is held, without partial writes (554.707ms)
+✔ E2 real HTTP confirm rejects preview-expired changed while computed worker result is held, without partial writes (572.0469ms)
+✔ E2 export reauthorizes member-remove after async file work (560.105ms)
+✔ E2 export reauthorizes password-reset after async file work (555.9366ms)
+✔ E2 export reauthorizes disable after async file work (551.7005ms)
+✔ E2 export reauthorizes logout after async file work (546.3634ms)
+✔ E2 export keeps its fixed captured version when the current project changes (537.0776ms)
+✔ E2 HTTP preview cancel leaves no partial writes and permits a clean retry (711.7904ms)
+✔ E2 HTTP preview timeout leaves no partial writes and permits a clean retry (2548.4753ms)
+✔ E2 HTTP preview crash leaves no partial writes and permits a clean retry (567.7818ms)
+✔ E2 HTTP confirm cancel leaves no partial writes and permits a clean retry (706.7118ms)
+✔ E2 HTTP confirm timeout leaves no partial writes and permits a clean retry (2721.3734ms)
+✔ E2 HTTP confirm crash leaves no partial writes and permits a clean retry (722.2152ms)
+✔ E2 real worker result followed by SQL/audit failure rolls back both draft and receipt; retry commits once (562.8516ms)
+✔ E2 overload counts a waiting request body and returns Retry-After without buffering unbounded work (558.1711ms)
+✔ E2 server stop closes real workers and cannot commit held file results (562.5597ms)
+✔ E2 concurrent identical confirmations replay the committed receipt, preserve atomicity and never duplicate adoption (689.6335ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 40
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27792.2523

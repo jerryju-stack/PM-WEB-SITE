@@ -1,0 +1,35 @@
+(node:23916) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ E1 inline failure -1 blocks exit/history/Escape and preserves local input (13.4987ms)
+✔ E1 drawer failure -1 blocks exit/history/Escape and preserves local input (1.4804ms)
+✔ E1 inline failure 400 blocks exit/history/Escape and preserves local input (1.7669ms)
+✔ E1 drawer failure 400 blocks exit/history/Escape and preserves local input (1.1354ms)
+✔ E1 inline failure 401 blocks exit/history/Escape and preserves local input (1.0106ms)
+✔ E1 drawer failure 401 blocks exit/history/Escape and preserves local input (0.6699ms)
+✔ E1 inline failure 403 blocks exit/history/Escape and preserves local input (0.6039ms)
+✔ E1 drawer failure 403 blocks exit/history/Escape and preserves local input (0.9449ms)
+✔ E1 inline failure 409 blocks exit/history/Escape and preserves local input (0.6387ms)
+✔ E1 drawer failure 409 blocks exit/history/Escape and preserves local input (0.9251ms)
+✔ E1 pending Escape leaves selection untouched; repeated Escape closes exactly once after confirmed save (1.0219ms)
+✔ E1 new lease reads latest before explicit recovery and never replays old requests (1.8694ms)
+✔ E1 explicit recovery cancel controls local data deletion (0.893ms)
+✔ E1 explicit recovery discard controls local data deletion (0.7622ms)
+✔ E1 failed latest read after reacquisition retains recovery and releases unusable lease (1.1823ms)
+✔ E1 confirmed save with failed reread is distinct from failed write and never resubmits it (2.017ms)
+✔ E1 adoption confirmed but reread failed does not claim adoption failed or replay it (0.8317ms)
+✔ E1 recovery is detached, stable UID/project scoped, survives remount, and isolates rebuilt login names (0.1405ms)
+✔ E1 transition refusal and exceptions do not commit any destination and can be retried (0.1698ms)
+✔ E1 raw empty numeric input is retained and validation blocks writes without changing selection (0.5264ms)
+✔ E1 reacquisition 403 never clears local inputs or starts recovery without authorization (0.6237ms)
+✔ E1 reacquisition 409 never clears local inputs or starts recovery without authorization (0.6313ms)
+✔ E1 route link uses the same failed leave guard as Escape without navigating (0.8432ms)
+✔ E1 cookie identity change hides the old actor inputs while retaining its private recovery and sends no writes (0.7343ms)
+✔ E1 hydrated/restored drawer remains dirty when form recaptures the same local values (0.0935ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3647.5981

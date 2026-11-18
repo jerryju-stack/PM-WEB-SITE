@@ -1,0 +1,89 @@
+{
+  "step": "P08",
+  "source": "Authorized P05 frozen snapshot",
+  "calculationVersion": "P08.1",
+  "count": 6,
+  "noProductionWrites": true,
+  "copiedInputsOnly": true,
+  "toolingReferenceOnly": true,
+  "results": [
+    {
+      "field": "part_price",
+      "source": {
+        "sheet": "1-1# RR OTB_SPR4.1 Reverse(CHN)",
+        "cell": "AA10"
+      },
+      "status": "passed",
+      "market": "out_chn",
+      "period": "year-2020",
+      "beforePeriodUnchanged": true,
+      "affectedProductCount": 1,
+      "standardOperatingMapping": "pending_finance"
+    },
+    {
+      "field": "sales_price",
+      "source": {
+        "sheet": "Financials RO Ret_SPR4",
+        "cell": "F378"
+      },
+      "status": "passed",
+      "market": "out_chn",
+      "period": "year-2020",
+      "beforePeriodUnchanged": true,
+      "affectedProductCount": 1,
+      "standardOperatingMapping": "pending_finance"
+    },
+    {
+      "field": "annual_reduction",
+      "source": {
+        "sheet": "Financials RO Ret_SPR4",
+        "cell": "F413"
+      },
+      "status": "passed",
+      "market": "out_chn",
+      "period": "year-2020",
+      "beforePeriodUnchanged": true,
+      "affectedProductCount": 1,
+      "standardOperatingMapping": "pending_finance"
+    },
+    {
+      "field": "vehicles",
+      "source": {
+        "sheet": "Vol_SBS_Updated",
+        "cell": "G6"
+      },
+      "status": "passed",
+      "market": "out_chn",
+      "period": "year-2020",
+      "beforePeriodUnchanged": true,
+      "affectedProductCount": 1,
+      "standardOperatingMapping": "pending_finance"
+    },
+    {
+      "field": "variable",
+      "source": {
+        "sheet": "Financials RO Ret_SPR4",
+        "cell": "F107"
+      },
+      "status": "passed",
+      "market": null,
+      "period": "year-2020",
+      "beforePeriodUnchanged": true,
+      "affectedProductCount": 1,
+      "standardOperatingMapping": "pending_finance"
+    },
+    {
+      "field": "allocation",
+      "source": {
+        "sheet": "Financials RO Ret_SPR4",
+        "cell": "F209"
+      },
+      "status": "passed",
+      "market": null,
+      "period": "year-2020",
+      "beforePeriodUnchanged": true,
+      "affectedProductCount": 1,
+      "standardOperatingMapping": "pending_finance"
+    }
+  ]
+}

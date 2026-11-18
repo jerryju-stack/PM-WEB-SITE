@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { openStore } from '../lib/database.ts';
 import { applyMigrations, migrations } from '../lib/migrations.ts';
+import {financeTables} from '../lib/finance-schema.ts';
 import { resourceWriter } from '../lib/resources.ts';
 import { attachmentService, reconcile } from '../lib/attachments.ts';
 const actor={actorId:'isolated',actorName:'旧显示名',requestId:'test-request'};
@@ -17,6 +18,8 @@ test('A schema fixture upgrades to B; failure halfway rolls back all B DDL and m
   store.saveTasks(project.id,store.tasks(project.id),0);store.db.close();
   // Reconstruct exactly the A structures, with A version values and records, without B structures.
   const db=new DatabaseSync(join(dir,'project-station.sqlite'));
+  for(const table of [...financeTables].reverse())db.exec('DROP TABLE '+table);
+  db.exec('DROP TRIGGER projects_cards_insert; DROP TRIGGER projects_cards_update; DROP TRIGGER articles_cards_insert; DROP TRIGGER articles_cards_update; DROP TABLE projects_cards; DROP TABLE articles_cards; DROP TRIGGER timing_version_index_cleanup; DROP TRIGGER timing_archive_index_cleanup; DROP TABLE timing_history_index');
   db.exec('DROP TABLE timing_version_deletions; DROP TABLE timing_adoptions; DROP TRIGGER timing_archive_readonly; DROP TABLE timing_archives; DROP TABLE timing_edit_leases; DROP TABLE timing_drafts; ALTER TABLE tasks DROP COLUMN archived');
   db.exec('DROP TABLE timing_imports; DROP TRIGGER timing_version_readonly; DROP TABLE timing_versions; DROP TRIGGER project_default_access; DROP TABLE project_members; DROP TABLE project_access; DROP TABLE permission_groups; ALTER TABLE articles DROP COLUMN project_id; ALTER TABLE articles DROP COLUMN created_uid; ALTER TABLE attachments DROP COLUMN uploaded_uid; DROP TRIGGER immutable_identity; DROP TRIGGER attachment_cleanup; DROP INDEX attachments_task; DROP TABLE file_jobs; DROP TABLE audit_events; DROP TABLE identities; ALTER TABLE attachments DROP COLUMN sha256; DELETE FROM schema_migrations WHERE version>=2');
   assert.throws(()=>applyMigrations(db,[migrations[0],{...migrations[1],up(db){migrations[1].up(db);db.exec('INSERT INTO injected_missing VALUES(1)');}}]),/injected_missing/);

@@ -1,3 +1,4 @@
+import {taskIndex} from './task-index.ts';
 import { readFileSync } from 'node:fs';
 import { createHmac } from 'node:crypto';
 import type { PlanSnapshot,TimingVersion } from './timing-versions.ts';
@@ -11,9 +12,7 @@ export const excelDate=(date:string)=>Date.parse(date+'T00:00:00Z')/86400000+255
 export const calendarDate=(serial:number)=>new Date((serial-25569)*86400000).toISOString().slice(0,10);
 export const shanghaiDate=(instant=new Date())=>instant.toLocaleDateString('sv-SE',{timeZone:'Asia/Shanghai'});
 export function orderedTasks(tasks:Task[]){
- const result:{task:Task;wbs:string;depth:number}[]=[];
- function visit(parent:string|null,prefix:string,depth:number){tasks.filter(t=>t.parentId===parent).sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id)).forEach((task,i)=>{const wbs=prefix?`${prefix}.${i+1}`:String(i+1);result.push({task,wbs,depth});visit(task.id,wbs,depth+1);});}
- visit(null,'',1);if(result.length!==tasks.length)throw Error('计划存在无法表示的层级');return result;
+ const result=taskIndex(tasks).rows(undefined,1);if(result.length!==tasks.length)throw Error('计划存在无法表示的层级');return result;
 }
 const sign=(key:string,value:string)=>createHmac('sha256',key).update(value).digest('base64url');
 export type WorkbookSource={format:1;projectId:string;revision:number;projectVersion:number;versionId:string;statusDate:string;token:string};

@@ -1,0 +1,868 @@
+{
+  "version": "P01.1",
+  "sample": {
+    "id": "CQA-WIN-P01",
+    "sha256": "58c80ce9b4d11b700e49b0e2e9baf6b5814dfcc869fe033b792a5cb2b6c14741",
+    "selector": "使用 CQA_SAMPLE_XLSX 显式指定经授权的工作簿，按完整 SHA-256 核验财务 CQA WIN 归档。只要指纹一致，镜像即为同一证据。",
+    "localCurrency": "CNY",
+    "execCurrency": "USD",
+    "calendarLabels": [
+      "Year 0",
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026,
+      2027,
+      2028
+    ],
+    "externalLinkParts": 57
+  },
+  "controlPin": {
+    "sha256": "13575788d15e93b2db298d308cf58911a56152824984dfeb5b84e77f024d5d26",
+    "numericCells": 182,
+    "serialization": "UTF-8 紧凑 JSON 数组，每项为 [原表名, A1, 十进制定点字符串]。产品按稳定键排序，各清单按列举顺序，范围逐行由左至右。",
+    "productRefs": [
+      "volume.lifeVolume",
+      "full_pl.lifeSales",
+      "full_pl.lifeDvp",
+      "full_pl.lifeMpbitri",
+      "full_pl.margin",
+      "tax_assets.ros",
+      "incremental_pl.lifeCbt",
+      "engineering.total",
+      "investment.totalNet",
+      "tax_assets.fullEvaPv",
+      "tax_assets.incrementalEvaPv",
+      "local_cash.rate",
+      "local_cash.local",
+      "local_cash.usd",
+      "local_cash.payback",
+      "local_cash.irr",
+      "local_cash.npv",
+      "local_cash.usdIrr",
+      "local_cash.usdNpv"
+    ],
+    "projectRefs": [
+      "project_cash.rate",
+      "project_cash.flows",
+      "project_cash.cumulative",
+      "project_cash.payback",
+      "project_cash.irr",
+      "project_cash.npv"
+    ]
+  },
+  "notation": {
+    "@fin": "依 products.sheet 展开每张启用产品表。products 的行号分别定位 Exec Sum、Input、AME、OH-2017 和 PM。",
+    "@bom": "依 marketBoms.sheet 展开。各表 AC、AD 合计及求和范围按各自条目读取。",
+    "Exec Sum ": "页名最后保留一个 ASCII 空格。单元格范围包含两端。",
+    "owners": "角色为按职责复核/维护的团队，并非声称当年个人已经签认。measured 仅表示有本批现场观测或确认实绩凭证。",
+    "status": {
+      "mapped": "已定位原表、口径和传递方向",
+      "cached_external": "使用归档缓存，外部源版本或业务细项待复核",
+      "reference_only": "原表存在，当前启用产品未采用这一费率表作为直接来源",
+      "pending_finance": "历史依据明确，网站口径需财务映射",
+      "to_collect": "原表没有足以支持此项的明细或实测证据"
+    }
+  },
+  "products": {
+    "outboard": {
+      "label": "外侧卷收器",
+      "sheet": "Financials RO Ret_SPR4",
+      "summaryRow": 31,
+      "cashRow": 147,
+      "volumeInputRows": [
+        20,
+        21,
+        22
+      ],
+      "lineRows": [
+        31,
+        32
+      ],
+      "cyclesPerUnit": 1,
+      "overheadRows": [
+        58,
+        59
+      ],
+      "pmRows": [
+        2,
+        4,
+        6
+      ]
+    },
+    "center": {
+      "label": "中央卷收器",
+      "sheet": "Financials RC Retr_FS1",
+      "summaryRow": 43,
+      "cashRow": 148,
+      "volumeInputRows": [
+        26,
+        27,
+        28
+      ],
+      "lineRows": [
+        34,
+        33
+      ],
+      "cyclesPerUnit": 1,
+      "overheadRows": [
+        45,
+        46
+      ],
+      "pmRows": [
+        8,
+        9,
+        10
+      ]
+    },
+    "double_buckle": {
+      "label": "双锁扣",
+      "sheet": "Financials Dbl BK+SW",
+      "summaryRow": 55,
+      "cashRow": 149,
+      "volumeInputRows": [
+        32
+      ],
+      "lineRows": [
+        36,
+        35
+      ],
+      "cyclesPerUnit": 2,
+      "overheadRows": [
+        26,
+        27
+      ],
+      "pmRows": [
+        11
+      ]
+    },
+    "single_buckle": {
+      "label": "单锁扣",
+      "sheet": "Financials Sgl BK+SW",
+      "summaryRow": 58,
+      "cashRow": 150,
+      "volumeInputRows": [
+        38
+      ],
+      "lineRows": [
+        36,
+        35
+      ],
+      "cyclesPerUnit": 1,
+      "overheadRows": [
+        12,
+        13
+      ],
+      "pmRows": [
+        12
+      ]
+    }
+  },
+  "marketBoms": {
+    "out_eu": {
+      "product": "outboard",
+      "variant": "EU",
+      "volumeMarket": "EU",
+      "sheet": "1-2# RR OTB_SPR4.1 Reverse (EU)",
+      "landedLines": "AC8:AC57",
+      "landedTotal": "AC58",
+      "toolingLines": "AD8:AD55",
+      "toolingTotal": "AD58",
+      "localShare": "AC62",
+      "financialMaterialCell": "E385"
+    },
+    "out_chn": {
+      "product": "outboard",
+      "variant": "CHN",
+      "volumeMarket": "ROW",
+      "sheet": "1-1# RR OTB_SPR4.1 Reverse(CHN)",
+      "landedLines": "AC5:AC56",
+      "landedTotal": "AC57",
+      "toolingLines": "AD5:AD55",
+      "toolingTotal": "AD57",
+      "localShare": "AC61",
+      "financialMaterialCell": "E386"
+    },
+    "out_na": {
+      "product": "outboard",
+      "variant": "NA",
+      "volumeMarket": "US",
+      "sheet": "1-3# RR OTB_SPR4.1 Reverse(NA)",
+      "landedLines": "AC8:AC59",
+      "landedTotal": "AC60",
+      "toolingLines": "AD8:AD57",
+      "toolingTotal": "AD60",
+      "localShare": "AC64",
+      "financialMaterialCell": "E387"
+    },
+    "ctr_eu": {
+      "product": "center",
+      "variant": "EU",
+      "volumeMarket": "EU",
+      "sheet": "2-2# RC_FS1(EU)",
+      "landedLines": "AC7:AC55",
+      "landedTotal": "AC56",
+      "toolingLines": "AD8:AD54",
+      "toolingTotal": "AD56",
+      "localShare": "AC59",
+      "financialMaterialCell": "E385"
+    },
+    "ctr_chn": {
+      "product": "center",
+      "variant": "CHN",
+      "volumeMarket": "ROW",
+      "sheet": "2-1# RC_FS1(CHN)",
+      "landedLines": "AC7:AC55",
+      "landedTotal": "AC56",
+      "toolingLines": "AD7:AD55",
+      "toolingTotal": "AD56",
+      "localShare": "AC59",
+      "financialMaterialCell": "E386"
+    },
+    "ctr_na": {
+      "product": "center",
+      "variant": "NA",
+      "volumeMarket": "US",
+      "sheet": "2-2# RC_FS1 (NA)",
+      "landedLines": "AC8:AC56",
+      "landedTotal": "AC57",
+      "toolingLines": "AD8:AD55",
+      "toolingTotal": "AD57",
+      "localShare": "AC60",
+      "financialMaterialCell": "E387"
+    },
+    "dbl_all": {
+      "product": "double_buckle",
+      "variant": "3F",
+      "volumeMarket": "EU/ROW/US",
+      "sheet": "3# RR D_B(3F)",
+      "landedLines": "AC7:AC70",
+      "landedTotal": "AC71",
+      "toolingLines": "AD7:AD70",
+      "toolingTotal": "AD71",
+      "localShare": "AC75",
+      "financialMaterialCell": "E385"
+    },
+    "sgl_all": {
+      "product": "single_buckle",
+      "variant": "3F",
+      "volumeMarket": "EU/ROW/US",
+      "sheet": "4# RR S_B(3F)",
+      "landedLines": "AC8:AC45",
+      "landedTotal": "AC47",
+      "toolingLines": "AD8:AD45",
+      "toolingTotal": "AD47",
+      "localShare": "AC51",
+      "financialMaterialCell": "E385"
+    }
+  },
+  "sources": {
+    "calendar": {
+      "label": "模型期间、范围与批准快照",
+      "scope": "四个启用产品",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "期序、日历年、日期、原币代码",
+      "owners": [
+        "PM",
+        "财务"
+      ],
+      "measured": false,
+      "evidence": "归档表头、SOP/EOP 及版本快照",
+      "status": "mapped",
+      "refs": {
+        "dates": "Input!C12:C15",
+        "localCurrency": "@fin!B11",
+        "fullYears": "@fin!D182:N182",
+        "incrementalYears": "@fin!D261:N261",
+        "volumeYears": "@fin!D369:N369",
+        "cashPeriods": "Exec Sum !D179:N179",
+        "operatingYears": "Exec Sum !E91:N91"
+      },
+      "trace": "第 0 期表头为 Year 0，保留原名，不指定实际支付日。D 包含前期工程与投资。经营销量输入只排到 2026，财务表继续排到 2028，保留尾期现金及零期。P 是经营表终身合计，O 在经营表为年均。"
+    },
+    "fx": {
+      "label": "交易币种、本币和报告币",
+      "scope": "四个启用产品",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "Input 为 CNY/USD、CNY/EUR，245 为 USD/CNY，报表值为千 CNY 或千 USD",
+      "owners": [
+        "财务",
+        "采购"
+      ],
+      "measured": false,
+      "evidence": "原表汇率假设与公式",
+      "status": "mapped",
+      "refs": {
+        "cnyPerUsd": "Input!C8",
+        "cnyPerEur": "Input!C9",
+        "usdPerCny": "@fin!H436",
+        "periodUsdPerCny": "@fin!D245:N245",
+        "execCurrency": "Exec Sum !C91",
+        "termDiscount": "Input!C16"
+      },
+      "trace": "USD、EUR 名称指向 Input C8、C9。本币金额乘第 245 行才是美元金额。保留 BOM 报价原币，DV/PV 的欧元折算及 PM 的专用换算按原单元格。C16 是票据折扣，项目折现率另取 project_cash.rate。"
+    },
+    "volume": {
+      "label": "市场需求、单车用量及销量",
+      "scope": "四个启用产品",
+      "period": "需求页 F:M 为 2019–2026，Input D:M 与 Financials E:N 为 2019–2028",
+      "unit": "原车数、件/车、件，Input、183/262 及 Exec Sum 92 为千件",
+      "owners": [
+        "销售",
+        "PM"
+      ],
+      "measured": false,
+      "evidence": "市场预测与配置假设",
+      "status": "mapped",
+      "refs": {
+        "demand": "Vol_SBS_Updated!F4:M7",
+        "qtyPerCar": "Vol_SBS_Updated!C11:C18",
+        "marketParts": "Vol_SBS_Updated!F11:M18",
+        "marketLabels": "Vol_SBS!B11:B18",
+        "input": "Input!D20:M43",
+        "productMarkets": "@fin!E370:N376",
+        "unitVolume": "@fin!E88:N88",
+        "adjustment": "@fin!K449",
+        "volume": "@fin!E183:N183",
+        "lifeVolume": "@fin!P183",
+        "incrementalVolume": "@fin!E262:N262",
+        "summary": "Exec Sum !E92:N92"
+      },
+      "trace": "按 products.volumeInputRows 从市场辆数 × 单车用量得件数。Input 除 1000，产品按市场合计并应用销量调整。市场 BOM 的 CHN 对应需求表 ROW 行，按原链接保留两个标签。年均或峰值栏不作全期合计。"
+    },
+    "price": {
+      "label": "分市场售价、年降及件价摊回",
+      "scope": "四个启用产品",
+      "period": "经营年 2019–2028（产品表 E:N）",
+      "unit": "原币 CNY/件，年降、调整系数为小数",
+      "owners": [
+        "销售",
+        "PM",
+        "财务"
+      ],
+      "measured": false,
+      "evidence": "报价方案及年度降价假设",
+      "status": "mapped",
+      "refs": {
+        "marketPrices": "@fin!E377:N383",
+        "marketVolume": "@fin!E370:N376",
+        "priceReduction": "@fin!D413:N413",
+        "priceAdjustment": "@fin!K447",
+        "unitSales": "@fin!E91:N94",
+        "recoveryProposal": "@fin!E65:E69"
+      },
+      "trace": "SOP 起始报价从 377–382 行读取，后期由年降滚动。383 为销量加权报价，94 为综合售价。91–93 拆分基础售价及已纳入件价的模具/工程摊回。186/265 按销量与 K447 乘算，不再另加件价回收。"
+    },
+    "bom": {
+      "label": "市场 BOM 的单价、用量、落地成本与供应商模具",
+      "scope": "四个启用产品",
+      "period": "各市场 SOP 报价快照，W 列可记国产化时点，后续年度按材料降幅",
+      "unit": "M 为件/总成，AA/AB 为采购价/原币（原标签可见 RMB、EUR、USD），AC 为含用量的落地 CNY/总成，AD 的一次性模具合计按 CNY 接入 C517",
+      "owners": [
+        "产品工程",
+        "采购"
+      ],
+      "measured": false,
+      "evidence": "用量和价格快照，含外部 Components 查价缓存和局部覆盖",
+      "status": "cached_external",
+      "refs": {
+        "headers": "@bom!H3:AF5",
+        "materialAtSop": "@fin!E385:E390",
+        "materialCurve": "@fin!E385:N391",
+        "materialReduction": "@fin!D414:N414",
+        "extras": "@fin!E415:N417",
+        "unitMaterial": "@fin!E95:N99",
+        "costAdjustment": "@fin!K448",
+        "supplierTool": "@fin!C517"
+      },
+      "trace": "按 marketBoms 的八个明细口径取 C 列层级、H:J 料号、M 用量、W 国产化、AA/AB 报价和币种、AC 行落地、AD 模具、AE 供应商。AC 多已乘 M，部分表有专项调整。合计遵循列明边界。产品表用 AC 合计作为投产年材料价，按各市场销量加权再加单列包装/运输/关税。各 AD 按原表合计后除 1000 接 C517，与投资以同一来源关联。"
+    },
+    "line_design": {
+      "label": "线体设计人数、循环时间、效率、共享利用与投资",
+      "scope": "四个启用产品",
+      "period": "AME E:Q 的原线量覆盖 2019–2031，R 为峰值，31–36 行为设计方案",
+      "unit": "每线人数、秒/循环、OEE/利用率小数、设备或工装个数、投资千 CNY",
+      "owners": [
+        "前期 ME",
+        "工厂工程"
+      ],
+      "measured": false,
+      "evidence": "线体设计与产能测算。无工位观测凭证",
+      "status": "mapped",
+      "refs": {
+        "marketDemand": "AME!E3:Q16",
+        "peakDemand": "AME!E22:R28",
+        "lines": "AME!C30:P36",
+        "annualHours": "@fin!C451:C455",
+        "assets": "@fin!A479:M520"
+      },
+      "trace": "C 线名，E 人数，F CT，G OEE，H 利用率（含共享负荷），I 已有资产，J:L 新线单价/数量/金额，M:O 工装单价/数量/金额，P 共线备注。products.lineRows 依人工表两道工序排序。班次/净工时与额定工时另见产品表。"
+    },
+    "hourly_rate": {
+      "label": "直接人工小时费率及后续增长",
+      "scope": "四个启用产品",
+      "period": "按工厂及 SOP 年匹配，随后按财务表年度更新",
+      "unit": "CNY/人时和年度小数费率",
+      "owners": [
+        "工厂财务",
+        "制造"
+      ],
+      "measured": false,
+      "evidence": "预算费率表及递推假设",
+      "status": "mapped",
+      "refs": {
+        "years": "Hourly Rate!A2:P2",
+        "rates": "Hourly Rate!A3:P12",
+        "sampleSopRate": "Hourly Rate!H12",
+        "escalation": "Hourly Rate!A15:P22",
+        "lookup": "@fin!D590",
+        "productRateChange": "@fin!D419:N419"
+      },
+      "trace": "D590 以 B3 工厂和 SOP 年查表。后期人工变化使用 419 行。原表的人工效率和工时费率各有独立来源。"
+    },
+    "labor": {
+      "label": "线体人工折至单件及年度费用",
+      "scope": "四个启用产品",
+      "period": "经营年 2019–2028（产品表 E:N）",
+      "unit": "人、秒/循环、人工效率小数、CNY/件、年度千 CNY",
+      "owners": [
+        "前期 ME",
+        "制造",
+        "工厂财务"
+      ],
+      "measured": false,
+      "evidence": "由设计值推算",
+      "status": "mapped",
+      "refs": {
+        "first": "@fin!C594:D596",
+        "second": "@fin!C599:D601",
+        "other": "@fin!C603:D638",
+        "unit": "@fin!C640",
+        "weighted": "@fin!E392:N398",
+        "netUnit": "@fin!E100:N102",
+        "annualFull": "@fin!E188:N188",
+        "annualIncremental": "@fin!E267:N267"
+      },
+      "trace": "先按 products.lineRows 取人数、CT，再乘 cyclesPerUnit。D594/D599 若为正以人工效率作除数，否则用相应净加成。C596、C601 连同其他工序和 C638 汇入 C640。市场、年度权重、损失及 K448 后得到直接人工。设备 OEE 只在其明确作用环节使用。"
+    },
+    "overhead_reference": {
+      "label": "OH 原费率表",
+      "scope": "四个启用产品",
+      "period": "OH 第 2 行列示原费率年",
+      "unit": "RMB 工厂费率，变动/固定分列",
+      "owners": [
+        "工厂财务"
+      ],
+      "measured": false,
+      "evidence": "旧厂费表，作来源版本对照",
+      "status": "reference_only",
+      "refs": {
+        "reference": "OH!A2:P40"
+      },
+      "trace": "保留工厂、产品、制程及 VOH/FOH 分类。四张启用产品的初期费率链接到 overhead 所列更新表。"
+    },
+    "overhead": {
+      "label": "实际引用的制造费用率及定价附加",
+      "scope": "四个启用产品",
+      "period": "经营年 2019–2028（产品表 E:N）",
+      "unit": "OH-2017 为 CNY/件，FOH 另含售价 × 票据折扣，年度成本为千 CNY",
+      "owners": [
+        "工厂财务",
+        "制造"
+      ],
+      "measured": false,
+      "evidence": "外部费率快照与产品公式",
+      "status": "cached_external",
+      "refs": {
+        "unitLabel": "OH-2017!A3",
+        "rateTable": "OH-2017!F5:J59",
+        "voh": "@fin!E399:N405",
+        "foh": "@fin!E406:N412",
+        "unitVoH": "@fin!E107:N107",
+        "unitFoH": "@fin!E108:N108",
+        "annualFull": "@fin!E193:N194",
+        "annualIncremental": "@fin!E272:N272"
+      },
+      "trace": "以 products.overheadRows 定位变动/固定费率，H、I、J 三个年度列后沿用原公式。FOH 加市场售价 × Input C16。按销量加权接 107/108。外部费率未追认成实际制造支出。"
+    },
+    "factory_other": {
+      "label": "报废、质保、配送、投产和费用分摊",
+      "scope": "四个启用产品",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "比例、CNY/件、分期千 CNY",
+      "owners": [
+        "质量",
+        "物流",
+        "制造",
+        "工厂财务"
+      ],
+      "measured": false,
+      "evidence": "成本计提及投产预算",
+      "status": "mapped",
+      "refs": {
+        "scrap": "@fin!E103:N103",
+        "unitOther": "@fin!E111:N116",
+        "assumptions": "@fin!D418:N433",
+        "allocation": "@fin!D206:N209",
+        "fullOther": "@fin!D197:N202",
+        "incrementalOther": "@fin!D275:N280"
+      },
+      "trace": "净报废取 418，质保取 424，其余运保税及投产按原分期与单位。事业部、工程及公司分摊在全成本 206–209 行。增量 286 按 265–285 行的增量成本计算。"
+    },
+    "development_dv": {
+      "label": "DV 试验包、工时、差旅及样件",
+      "scope": "四个启用产品",
+      "period": "DV 阶段一次预算，9–10 外侧、11–12 中央、13 双锁扣、14 单锁扣",
+      "unit": "M、T:X 为欧洲 EUR，N:S 为人时，Y、AB:AE 为 CNY，Z:AA 为人时，AF:AG 为 EUR",
+      "owners": [
+        "开发",
+        "试验",
+        "质量"
+      ],
+      "measured": false,
+      "evidence": "试验包报价、工时及费用预算",
+      "status": "mapped",
+      "refs": {
+        "detail": "DV cost!M8:AG15",
+        "euRates": "DV cost!N17:S17",
+        "euTotal": "DV cost!X9:X14",
+        "chinaTotal": "DV cost!AE9:AE14"
+      },
+      "trace": "M 包含试验、样机与夹具，U/V/W 另列紧急样件、系统和认证。X 汇欧洲包，Y:AE 含中国样件检查、人工、差旅、递送。PM 分别取 X、AE，AG 仅用于对照该预算总额。原表未给逐批领料或验收记录。"
+    },
+    "development_pv": {
+      "label": "PV 验证、夹具、工时与 DV 覆盖",
+      "scope": "四个启用产品",
+      "period": "PV 阶段，同 DV 的六个产品/市场行",
+      "unit": "N:O、S:Y 为 CNY（P:R 为人时），Z 为 EUR",
+      "owners": [
+        "开发",
+        "试验",
+        "质量"
+      ],
+      "measured": false,
+      "evidence": "验证预算及原表覆盖说明",
+      "status": "mapped",
+      "refs": {
+        "detail": "PV cost!N7:Z15",
+        "chinaTotal": "PV cost!Y9:Y14",
+        "covered": "PV cost!V7:X8"
+      },
+      "trace": "N 预验证与 PV 有原表计入比例，O 夹具、P:R 工时、S 人工、T 差旅、U 认证等组成 Y。V:X 的认证标为 DV 覆盖且未计入 Y。PM 只取 Y 的相应份额。另采具体包号、包含样机/夹具数、复测和实付。"
+    },
+    "pm": {
+      "label": "PM 预算、开发汇总与市场共用分配",
+      "scope": "四个启用产品",
+      "period": "项目阶段报价，后续由 Financials 分期",
+      "unit": "D 人时，E:G/I:K 为 CNY 原币金额，G16 为千 USD",
+      "owners": [
+        "PM",
+        "开发",
+        "财务"
+      ],
+      "measured": false,
+      "evidence": "工时计划、外部 TARIFF 缓存及包价分配",
+      "status": "cached_external",
+      "refs": {
+        "costs": "PM!D1:K14",
+        "control": "PM!G16:G17"
+      },
+      "trace": "G 为 PM 人工与差旅，I 折算欧洲 DV，J 为中国 DV，K 为中国 PV。I 有独立换算调整。EU/NA 共用包在市场行间分半，按 products.pmRows 归属。G14/I14/J14/K14 是分项合计。"
+    },
+    "engineering": {
+      "label": "四产品开发预算、补偿及期间",
+      "scope": "四个启用产品",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "Q426 及 426/427 为千 CNY，R/S 为分配比例",
+      "owners": [
+        "开发",
+        "PM",
+        "财务"
+      ],
+      "measured": false,
+      "evidence": "从 PM 汇总的开发预测",
+      "status": "mapped",
+      "refs": {
+        "total": "@fin!Q426",
+        "shares": "@fin!R426:S426",
+        "timing": "@fin!D426:N426",
+        "recovery": "@fin!D427:N427",
+        "fullNet": "@fin!D210:N210",
+        "incrementalNet": "@fin!D284:N284"
+      },
+      "trace": "外侧取 PM 的 G2/G6、I2/I4/I6、J2:K7。中央取 G8:G10/I8:K10。双、单各取该行 G/I/J/K。除 1000 到 Q426。按 SOP 季度分配 D/E 并核其余各期，净工程额为 426−427。按件价摊回与一次性补偿分开记录。"
+    },
+    "investment": {
+      "label": "资本投入、分摊、补偿与折旧",
+      "scope": "四个启用产品",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "设备、厂内/供应商模具及补偿千 CNY，资产寿命为年",
+      "owners": [
+        "ME",
+        "采购",
+        "工厂财务"
+      ],
+      "measured": false,
+      "evidence": "计划资产、投资分期及回收假设",
+      "status": "mapped",
+      "refs": {
+        "assets": "@fin!A479:M520",
+        "schedule": "@fin!F543:P550",
+        "timingInput": "@fin!F559:P566",
+        "life": "@fin!D436:D443",
+        "gross": "@fin!D294:N300",
+        "reimbursed": "@fin!D301:N301",
+        "net": "@fin!D302:N302",
+        "totalNet": "@fin!O302",
+        "recovery": "@fin!D430:N430",
+        "fullDepreciation": "@fin!D195:N195",
+        "incrementalDepreciation": "@fin!D313:N313"
+      },
+      "trace": "AME 现有/新线与工装、BOM 模具 C517、投资时间分布进入 293–302。毛投资 294–300，301 = −430，302 为净投资。342 = −302。C520 为对照，已计的客户补偿只出现一次。全成本分摊折旧与增量新增折旧分别读 195、273/313。"
+    },
+    "working_capital": {
+      "label": "营运资金与现金变动",
+      "scope": "四个启用产品",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "周转天数及期末余额千 CNY，原模型按 360 天",
+      "owners": [
+        "财务",
+        "销售",
+        "采购"
+      ],
+      "measured": false,
+      "evidence": "按回款、付款和库存政策估算",
+      "status": "mapped",
+      "refs": {
+        "days": "@fin!D446:D448",
+        "localContent": "@fin!C446",
+        "customerTerms": "Input!C6",
+        "fullBalances": "@fin!D224:N231",
+        "incrementalBalances": "@fin!D319:N325",
+        "incrementalNwc": "@fin!E323:N323",
+        "change": "@fin!D341:N341"
+      },
+      "trace": "增量 NWC 为 320 库存 + 321 应收 + 已带负号的 322 应付，按材料/收入及周转天数。341 为上期余额减本期余额。全成本 229 还含 227 客户资助模具应收。余额按期取值，不作全期加总。"
+    },
+    "tax_assets": {
+      "label": "两套税额、资本费用和资产回报",
+      "scope": "四个启用产品",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "税率和资本成本为小数，利润/资本费用为千 CNY，E45/E47 为百分数点值",
+      "owners": [
+        "财务"
+      ],
+      "measured": false,
+      "evidence": "原表税和资本假设",
+      "status": "mapped",
+      "refs": {
+        "fullRates": "@fin!C236:C237",
+        "fullEVA": "@fin!D235:O241",
+        "incrementalRates": "@fin!C329:C330",
+        "incrementalEVA": "@fin!D328:O334",
+        "fullEvaPv": "@fin!O239",
+        "incrementalEvaPv": "@fin!O332",
+        "ros": "@fin!E45",
+        "roae": "@fin!D232",
+        "fullAssets": "@fin!O230",
+        "earnings": "@fin!D235:N235",
+        "signedTax": "@fin!D236:N236"
+      },
+      "trace": "全成本 235 取 MPBITRI，236 为带符号所得税，237 使用平均占用资产。增量 328 取 CBT，329 依原税率计入亏损税盾。330 的年度资本费用属于 EVA，不在 343 的现金流中另扣。"
+    },
+    "full_pl": {
+      "label": "CQA 全成本营业、DVP 和 MPBITRI",
+      "scope": "四个启用产品",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "本币千 CNY 或 USD 行千美元，比率以小数存储",
+      "owners": [
+        "财务",
+        "成本责任人"
+      ],
+      "measured": false,
+      "evidence": "全成本产品公式及保存值",
+      "status": "mapped",
+      "refs": {
+        "detail": "@fin!D183:P213",
+        "sales": "@fin!E186:N186",
+        "lifeSales": "@fin!P186",
+        "dvp": "@fin!E191:N191",
+        "lifeDvp": "@fin!P191",
+        "mpbitri": "@fin!D212:N212",
+        "lifeMpbitri": "@fin!P212",
+        "margin": "@fin!P213",
+        "usdSales": "@fin!D218:N218",
+        "usdDvp": "@fin!D219:N219",
+        "usdProfit": "@fin!D220:N220"
+      },
+      "trace": "186 收入，191 直接变动利润，204 全成本工厂利润，扣 209 分摊和 210 净工程得 212。P 为终身合计，Σ212 / Σ186 为合并原表利润率。第 0 期虽无销售，仍须纳入管理利润。"
+    },
+    "incremental_pl": {
+      "label": "CEA 增量税前贡献",
+      "scope": "四个启用产品",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "千 CNY，比率小数",
+      "owners": [
+        "财务",
+        "工厂财务"
+      ],
+      "measured": false,
+      "evidence": "增量产品公式及保存值",
+      "status": "mapped",
+      "refs": {
+        "detail": "@fin!D262:P287",
+        "sales": "@fin!E265:N265",
+        "lifeSales": "@fin!P265",
+        "cbt": "@fin!D286:N286",
+        "lifeCbt": "@fin!P286"
+      },
+      "trace": "增量 265 收入、270 DVP、272 制造费、273 增量折旧、275–279 其他成本、284 净工程。286 CBT = 265−285，作为 338 的起点。"
+    },
+    "exec_pl": {
+      "label": "管理汇总表的经营期交叉核对",
+      "scope": "项目合计",
+      "period": "Exec Sum E:N 为 2019–2028，O 为平均，上半部为项目年均等摘要",
+      "unit": "销量千件，金额千 USD，比率小数",
+      "owners": [
+        "财务"
+      ],
+      "measured": false,
+      "evidence": "管理摘要与 Consolidation 缓存",
+      "status": "mapped",
+      "refs": {
+        "headings": "Exec Sum !F26:AC28",
+        "summaryRows": "Exec Sum !F31:AC85",
+        "consolidation": "Consolidation!GA10:GJ70",
+        "volume": "Exec Sum !E92:N92",
+        "sales": "Exec Sum !E93:N93",
+        "dvpMargin": "Exec Sum !E102:N102",
+        "mpbitri": "Exec Sum !E106:N106",
+        "margin": "Exec Sum !E107:N107"
+      },
+      "trace": "按 products.summaryRow 定位四个产品。复核经营年 92/93/106。无收入时 107 可为空白。H85、O93 及 O106 属平均摘要。E:N 的 106 也未覆盖 Year 0，全期控制取产品 D:N/P。"
+    },
+    "local_cash": {
+      "label": "增量现金流与单产品回报",
+      "scope": "四个启用产品",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "343/344/348 为千 CNY，349/351 为千 USD，IRR 为小数，回收期为年",
+      "owners": [
+        "财务"
+      ],
+      "measured": false,
+      "evidence": "逐期现金流和保存的 Excel 回报",
+      "status": "mapped",
+      "refs": {
+        "components": "@fin!D338:N342",
+        "local": "@fin!D343:N343",
+        "cumulative": "@fin!D344:N344",
+        "usd": "@fin!D349:N349",
+        "rate": "@fin!C330",
+        "payback": "@fin!D346",
+        "irr": "@fin!D347",
+        "npv": "@fin!D348",
+        "usdIrr": "@fin!D350",
+        "usdNpv": "@fin!D351"
+      },
+      "trace": "338 CBT + 339 折旧加回 + 340 已带符号的税 + 341 营运资金释放/占用 + 342 净投资现金 = 343。349 用当期 245 换币。利率从 C330 读取，与项目 C182 分别核实。"
+    },
+    "project_cash": {
+      "label": "Exec Sum 合并现金流、累计与回报",
+      "scope": "项目合计",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "177/178/182 为千 USD，C182 及 D181 为年率小数，D180 为年",
+      "owners": [
+        "财务"
+      ],
+      "measured": false,
+      "evidence": "归档合并缓存和逐期重算",
+      "status": "mapped",
+      "refs": {
+        "oe": "Exec Sum !D147:N156",
+        "oeTotal": "Exec Sum !D157:N157",
+        "ic": "Exec Sum !D166:N168",
+        "icTotal": "Exec Sum !D169:N169",
+        "flows": "Exec Sum !D177:N177",
+        "cumulative": "Exec Sum !D178:N178",
+        "periods": "Exec Sum !D179:N179",
+        "payback": "Exec Sum !D180",
+        "irr": "Exec Sum !D181",
+        "rate": "Exec Sum !C182",
+        "npv": "Exec Sum !D182",
+        "subgroupRates": "Exec Sum !C162:C174"
+      },
+      "trace": "147–150 接四张产品 349。151–156 及 166–168 为模板/内部交易，此冻结样本无贡献，先验再排除。177 为 157 + 169，178 逐期累计。峰值及首次期间从 178 取，原表无专门峰值格。"
+    },
+    "operating_bridge": {
+      "label": "网站经营利润、EBIT、NOPAT、FCFF 和 ROIC 映射",
+      "scope": "项目合计",
+      "period": "Year 0 与 2019–2028 年（D:N）",
+      "unit": "取版本批准的报告币、税和资本范围",
+      "owners": [
+        "财务"
+      ],
+      "measured": false,
+      "evidence": "需签认全成本/增量、税、分摊和资本边界",
+      "status": "pending_finance",
+      "refs": {
+        "full": "@fin!D204:N213",
+        "incremental": "@fin!D281:N287",
+        "cash": "@fin!D338:N343",
+        "assets": "@fin!D319:N325"
+      },
+      "trace": "历史 MPBITRI 和 CBT 按原名可用。网站经营利润/率、EBIT、NOPAT、FCFF、ROIC 的未定映射返回 pending_finance。不得只换名称。"
+    },
+    "station_actual": {
+      "label": "待采工位测时与良品",
+      "scope": "四个启用产品",
+      "period": "按试产/量产批次、日期、班次、工艺修订",
+      "unit": "秒/循环、每循环良品、人数、人时、停机及废品",
+      "owners": [
+        "工厂制造",
+        "ME"
+      ],
+      "measured": false,
+      "evidence": "缺现场测时与班组记录",
+      "status": "to_collect",
+      "refs": {},
+      "trace": "采工位/工序 ID、路线、逐次观测和样本数、工位人数、工时、产出/良品、异常停机、测量人及复核凭据。区域线体 CT 和利用率保留为设计版。"
+    },
+    "prototype_actual": {
+      "label": "待采样机与试验批次",
+      "scope": "四个启用产品",
+      "period": "按样机批次、验证轮次及交付日",
+      "unit": "件、工时、原币单价、运费、包价、供应商承担量",
+      "owners": [
+        "开发",
+        "试制",
+        "采购",
+        "试验/质量"
+      ],
+      "measured": false,
+      "evidence": "缺批次台账、领料、试验单及覆盖清单",
+      "status": "to_collect",
+      "refs": {},
+      "trace": "采批号、用途/版本、样机数、单位材料加工、人工、加急交付、与 DV/PV 夹具或包费的包含数量、包/轮次 ID 与复测审批。"
+    },
+    "budget_actual": {
+      "label": "待采批准预算、已确认支出及剩余预测",
+      "scope": "项目合计",
+      "period": "发生批次或日期、入账期和付款期分别登记",
+      "unit": "原交易币金额、税额、支付币与汇率，保留币种小数位",
+      "owners": [
+        "成本责任人",
+        "财务",
+        "独立确认人"
+      ],
+      "measured": false,
+      "evidence": "缺实际成本凭证、确认状态和付款/回款流水",
+      "status": "to_collect",
+      "refs": {},
+      "trace": "采预算版号、批准额、凭证或订单/发票行、验收与发生日、审批状态、分摊、付款/客户到账日、金额税汇、调整及余额覆盖范围、ETC。可沿关联键对回资产/样机/试验。已发生与已付款分期保留。"
+    }
+  }
+}

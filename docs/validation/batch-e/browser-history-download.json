@@ -1,0 +1,11 @@
+{
+  "at": "2026-11-16T11:50:08.709Z",
+  "filename": "E-A isolated 30-基线-Synthetic baseline-r1.xml",
+  "bytes": 22369,
+  "sha256": "62a62cb1b9f8cc8ad8fb06b1eec0a22f906e8f0e0624faf4b4b8d68fe5eb1df9",
+  "rows": 30,
+  "firstOwner": "Synthetic PM",
+  "firstTitle": "Synthetic fanout task 0 — 长名称容量样本",
+  "issues": [],
+  "expected": "Synthetic baseline exports original Synthetic PM, not current shared draft DRAWER-E400"
+}

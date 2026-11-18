@@ -8,6 +8,7 @@ import { timingVersions, comparePlans } from './timing-versions.ts';
 import type { PlanSnapshot } from './timing-versions.ts';
 import { writeTasks } from './task-writes.ts';
 import { audit } from './audit.ts';
+import {recordHistory} from './history-index.ts';
 
 export const EDIT_LEASE_MS=30_000;
 export function timingDrafts(store:Store,now=()=>Date.now()) {
@@ -35,6 +36,7 @@ export function timingDrafts(store:Store,now=()=>Date.now()) {
  function archive(p:string,snapshot:PlanSnapshot,kind:'unadopted'|'previous',c:WriteContext,sourceVersion:string|null,sourceRevision:number) {
   const id=randomUUID();store.db.prepare('INSERT INTO timing_archives(id,project_id,kind,name,reason,saved_at,actor_uid,actor_name,revision,project_version,snapshot,source_version,source_revision) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
    .run(id,p,kind,kind==='unadopted'?'未采用草稿':'原执行计划',kind==='unadopted'?'切换历史起点前保留，未曾采用为执行计划':'采用新计划前保留',new Date(now()).toISOString(),c.actorUid!,c.actorName,snapshot.project.taskRevision,snapshot.project.version,JSON.stringify(snapshot),sourceVersion,sourceRevision);
+  recordHistory(store.db,'archive',id,p,snapshot);
   audit(store.db,c,'timing-archives',id,null,{projectId:p,kind});return id;
  }
  function create(p:string,source:string|undefined,c:WriteContext) {
@@ -67,18 +69,25 @@ export function timingDrafts(store:Store,now=()=>Date.now()) {
  function heartbeat(p:string,b:unknown,c:WriteContext) {check(p,b,c);store.db.prepare('UPDATE timing_edit_leases SET expires_at=? WHERE project_id=?').run(now()+EDIT_LEASE_MS,p);return state(p);}
  function release(p:string,b:unknown,c:WriteContext) {const value=objectInput(b);store.db.prepare('DELETE FROM timing_edit_leases WHERE project_id=? AND token=? AND actor_uid=?').run(p,typeof value.leaseToken==='string'?value.leaseToken:'',c.actorUid??'');return {ok:true};}
  function view(p:string,b:unknown,c:WriteContext) {checkedDraft(p,b,c);return plan(p);}
- function save(p:string,tasks:Task[],b:unknown,c:WriteContext,committed?:()=>void) {
+ function persist(p:string,tasks:Task[],b:unknown,c:WriteContext,committed:(()=>void)|undefined,prepared:boolean,beforeCommit?:()=>void) {
   return store.transaction(()=>{
-   const d=checkedDraft(p,b,c),normalized=schedule(tasks);
+   const d=checkedDraft(p,b,c),normalized=prepared?tasks:schedule(tasks);
    if(normalized.some(t=>t.projectId!==p))invalid('任务必须属于本项目');
-   if(JSON.stringify(normalized)!==d.payload){
+   const payload=JSON.stringify(normalized);beforeCommit?.();
+   // A lease can expire while synchronous normalization/serialization is running.
+   // Recheck at the write boundary even though no other request can interleave here.
+   checkedDraft(p,b,c);
+   if(payload!==d.payload){
     store.db.prepare('UPDATE timing_drafts SET payload=?,revision=revision+1,actor_uid=?,actor_name=?,saved_at=? WHERE project_id=?')
-     .run(JSON.stringify(normalized),c.actorUid!,c.actorName,new Date(now()).toISOString(),p);
+     .run(payload,c.actorUid!,c.actorName,new Date(now()).toISOString(),p);
     audit(store.db,c,'timing-drafts',d.id,{revision:d.revision},{revision:d.revision+1});
    }
    committed?.();return {...state(p),plan:plan(p)};
   });
  }
+ const save=(p:string,tasks:Task[],b:unknown,c:WriteContext,committed?:()=>void)=>persist(p,tasks,b,c,committed,false);
+ // Only the trusted file-computation result may use this path; never accept a client normalization flag.
+ const savePrepared=(p:string,tasks:Task[],b:unknown,c:WriteContext,committed?:()=>void,beforeCommit?:()=>void)=>persist(p,tasks,b,c,committed,true,beforeCommit);
  function mutate(p:string,id:string|undefined,method:string,b:unknown,c:WriteContext) {
   const d=checkedDraft(p,b,c);let result:any;
   // Reuse task validation/calculation with a draft-backed store; no live task SQL runs.
@@ -102,14 +111,15 @@ export function timingDrafts(store:Store,now=()=>Date.now()) {
   if(same(before,proposed))return store.transaction(()=>{const result={changed:false,revision:store.revision(p)};finish(result,null);return result;});
   let result:any;
   store.saveTasks(p,proposed.tasks,d.base_revision,c,()=>{
-   if(!plans.list(p).some(v=>v.kind!=='unadopted'&&same(plans.get(p,v.id).plan,before)))archive(p,before,'previous',c,null,before.project.taskRevision);
+   if(!plans.hasEquivalent(p,before))archive(p,before,'previous',c,null,before.project.taskRevision);
    const sequence=Number(store.db.prepare('SELECT COALESCE(MAX(sequence),0)+1 AS n FROM timing_versions WHERE project_id=?').get(p)!.n),id=randomUUID(),current=plans.current(p);
    store.db.prepare('INSERT INTO timing_versions(id,project_id,kind,sequence,name,reason,saved_at,actor_uid,actor_name,revision,project_version,request_key,request_data,snapshot) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
     .run(id,p,'version',sequence,'执行计划','采用共享草稿',new Date(now()).toISOString(),c.actorUid!,c.actorName,store.revision(p),current.project.version,d.id,JSON.stringify({draftId:d.id}),JSON.stringify(current));
+   recordHistory(store.db,'version',id,p,current);
    audit(store.db,c,'timing-versions',id,null,{projectId:p,sequence,sourceVersion:d.source_version,sourceRevision:d.source_revision});
    result={changed:true,revision:store.revision(p),versionId:id,sequence};finish(result,id);
   },true);
   return result;
  }
- return {state,start,heartbeat,release,check,view,save,mutate,adopt,plan};
+ return {state,start,heartbeat,release,check,view,save,savePrepared,mutate,adopt,plan};
 }

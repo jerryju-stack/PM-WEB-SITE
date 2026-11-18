@@ -1,0 +1,183 @@
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ approved policy resolves Shanghai midnight/noon boundaries and distinguishes scheduled grace from a missed slot (8.1742ms)
+✔ managed backups embed approved targets; failure persists alarm without advancing recovery point; RPO and missed slot are reported (419.0948ms)
+✔ 30-day retention previews then deletes only expired catalogued valid snapshots; boundary, fresh, unknown and live files survive replay (595.1292ms)
+✔ expired backup budget cannot emit COMPLETE; policy CLI rejects unconfirmed deletion and exits nonzero for unhealthy status (366.5834ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ A schema fixture upgrades to B; failure halfway rolls back all B DDL and marker; retry preserves versions (428.8718ms)
+✔ audit failure rolls back resource/task data, versions, successful history and cleanup intent atomically (203.2597ms)
+✔ attachment rename/registration errors retain recoverable bytes; durable cleanup retries are idempotent (317.6772ms)
+首次管理员账号已初始化：admin
+✔ new initialization refuses missing password instead of leaking a generated credential; later explicit initialization is retryable (262.9954ms)
+✔ error classes retain A HTTP status contract; unknown faults are generic and diagnostics omit multiline secrets (0.5077ms)
+✔ actual SQL and disk errors return 500 with bounded generated requestId; audit correlates and no credentials enter responses/logs (1707.7323ms)
+首次管理员账号已初始化：admin
+✔ pre-upgrade A snapshot retains schema 001 and legacy attachment; isolated restore upgrades once with preserved resource/task versions (2169.9272ms)
+{"drill":"whole-snapshot-mistaken-delete","backupAndChecksMs":94,"restoreLoginReadDownloadMs":347}
+首次管理员账号已初始化：admin
+✔ consistent WAL snapshot rejects running writer, corruption and missing files; whole snapshot restores deletion with actual login/read/download (912.3467ms)
+首次管理员账号已初始化：admin
+✔ real SIGKILL at upload-intent; startup recovery is repeatable and preserves normal files (857.2666ms)
+首次管理员账号已初始化：admin
+✔ real SIGKILL at upload-part; startup recovery is repeatable and preserves normal files (678.3309ms)
+首次管理员账号已初始化：admin
+✔ real SIGKILL at upload-rename; startup recovery is repeatable and preserves normal files (652.3319ms)
+首次管理员账号已初始化：admin
+✔ real SIGKILL at upload-commit; startup recovery is repeatable and preserves normal files (694.0719ms)
+首次管理员账号已初始化：admin
+✔ real SIGKILL at delete-commit; startup recovery is repeatable and preserves normal files (634.8553ms)
+✔ real SIGKILL at cleanup-rename; startup recovery is repeatable and preserves normal files (656.4393ms)
+首次管理员账号已初始化：admin
+{"ok":false,"error":"Only offline confirmed orphan files can be quarantined","elapsedMs":10}
+{"ok":false,"error":"Only offline confirmed orphan files can be quarantined","elapsedMs":10}
+{"ok":false,"error":"Export target exists","elapsedMs":11}
+首次管理员账号已初始化：admin
+✔ offline CLI reports legacy/missing/corrupt/orphan/pending; quarantines only explicit orphan; retries and exports without overwrite (1454.8535ms)
+✔ manifest traversal and missing completion marker cannot restore (156.3405ms)
+{"ok":false,"error":"数据目录已锁定；先停止服务，崩溃遗留锁须运行 unlock 检查进程","elapsedMs":1}
+{"ok":false,"error":"数据目录已锁定；先停止服务，崩溃遗留锁须运行 unlock 检查进程","elapsedMs":2}
+✔ slow real upload survives unrelated cleanup; offline tools cannot run while server owns the directory (782.8062ms)
+✔ two-project matrix, Engineering capabilities, aggregation and direct-ID bypasses are enforced on server (2593.9267ms)
+✔ confirmed default public cards/knowledge differ from authenticated Timing; admin succession and login rename revoke old sessions (540.1913ms)
+✔ account rebuild/name changes do not inherit identity, permissions or sessions; password/admin recovery and last-admin guard (1009.7953ms)
+首次管理员账号已初始化：admin
+✔ explicit B -> C preserves evidence; migration 3 failure rolls back its entire step then retries stably (692.7369ms)
+✔ explicit B -> C preserves evidence; migration 4 failure rolls back its entire step then retries stably (470.2292ms)
+✔ account/password/member state and identity registry roll back with audit failure (163.7575ms)
+首次管理员账号已初始化：admin
+✔ controlled offline admin recovery requires stopped writers, explicit acknowledgement and secret environment; restored login is audited without secrets (1681.3331ms)
+首次管理员账号已初始化：admin
+✔ 保存失败事务回滚，删除最后一个任务清空汇总，保留空模板 (172.0538ms)
+✔ reload/conflict review preserves draft and does not silently advance expected version (0.9287ms)
+✔ draft values and latest data are detached from mutable server snapshots (0.6305ms)
+✔ late reads cannot replace a newer snapshot or review a different editor (0.2635ms)
+✔ starting a write or unmounting invalidates pending reads without erasing drafts (0.1685ms)
+✔ projects HTTP concurrent update/delete contract and old-client rejection (1983.2212ms)
+✔ articles HTTP concurrent update/delete contract and old-client rejection (503.6931ms)
+✔ HTTP draft tasks and metadata keep separate versions; derived fields update only on adoption (435.0603ms)
+✔ slow JSON and upload recheck delete before business commit (1972.09ms)
+✔ slow JSON and upload recheck downgrade before business commit (604.2675ms)
+✔ slow JSON and upload recheck logout before business commit (466.5953ms)
+✔ slow JSON and upload recheck disable before business commit (426.1576ms)
+✔ slow JSON and upload recheck member-remove before business commit (400.7602ms)
+✔ slow JSON and upload recheck member-downgrade before business commit (418.3252ms)
+✔ slow JSON and upload recheck password-reset before business commit (398.3576ms)
+✔ slow JSON and upload recheck password-change before business commit (421.6614ms)
+✔ slow JSON and upload recheck group-change before business commit (372.789ms)
+✔ only explicit proxy peers can supply a valid right-to-left forwarding chain (4.9171ms)
+✔ local reverse proxy untrusted address handling and shared-exit account separation (2103.3227ms)
+✔ local reverse proxy trusted address handling and shared-exit account separation (662.4158ms)
+✔ pair backoff and account attacks do not lightly block another account on a shared source; expiry and memory are bounded (530.028ms)
+首次管理员账号已初始化：admin
+✔ old SQLite upgrade preserves projects articles tasks dependencies and attachments; repeated startup is stable (234.0808ms)
+✔ failed migration rolls back DDL and marker, then retries successfully (181.605ms)
+✔ new database and JSON import receive zero resource versions without resetting task versions (348.8884ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ projects updates and deletes require exact versions and never upsert (215.3088ms)
+✔ articles updates and deletes require exact versions and never upsert (199.0547ms)
+✔ metadata and task revisions are independent; project writes preserve derived values; delete checks both (205.2509ms)
+✔ long schedules persist repeatedly, survive metadata rename, reparent and delete; project and root progress agree (212.2694ms)
+✔ project and root share leaf totals across regrouping, including undated leaves and milestones (156.7514ms)
+✔ write failure after earlier SQL updates rolls back data and version together (127.3494ms)
+✔ long derived summary duration is recalculated on every save (5.6793ms)
+✔ nested progress uses unrounded leaf totals, independent of grouping (0.3078ms)
+✔ empty stages have zero weight; undated leaves and milestones keep their existing weights (0.4138ms)
+✔ date boundaries, leap days and forward-only dependencies retain their semantics (0.5836ms)
+✔ failed inline move preserves duration in the recoverable draft and end edits retain computed duration (0.3032ms)
+✔ fractional progress rounds consistently regardless of grouping or leaf order (0.5121ms)
+✔ 工作日计算跳过周末，里程碑保持零工期 (2.5233ms)
+✔ FS 依赖按工作日连锁顺延，阶段按叶子任务加权汇总 (0.3317ms)
+✔ 拒绝循环、跨项目依赖、无效日期和超长工期 (0.597ms)
+✔ JSON 迁移、八阶段、权限、完整排期、附件、重启持久化 (2569.8672ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ D8 shared draft is durable and isolated; one session per project including the same account; expired sessions are fenced (265.6986ms)
+✔ D8 adoption is atomic, idempotent, versioned, keeps lease and baseline, skips no-ops, preserves removed-task attachments (250.581ms)
+✔ D8 preserves an unversioned original execution and rolls back an archive failure; historical scheduling uses stable-ID latest progress (175.7452ms)
+✔ D8 HTTP writes and imports require a valid page lease; view stays live and publishing does not release ownership (932.1104ms)
+(node:26320) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ E1 inline failure -1 blocks exit/history/Escape and preserves local input (17.791ms)
+✔ E1 drawer failure -1 blocks exit/history/Escape and preserves local input (2.1961ms)
+✔ E1 inline failure 400 blocks exit/history/Escape and preserves local input (2.5927ms)
+✔ E1 drawer failure 400 blocks exit/history/Escape and preserves local input (1.4516ms)
+✔ E1 inline failure 401 blocks exit/history/Escape and preserves local input (1.7118ms)
+✔ E1 drawer failure 401 blocks exit/history/Escape and preserves local input (1.2218ms)
+✔ E1 inline failure 403 blocks exit/history/Escape and preserves local input (0.8486ms)
+✔ E1 drawer failure 403 blocks exit/history/Escape and preserves local input (1.1304ms)
+✔ E1 inline failure 409 blocks exit/history/Escape and preserves local input (0.7187ms)
+✔ E1 drawer failure 409 blocks exit/history/Escape and preserves local input (1.1786ms)
+✔ E1 pending Escape leaves selection untouched; repeated Escape closes exactly once after confirmed save (1.2807ms)
+✔ E1 new lease reads latest before explicit recovery and never replays old requests (2.1485ms)
+✔ E1 explicit recovery cancel controls local data deletion (1.8623ms)
+✔ E1 explicit recovery discard controls local data deletion (3.3311ms)
+✔ E1 failed latest read after reacquisition retains recovery and releases unusable lease (1.6851ms)
+✔ E1 confirmed save with failed reread is distinct from failed write and never resubmits it (1.1288ms)
+✔ E1 adoption confirmed but reread failed does not claim adoption failed or replay it (1.0068ms)
+✔ E1 recovery is detached, stable UID/project scoped, survives remount, and isolates rebuilt login names (0.1617ms)
+✔ E1 transition refusal and exceptions do not commit any destination and can be retried (0.2511ms)
+✔ E1 raw empty numeric input is retained and validation blocks writes without changing selection (0.7007ms)
+✔ E1 reacquisition 403 never clears local inputs or starts recovery without authorization (1.3316ms)
+✔ E1 reacquisition 409 never clears local inputs or starts recovery without authorization (0.7882ms)
+✔ E1 route link uses the same failed leave guard as Escape without navigating (1.4602ms)
+✔ E1 cookie identity change hides the old actor inputs while retaining its private recovery and sends no writes (1.2435ms)
+✔ E1 hydrated/restored drawer remains dirty when form recaptures the same local values (0.144ms)
+(node:26424) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ D6 ranges include both endpoints and diamonds; invalid, empty, single-day and century spans stay finite with sparse ticks (1.8039ms)
+✔ D7 day/week/month keep their scale, span every task, fill wide windows and include navigation targets (11.2924ms)
+✔ D6 actual zoom handlers, collapse, date refresh and ResizeObserver preserve fitting and original scales (25.9165ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ D2 preserves template package features and calculates all caches; saved data is unchanged after current edits (2477.0548ms)
+✔ D3 round trip uses signed cell identity across row/WBS changes, schedules dependencies, preserves notes/files and history; retry is atomic (942.9753ms)
+✔ D3 raw template, missing identity, explicit matching, deletion subtree and invalid fields are previewed without writes (663.4367ms)
+✔ D5 identity priority, WBS defaults, name warnings, manual overrides and conflicting rows (886.514ms)
+✔ D5 WBS hierarchy text preserves 1.10 separately from 1.1 and blank WBS defaults to new with field validation (514.4812ms)
+✔ HTTP Excel/PDF selection, upload/preview/confirm reuse project permissions and retain D1 versions (1189.7215ms)
+✔ D7 invalid or incompatible preferences fall back; restored ratios obey viewport limits (0.9901ms)
+✔ D7 real controller: modes retain DOM/scroll, drag batching, keyboard, reset, narrow recovery and cleanup (2.4053ms)
+首次管理员账号已初始化：admin
+✔ D9 Project XML round trip uses preview/confirm and rejects invalid input without partial writes (268.4061ms)
+✔ E1 HTTP actor fencing, second-page occupancy, validation and stale leases preserve shared draft/execution boundaries (525.1694ms)
+✔ E1 successful adoption with transport response lost is recovered by reading, and receipt prevents duplicate versions (554.7906ms)
+✔ D5 import actions stay visible and give specific feedback; changed mappings must be previewed again (1.592ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ D1 migration preserves existing plans, creates no history and retries atomically (168.6839ms)
+✔ explicit snapshots retain exact calculated values, metadata and project after edits, deletion and reopen (175.396ms)
+✔ save checks revisions, project versions, validation and retry identity; sequential versions do not overwrite (120.5032ms)
+✔ comparison matches stable IDs and reports all required fields with signed calendar date shifts (1.4722ms)
+首次管理员账号已初始化：admin
+✔ HTTP history and comparison reuse project access; only timing editors can explicitly save, history is read-only (614.8559ms)
+✔ D8 history deletion is reversible and atomic, retains snapshots and never reuses V numbers (114.7833ms)
+ℹ tests 118
+ℹ suites 0
+ℹ pass 118
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8504.7467
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/batch-b-validation.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/engineering-review.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'server.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/drafts.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/timing.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/timing.ts', LF will be replaced by CRLF the next time Git touches it

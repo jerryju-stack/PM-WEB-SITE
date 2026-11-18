@@ -1,0 +1,261 @@
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ approved policy resolves Shanghai midnight/noon boundaries and distinguishes scheduled grace from a missed slot (4.0833ms)
+✔ managed backups embed approved targets; failure persists alarm without advancing recovery point; RPO and missed slot are reported (485.0499ms)
+✔ 30-day retention previews then deletes only expired catalogued valid snapshots; boundary, fresh, unknown and live files survive replay (769.0778ms)
+✔ expired backup budget cannot emit COMPLETE; policy CLI rejects unconfirmed deletion and exits nonzero for unhealthy status (685.3388ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ A schema fixture upgrades to B; failure halfway rolls back all B DDL and marker; retry preserves versions (487.6128ms)
+✔ audit failure rolls back resource/task data, versions, successful history and cleanup intent atomically (226.0151ms)
+✔ attachment rename/registration errors retain recoverable bytes; durable cleanup retries are idempotent (319.3332ms)
+首次管理员账号已初始化：admin
+✔ new initialization refuses missing password instead of leaking a generated credential; later explicit initialization is retryable (307.2181ms)
+✔ error classes retain A HTTP status contract; unknown faults are generic and diagnostics omit multiline secrets (0.7451ms)
+✔ actual SQL and disk errors return 500 with bounded generated requestId; audit correlates and no credentials enter responses/logs (860.8774ms)
+首次管理员账号已初始化：admin
+✔ pre-upgrade A snapshot retains schema 001 and legacy attachment; isolated restore upgrades once with preserved resource/task versions (2162.5404ms)
+{"drill":"whole-snapshot-mistaken-delete","backupAndChecksMs":209,"restoreLoginReadDownloadMs":946}
+首次管理员账号已初始化：admin
+✔ consistent WAL snapshot rejects running writer, corruption and missing files; whole snapshot restores deletion with actual login/read/download (2071.8733ms)
+首次管理员账号已初始化：admin
+✔ real SIGKILL at upload-intent; startup recovery is repeatable and preserves normal files (1251.0155ms)
+首次管理员账号已初始化：admin
+✔ real SIGKILL at upload-part; startup recovery is repeatable and preserves normal files (851.6246ms)
+首次管理员账号已初始化：admin
+✔ real SIGKILL at upload-rename; startup recovery is repeatable and preserves normal files (891.4385ms)
+首次管理员账号已初始化：admin
+✔ real SIGKILL at upload-commit; startup recovery is repeatable and preserves normal files (884.985ms)
+首次管理员账号已初始化：admin
+✔ real SIGKILL at delete-commit; startup recovery is repeatable and preserves normal files (838.0031ms)
+✔ real SIGKILL at cleanup-rename; startup recovery is repeatable and preserves normal files (868.1833ms)
+首次管理员账号已初始化：admin
+{"ok":false,"error":"Only offline confirmed orphan files can be quarantined","elapsedMs":35}
+{"ok":false,"error":"Only offline confirmed orphan files can be quarantined","elapsedMs":40}
+{"ok":false,"error":"Export target exists","elapsedMs":41}
+首次管理员账号已初始化：admin
+✔ offline CLI reports legacy/missing/corrupt/orphan/pending; quarantines only explicit orphan; retries and exports without overwrite (2579.2852ms)
+✔ manifest traversal and missing completion marker cannot restore (235.7411ms)
+{"ok":false,"error":"数据目录已锁定；先停止服务，崩溃遗留锁须运行 unlock 检查进程","elapsedMs":2}
+{"ok":false,"error":"数据目录已锁定；先停止服务，崩溃遗留锁须运行 unlock 检查进程","elapsedMs":1}
+✔ slow real upload survives unrelated cleanup; offline tools cannot run while server owns the directory (1322.7395ms)
+✔ two-project matrix, Engineering capabilities, aggregation and direct-ID bypasses are enforced on server (1508.673ms)
+✔ confirmed default public cards/knowledge differ from authenticated Timing; admin succession and login rename revoke old sessions (1097.4674ms)
+✔ account rebuild/name changes do not inherit identity, permissions or sessions; password/admin recovery and last-admin guard (2007.204ms)
+首次管理员账号已初始化：admin
+✔ explicit B -> C preserves evidence; migration 3 failure rolls back its entire step then retries stably (739.9708ms)
+✔ explicit B -> C preserves evidence; migration 4 failure rolls back its entire step then retries stably (594.4467ms)
+✔ account/password/member state and identity registry roll back with audit failure (306.4526ms)
+首次管理员账号已初始化：admin
+✔ controlled offline admin recovery requires stopped writers, explicit acknowledgement and secret environment; restored login is audited without secrets (1719.2732ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ E3 stable history pages include ties and archives, exclude deletions in SQL and never select snapshots (783.8663ms)
+✔ E3 history digest is only a candidate index: metadata changes, hash collisions, deletion and missing legacy entries retain archive semantics (184.7909ms)
+✔ E3 card projections track every writer and keep body reads out of paginated catalog SQL (697.2091ms)
+✔ E3 HTTP permission filtering happens before pagination and totals, and revocation applies on the next page (1238.497ms)
+首次管理员账号已初始化：admin
+✔ 保存失败事务回滚，删除最后一个任务清空汇总，保留空模板 (248.4055ms)
+✔ reload/conflict review preserves draft and does not silently advance expected version (3.7452ms)
+✔ draft values and latest data are detached from mutable server snapshots (1.113ms)
+✔ late reads cannot replace a newer snapshot or review a different editor (0.7333ms)
+✔ starting a write or unmounting invalidates pending reads without erasing drafts (0.1901ms)
+首次管理员账号已初始化：admin
+✔ E5 actual D9 code/data upgrades and whole restores preserve drafts/receipts/history/archived bytes; old sessions and leases cannot write (3876.9138ms)
+✔ E2 actual workers preserve XML20/1000 round trip and reject XML1001, Excel101 and Excel depth4 without truncation (805.3992ms)
+✔ E2 real HTTP preview rejects member-remove changed while computed worker result is held, without partial writes (1278.1711ms)
+✔ E2 real HTTP preview rejects member-downgrade changed while computed worker result is held, without partial writes (1347.8617ms)
+✔ E2 real HTTP preview rejects password-reset changed while computed worker result is held, without partial writes (1365.4913ms)
+✔ E2 real HTTP preview rejects password-change changed while computed worker result is held, without partial writes (967.5383ms)
+✔ E2 real HTTP preview rejects logout changed while computed worker result is held, without partial writes (727.0043ms)
+✔ E2 real HTTP preview rejects disable changed while computed worker result is held, without partial writes (643.7547ms)
+✔ E2 real HTTP preview rejects lease-expired changed while computed worker result is held, without partial writes (697.1809ms)
+✔ E2 real HTTP preview rejects lease-replaced changed while computed worker result is held, without partial writes (636.01ms)
+✔ E2 real HTTP preview rejects draft-revision changed while computed worker result is held, without partial writes (660.3542ms)
+✔ E2 real HTTP preview rejects project-version changed while computed worker result is held, without partial writes (633.4744ms)
+✔ E2 real HTTP preview rejects execution-revision changed while computed worker result is held, without partial writes (654.3143ms)
+✔ E2 real HTTP preview rejects draft-replaced changed while computed worker result is held, without partial writes (621.772ms)
+✔ E2 real HTTP confirm rejects member-remove changed while computed worker result is held, without partial writes (615.955ms)
+✔ E2 real HTTP confirm rejects member-downgrade changed while computed worker result is held, without partial writes (582.8193ms)
+✔ E2 real HTTP confirm rejects password-reset changed while computed worker result is held, without partial writes (574.3434ms)
+✔ E2 real HTTP confirm rejects password-change changed while computed worker result is held, without partial writes (613.4763ms)
+✔ E2 real HTTP confirm rejects logout changed while computed worker result is held, without partial writes (553.8933ms)
+✔ E2 real HTTP confirm rejects disable changed while computed worker result is held, without partial writes (564.96ms)
+✔ E2 real HTTP confirm rejects lease-expired changed while computed worker result is held, without partial writes (592.7383ms)
+✔ E2 real HTTP confirm rejects lease-replaced changed while computed worker result is held, without partial writes (569.3894ms)
+✔ E2 real HTTP confirm rejects draft-revision changed while computed worker result is held, without partial writes (634.1024ms)
+✔ E2 real HTTP confirm rejects project-version changed while computed worker result is held, without partial writes (571.3331ms)
+✔ E2 real HTTP confirm rejects execution-revision changed while computed worker result is held, without partial writes (592.0238ms)
+✔ E2 real HTTP confirm rejects draft-replaced changed while computed worker result is held, without partial writes (561.5743ms)
+✔ E2 real HTTP confirm rejects preview-expired changed while computed worker result is held, without partial writes (575.399ms)
+✔ E2 export reauthorizes member-remove after async file work (572.9248ms)
+✔ E2 export reauthorizes password-reset after async file work (596.6593ms)
+✔ E2 export reauthorizes disable after async file work (571.3604ms)
+✔ E2 export reauthorizes logout after async file work (554.6114ms)
+✔ E2 export keeps its fixed captured version when the current project changes (586.1779ms)
+✔ E2 HTTP preview cancel leaves no partial writes and permits a clean retry (785.2025ms)
+✔ E2 HTTP preview timeout leaves no partial writes and permits a clean retry (2588.886ms)
+✔ E2 HTTP preview crash leaves no partial writes and permits a clean retry (620.0831ms)
+✔ E2 HTTP confirm cancel leaves no partial writes and permits a clean retry (828.0248ms)
+✔ E2 HTTP confirm timeout leaves no partial writes and permits a clean retry (2799.1144ms)
+✔ E2 HTTP confirm crash leaves no partial writes and permits a clean retry (759.1965ms)
+✔ E2 real worker result followed by SQL/audit failure rolls back both draft and receipt; retry commits once (587.0696ms)
+✔ E2 overload counts a waiting request body and returns Retry-After without buffering unbounded work (588.4744ms)
+✔ E2 server stop closes real workers and cannot commit held file results (581.1618ms)
+✔ E2 decoded upload size and source JSON size are checked before file computation or partial writes (630.1362ms)
+✔ E2 concurrent identical confirmations replay the committed receipt, preserve atomicity and never duplicate adoption (780.5801ms)
+✔ E2 committed confirmation with a lost response is readable and retries its receipt without another revision or adoption (628.5618ms)
+✔ E2 pool bounds actual workers, queue and admissions; rejects overload without starting work (352.8223ms)
+✔ E2 queued cancellation removes job; active cancellation terminates before bounded replacement; snapshot is detached (65.3671ms)
+✔ E2 worker crash rejects exactly its job and next request recovers (139.6714ms)
+✔ E2 worker invalid rejects exactly its job and next request recovers (122.2578ms)
+✔ E2 total deadline includes queue; timeout reclaims workers, shutdown rejects waiting/active jobs and cannot restart (171.6033ms)
+✔ E2 queue byte budget and per-job byte bound reject oversized work; configuration has hard limits (32.7224ms)
+✔ E2 real worker errors and diagnostics never emit the supplied workbook signing key (1258.4186ms)
+✔ E2 late worker messages are rejected by absolute deadline even if the parent event loop delayed timers (257.3309ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ E2 preview rechecks the deadline inside its transaction after payload serialization, and rolls back (612.8945ms)
+首次管理员账号已初始化：admin
+✔ E2 confirm rechecks the deadline inside its transaction after payload serialization, and rolls back (486.464ms)
+首次管理员账号已初始化：admin
+✔ E2 preview refuses a lease expiring at the final serialization boundary (549.3085ms)
+首次管理员账号已初始化：admin
+✔ E2 confirm refuses a lease expiring at the final serialization boundary (676.9957ms)
+✔ E2 confirmation rechecks preview time after serialization immediately before writing (633.8821ms)
+✔ projects HTTP concurrent update/delete contract and old-client rejection (865.9288ms)
+✔ articles HTTP concurrent update/delete contract and old-client rejection (1003.2215ms)
+✔ HTTP draft tasks and metadata keep separate versions; derived fields update only on adoption (947.9889ms)
+✔ slow JSON and upload recheck delete before business commit (1083.7534ms)
+✔ slow JSON and upload recheck downgrade before business commit (991.6358ms)
+✔ slow JSON and upload recheck logout before business commit (1201.3368ms)
+✔ slow JSON and upload recheck disable before business commit (651.5973ms)
+✔ slow JSON and upload recheck member-remove before business commit (495.2921ms)
+✔ slow JSON and upload recheck member-downgrade before business commit (473.4309ms)
+✔ slow JSON and upload recheck password-reset before business commit (507.579ms)
+✔ slow JSON and upload recheck password-change before business commit (532.5666ms)
+✔ slow JSON and upload recheck group-change before business commit (488.7502ms)
+✔ only explicit proxy peers can supply a valid right-to-left forwarding chain (7.1422ms)
+✔ local reverse proxy untrusted address handling and shared-exit account separation (1219.6708ms)
+✔ local reverse proxy trusted address handling and shared-exit account separation (1183.884ms)
+✔ pair backoff and account attacks do not lightly block another account on a shared source; expiry and memory are bounded (932.5275ms)
+首次管理员账号已初始化：admin
+✔ old SQLite upgrade preserves projects articles tasks dependencies and attachments; repeated startup is stable (180.5591ms)
+✔ failed migration rolls back DDL and marker, then retries successfully (138.5892ms)
+✔ new database and JSON import receive zero resource versions without resetting task versions (238.9928ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ projects updates and deletes require exact versions and never upsert (198.2198ms)
+✔ articles updates and deletes require exact versions and never upsert (169.5577ms)
+✔ metadata and task revisions are independent; project writes preserve derived values; delete checks both (126.8954ms)
+✔ long schedules persist repeatedly, survive metadata rename, reparent and delete; project and root progress agree (151.7541ms)
+✔ project and root share leaf totals across regrouping, including undated leaves and milestones (124.8457ms)
+✔ write failure after earlier SQL updates rolls back data and version together (135.0503ms)
+✔ E4 indexed schedule equals frozen E0 for depth20, chain/fanout/long, fractional progress and date boundaries (1744.6575ms)
+✔ E4 indexed XML preview matches frozen E0 preview on the same 100/500/1000-task snapshot (1278.7491ms)
+✔ long derived summary duration is recalculated on every save (25.3175ms)
+✔ nested progress uses unrounded leaf totals, independent of grouping (0.7979ms)
+✔ empty stages have zero weight; undated leaves and milestones keep their existing weights (0.3475ms)
+✔ date boundaries, leap days and forward-only dependencies retain their semantics (2.9884ms)
+✔ failed inline move preserves duration in the recoverable draft and end edits retain computed duration (0.6028ms)
+✔ fractional progress rounds consistently regardless of grouping or leaf order (1.1731ms)
+✔ 工作日计算跳过周末，里程碑保持零工期 (3.199ms)
+✔ FS 依赖按工作日连锁顺延，阶段按叶子任务加权汇总 (12.1228ms)
+✔ 拒绝循环、跨项目依赖、无效日期和超长工期 (4.7215ms)
+✔ JSON 迁移、八阶段、权限、完整排期、附件、重启持久化 (2429.3812ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ D8 shared draft is durable and isolated; one session per project including the same account; expired sessions are fenced (203.9091ms)
+✔ D8 adoption is atomic, idempotent, versioned, keeps lease and baseline, skips no-ops, preserves removed-task attachments (253.4181ms)
+✔ D8 preserves an unversioned original execution and rolls back an archive failure; historical scheduling uses stable-ID latest progress (154.5754ms)
+✔ D8 HTTP writes and imports require a valid page lease; view stays live and publishing does not release ownership (904.9054ms)
+(node:29528) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ E1 inline failure -1 blocks exit/history/Escape and preserves local input (45.3936ms)
+✔ E1 drawer failure -1 blocks exit/history/Escape and preserves local input (3.9532ms)
+✔ E1 inline failure 400 blocks exit/history/Escape and preserves local input (10.1112ms)
+✔ E1 drawer failure 400 blocks exit/history/Escape and preserves local input (4.6705ms)
+✔ E1 inline failure 401 blocks exit/history/Escape and preserves local input (2.1893ms)
+✔ E1 drawer failure 401 blocks exit/history/Escape and preserves local input (1.9423ms)
+✔ E1 inline failure 403 blocks exit/history/Escape and preserves local input (2.3269ms)
+✔ E1 drawer failure 403 blocks exit/history/Escape and preserves local input (1.9128ms)
+✔ E1 inline failure 409 blocks exit/history/Escape and preserves local input (1.922ms)
+✔ E1 drawer failure 409 blocks exit/history/Escape and preserves local input (2.1919ms)
+✔ E1 pending Escape leaves selection untouched; repeated Escape closes exactly once after confirmed save (3.4993ms)
+✔ E1 new lease reads latest before explicit recovery and never replays old requests (3.6699ms)
+✔ E1 explicit recovery cancel controls local data deletion (2.6926ms)
+✔ E1 explicit recovery discard controls local data deletion (3.3555ms)
+✔ E1 failed latest read after reacquisition retains recovery and releases unusable lease (5.8441ms)
+✔ E1 confirmed save with failed reread is distinct from failed write and never resubmits it (2.2794ms)
+✔ E1 adoption confirmed but reread failed does not claim adoption failed or replay it (1.9211ms)
+✔ E1 recovery is detached, stable UID/project scoped, survives remount, and isolates rebuilt login names (0.3114ms)
+✔ E1 transition refusal and exceptions do not commit any destination and can be retried (0.3566ms)
+✔ E1 raw empty numeric input is retained and validation blocks writes without changing selection (1.3433ms)
+✔ E1 reacquisition 403 never clears local inputs or starts recovery without authorization (1.5618ms)
+✔ E1 reacquisition 409 never clears local inputs or starts recovery without authorization (3.087ms)
+✔ E1 route link uses the same failed leave guard as Escape without navigating (1.9045ms)
+✔ E1 cookie identity change hides the old actor inputs while retaining its private recovery and sends no writes (1.4687ms)
+✔ E1 hydrated/restored drawer remains dirty when form recaptures the same local values (0.1746ms)
+(node:28996) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ D6 ranges include both endpoints and diamonds; invalid, empty, single-day and century spans stay finite with sparse ticks (2.6396ms)
+✔ D7 day/week/month keep their scale, span every task, fill wide windows and include navigation targets (20.0454ms)
+✔ D6 actual zoom handlers, collapse, date refresh and ResizeObserver preserve fitting and original scales (50.5049ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ D2 preserves template package features and calculates all caches; saved data is unchanged after current edits (2767.5997ms)
+✔ D3 round trip uses signed cell identity across row/WBS changes, schedules dependencies, preserves notes/files and history; retry is atomic (1037.7319ms)
+✔ D3 raw template, missing identity, explicit matching, deletion subtree and invalid fields are previewed without writes (708.1508ms)
+✔ D5 identity priority, WBS defaults, name warnings, manual overrides and conflicting rows (974.0817ms)
+✔ D5 WBS hierarchy text preserves 1.10 separately from 1.1 and blank WBS defaults to new with field validation (583.3165ms)
+✔ HTTP Excel/PDF selection, upload/preview/confirm reuse project permissions and retain D1 versions (1643.8678ms)
+✔ D7 invalid or incompatible preferences fall back; restored ratios obey viewport limits (2.4604ms)
+✔ D7 real controller: modes retain DOM/scroll, drag batching, keyboard, reset, narrow recovery and cleanup (7.2976ms)
+首次管理员账号已初始化：admin
+✔ D9 Project XML round trip uses preview/confirm and rejects invalid input without partial writes (247.7787ms)
+✔ E1 HTTP actor fencing, second-page occupancy, validation and stale leases preserve shared draft/execution boundaries (1049.5856ms)
+✔ E1 successful adoption with transport response lost is recovered by reading, and receipt prevents duplicate versions (593.8251ms)
+✔ D5 import actions stay visible and give specific feedback; changed mappings must be previewed again (2.7453ms)
+✔ E2 transfer cancellation retains file, mapping and preview, and reports uncertain confirmation without retry (2.2363ms)
+✔ E2 confirmation transport preserves its preview and distinguishes an unknown result from a rejected commit (0.5266ms)
+✔ E2 confirmation truncated-response preserves its preview and distinguishes an unknown result from a rejected commit (0.3453ms)
+✔ E2 confirmation server-conflict preserves its preview and distinguishes an unknown result from a rejected commit (0.2683ms)
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+首次管理员账号已初始化：admin
+✔ D1 migration preserves existing plans, creates no history and retries atomically (144.9634ms)
+✔ explicit snapshots retain exact calculated values, metadata and project after edits, deletion and reopen (145.5794ms)
+✔ save checks revisions, project versions, validation and retry identity; sequential versions do not overwrite (309.615ms)
+✔ comparison matches stable IDs and reports all required fields with signed calendar date shifts (1.615ms)
+首次管理员账号已初始化：admin
+✔ HTTP history and comparison reuse project access; only timing editors can explicitly save, history is read-only (751.9236ms)
+✔ D8 history deletion is reversible and atomic, retains snapshots and never reuses V numbers (104.3423ms)
+ℹ tests 185
+ℹ suites 0
+ℹ pass 185
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 33268.6094
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/batch-b-validation.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/timing-drafts.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/timing-io.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/benchmark-e-b.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/timing-io.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/file-http.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/file-service.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/timing-transfer.test.ts', LF will be replaced by CRLF the next time Git touches it

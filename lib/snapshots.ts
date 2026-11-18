@@ -5,8 +5,11 @@ import { randomUUID } from 'node:crypto';
 import { digest, fileId } from './attachments.ts';
 import { dataLock } from './data-lock.ts';
 import { capabilities } from './policy.ts';
+import {migrations as supportedMigrations} from './migrations.ts';
+import {financeTables} from './finance-schema.ts';
+import {verifyFinanceEvidence} from './finance-integrity.ts';
 const dbName='project-station.sqlite';
-const tables=['schema_migrations','meta','settings','users','projects','articles','tasks','dependencies','attachments','audit_events','file_jobs','identities','permission_groups','project_members','project_access','timing_versions','timing_imports','timing_drafts','timing_edit_leases','timing_archives','timing_adoptions','timing_version_deletions'];
+const tables=['schema_migrations','meta','settings','users','projects','articles','tasks','dependencies','attachments','audit_events','file_jobs','identities','permission_groups','project_members','project_access','timing_versions','timing_imports','timing_drafts','timing_edit_leases','timing_archives','timing_adoptions','timing_version_deletions','timing_history_index','projects_cards','articles_cards'];
 type Entry={path:string;size:number;sha256:string};
 export type RecoveryTargets={rpoMinutes:number|null;rtoMinutes:number|null;maxDowntimeMinutes:number|null;retentionDays:number|null};
 export type Manifest={format:1;createdAt:string;codeVersion:string;producerCodeVersion:string;targets:RecoveryTargets;database:ReturnType<typeof inspectData>;files:Entry[]};
@@ -29,8 +32,7 @@ export function inspectData(directory:string) {
     if(db.prepare('PRAGMA foreign_key_check').all().length)throw Error('Database foreign key check failed');
     if(db.prepare("SELECT value FROM meta WHERE key='initialized'").get()?.value!=='1'||!db.prepare("SELECT 1 FROM settings WHERE id='site'").get())throw Error('Missing initialized application state');
     const migrations=db.prepare('SELECT version,name FROM schema_migrations ORDER BY version').all().map(row=>({version:Number(row.version),name:String(row.name)}));
-    const versions=JSON.stringify(migrations.map(row=>row.version));
-    if(!['[1]','[1,2]','[1,2,3]','[1,2,3,4]','[1,2,3,4,5]','[1,2,3,4,5,6]','[1,2,3,4,5,6,7]','[1,2,3,4,5,6,7,8]'].includes(versions))throw Error('Unsupported snapshot migration version');
+    if(!migrations.length||migrations.length>supportedMigrations.length||migrations.some((row,i)=>row.version!==supportedMigrations[i].version))throw Error('Unsupported snapshot migration version');
     const latest=migrations.at(-1)!.version;
     const usableAccount=db.prepare('SELECT id,data FROM users').all().some(row=>{
       const user=JSON.parse(String(row.data));
@@ -52,8 +54,9 @@ export function inspectData(directory:string) {
       for(const row of db.prepare('SELECT capabilities FROM permission_groups').all()){const caps=JSON.parse(String(row.capabilities));if(!Array.isArray(caps)||!caps.every(cap=>capabilities.includes(cap)))throw Error('Invalid permission group');}
       if(db.prepare('SELECT 1 FROM project_members m JOIN identities i ON i.uid=m.user_uid WHERE i.retired_at IS NOT NULL OR i.login_name IS NULL').get())throw Error('Retired project identity');
     }
+    if(latest>=11)verifyFinanceEvidence(db);
     const state:Record<string,{count:number;sha256:string}>={};
-    for(const table of tables.filter(table=>!((latest<2&&['audit_events','file_jobs'].includes(table))||(latest<3&&table==='identities')||(latest<4&&['permission_groups','project_members','project_access'].includes(table))||(latest<5&&table==='timing_versions')||(latest<6&&table==='timing_imports')||(latest<7&&['timing_drafts','timing_edit_leases','timing_archives','timing_adoptions'].includes(table))||(latest<8&&table==='timing_version_deletions')))) {
+    for(const table of [...tables,...(latest>=11?financeTables:[])].filter(table=>!((latest<2&&['audit_events','file_jobs'].includes(table))||(latest<3&&table==='identities')||(latest<4&&['permission_groups','project_members','project_access'].includes(table))||(latest<5&&table==='timing_versions')||(latest<6&&table==='timing_imports')||(latest<7&&['timing_drafts','timing_edit_leases','timing_archives','timing_adoptions'].includes(table))||(latest<8&&table==='timing_version_deletions')||(latest<9&&table==='timing_history_index')||(latest<10&&['projects_cards','articles_cards'].includes(table))))) {
       const rows=db.prepare('SELECT * FROM '+table).all();state[table]={count:rows.length,sha256:digest(Buffer.from(rows.map(row=>JSON.stringify(row)).sort().join('\n')))};
     }
     for(const table of ['projects','articles'])for(const row of db.prepare('SELECT * FROM '+table).all() as any[]) {

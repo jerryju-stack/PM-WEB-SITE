@@ -1,0 +1,86 @@
+{
+  "step": "P10",
+  "source": "Authorized P05 snapshot",
+  "archiveWrites": 0,
+  "historicalActuals": "to_collect",
+  "calculationVersion": "P10.1",
+  "coverage": {
+    "dv": [
+      "DV cost!X9:X14",
+      "DV cost!AE9:AE14"
+    ],
+    "pv": [
+      "PV cost!V7:X8",
+      "PV cost!Y9:Y14"
+    ],
+    "pm": [
+      "PM!I4",
+      "PM!G2:K12"
+    ]
+  },
+  "products": [
+    {
+      "product": "outboard",
+      "sheet": "Financials RO Ret_SPR4",
+      "pmRows": [
+        2,
+        4,
+        6
+      ],
+      "checks": [
+        "PM G/I/J/K → Q426",
+        "D:N phasing",
+        "426 less 427, without adding DV/PV source reports"
+      ]
+    },
+    {
+      "product": "center",
+      "sheet": "Financials RC Retr_FS1",
+      "pmRows": [
+        8,
+        9,
+        10
+      ],
+      "checks": [
+        "PM G/I/J/K → Q426",
+        "D:N phasing",
+        "426 less 427, without adding DV/PV source reports"
+      ]
+    },
+    {
+      "product": "double_buckle",
+      "sheet": "Financials Dbl BK+SW",
+      "pmRows": [
+        11
+      ],
+      "checks": [
+        "PM G/I/J/K → Q426",
+        "D:N phasing",
+        "426 less 427, without adding DV/PV source reports"
+      ]
+    },
+    {
+      "product": "single_buckle",
+      "sheet": "Financials Sgl BK+SW",
+      "pmRows": [
+        12
+      ],
+      "checks": [
+        "PM G/I/J/K → Q426",
+        "D:N phasing",
+        "426 less 427, without adding DV/PV source reports"
+      ]
+    }
+  ],
+  "simulatedRetest": {
+    "expensePeriod": "year-2020",
+    "paymentPeriod": "year-2021",
+    "checks": [
+      "Engineering expense",
+      "Tax timing",
+      "Payment cash",
+      "Project NPV",
+      "Other periods unchanged"
+    ]
+  }
+}

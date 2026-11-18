@@ -1,0 +1,15 @@
+{
+  "step": "P10",
+  "date": "2026-11-18",
+  "command": "node --experimental-strip-types scripts/check.ts",
+  "node": "v24.22.1",
+  "typecheck": "passed",
+  "tests": {
+    "total": 231,
+    "passed": 231,
+    "failed": 0
+  },
+  "gitDiffCheck": "passed",
+  "browserEvidence": "browser-checks.json",
+  "archiveEvidence": "archive-checks.json"
+}

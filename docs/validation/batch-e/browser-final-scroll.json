@@ -1,0 +1,34 @@
+{
+  "commit": "a4b4331",
+  "before": [
+    {
+      "left": 0,
+      "pane": "task-pane",
+      "top": 43227
+    },
+    {
+      "left": 0,
+      "pane": "timeline-pane",
+      "top": 43227
+    }
+  ],
+  "after": [
+    {
+      "left": 0,
+      "pane": "task-pane",
+      "top": 43227
+    },
+    {
+      "left": 0,
+      "pane": "timeline-pane",
+      "top": 43227
+    }
+  ],
+  "input": {
+    "end": 19,
+    "focused": true,
+    "start": 19,
+    "value": "FINAL-ROW-PRESERVED"
+  },
+  "status": "共享草稿已保存 · 20:45:52"
+}

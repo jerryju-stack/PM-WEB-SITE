@@ -1,0 +1,10 @@
+✔ E1 HTTP actor fencing, second-page occupancy, validation and stale leases preserve shared draft/execution boundaries (318.0968ms)
+✔ E1 successful adoption with transport response lost is recovered by reading, and receipt prevents duplicate versions (329.018ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 724.081

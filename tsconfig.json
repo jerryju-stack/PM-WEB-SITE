@@ -17,10 +17,27 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "paths": {
-      "/timing-layout.js": ["./src/timing-layout.ts"],
-      "/timing-io.js": ["./src/timing-io.ts"],
-      "/timing-history.js": ["./src/timing-history.ts"],
-      "/access-ui.js": ["./src/access-ui.ts"],
+      "/finance.js": ["./src/finance.ts"],
+      "/finance-view.js": ["./src/finance-view.ts"],
+      "/finance-impact.js": ["./src/finance-impact.ts"],
+      "/finance-operations.js": ["./src/finance-operations.ts"],
+      "/finance-development.js": ["./src/finance-development.ts"],
+      "/finance-capital.js": ["./src/finance-capital.ts"],
+      "/finance-budget.js": ["./src/finance-budget.ts"],
+      "/finance-compare.js": ["./src/finance-compare.ts"],
+      "/finance-preview-state.js": ["./src/finance-preview-state.ts"],
+      "/timing-layout.js": [
+        "./src/timing-layout.ts"
+      ],
+      "/timing-io.js": [
+        "./src/timing-io.ts"
+      ],
+      "/timing-history.js": [
+        "./src/timing-history.ts"
+      ],
+      "/access-ui.js": [
+        "./src/access-ui.ts"
+      ],
       "/timing.js": [
         "./src/timing.ts"
       ],
@@ -29,6 +46,9 @@
       ],
       "/drafts.js": [
         "./src/drafts.ts"
+      ],
+      "/task-index.js": [
+        "./lib/task-index.ts"
       ]
     }
   },

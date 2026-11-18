@@ -1,5 +1,6 @@
 import { dateValue } from './schedule.ts';
 import type { Task } from './schedule.ts';
+export type {FixedDecimal,FinanceSnapshot,FinanceSource,FinanceInput,FinanceEvent,FinanceProjectState,FinanceVersionSummary,FinanceWriteResult} from './finance-contracts.ts';
 export type Collection = 'projects' | 'articles';
 export type Project = { id: string; version: number; taskRevision: number; title: string; description: string; category: string; date: string; startDate: string; content: string; owner: string; status: string; progress: number };
 export type Article = Omit<Project, 'taskRevision'>;

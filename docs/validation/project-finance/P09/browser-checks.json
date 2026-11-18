@@ -1,0 +1,64 @@
+{
+  "step": "P09",
+  "browser": "Chrome",
+  "viewports": [
+    [
+      1440,
+      1000
+    ],
+    [
+      390,
+      844
+    ]
+  ],
+  "checks": [
+    "Normal project card and operating profit open Operations",
+    "Preview and save have the same calculation digest",
+    "Preview and save have the same calculation digest",
+    "Preview and save have the same calculation digest",
+    "T2 design takt, OEE capacity and labor are independent",
+    "Preview and save have the same calculation digest",
+    "T2 reconciles unit labor, annual labor, profit, cash flow and NPV and traces their dependencies",
+    "Preview and save have the same calculation digest",
+    "Saved measured basis survives source deep-link reload",
+    "Explicit return restores the original dashboard URL and filters",
+    "Returns shows the saved Year 1 cash flow",
+    "Preview and save have the same calculation digest",
+    "Preview and save have the same calculation digest",
+    "Measured CT transfers bottleneck from S10 to S20",
+    "Preview and save have the same calculation digest",
+    "Missing station prevents basis adoption with a named error",
+    "Missing station leaves line balance, constraint and capacity unavailable",
+    "Preview and save have the same calculation digest",
+    "Management can switch from measured back to design",
+    "Preview and save have the same calculation digest",
+    "Mobile normal navigation opens the persisted measured basis",
+    "Mobile Operations stays within viewport",
+    "Mobile reverse preview adds back the T2 NPV difference",
+    "Mobile returns focus to the source row",
+    "double_buckle preserves shared AME lines 35/36 and the P05 repeats per piece",
+    "double_buckle read-only browser account cannot submit or calibrate",
+    "single_buckle preserves shared AME lines 35/36 and the P05 repeats per piece",
+    "single_buckle read-only browser account cannot submit or calibrate",
+    "No uncaught script errors"
+  ],
+  "reconciliation": {
+    "unitLabor": [
+      "1.0000",
+      "1.2000",
+      "0.2000"
+    ],
+    "annualDirectLabor": [
+      "10000.00",
+      "12000.00",
+      "2000.00"
+    ],
+    "annualCashFlow": [
+      "110000.00",
+      "108000.00",
+      "-2000.00"
+    ],
+    "operatingProfitDelta": "-2000.00",
+    "npvDelta": "-1818.18"
+  }
+}

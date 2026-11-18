@@ -1,0 +1,73 @@
+{
+  "calculationVersion": "P06.1",
+  "inputs": {
+    "T1": {
+      "cash": [
+        "-100",
+        "60",
+        "60"
+      ],
+      "annualDiscountRate": "0.10",
+      "productCash": [
+        [
+          "-80",
+          "40",
+          "50"
+        ],
+        [
+          "-20",
+          "20",
+          "10"
+        ]
+      ]
+    },
+    "T2": {
+      "people": 2,
+      "ctBefore": 30,
+      "ctAfter": 36,
+      "hourlyRate": 60,
+      "efficiency": 1,
+      "goodUnitsPerCycle": 1,
+      "annualVolume": 10000,
+      "paymentOrdinal": 1,
+      "annualDiscountRate": "0.10",
+      "otherCashChanges": 0
+    }
+  },
+  "T1": {
+    "npv": {
+      "value": "4.132231404958677686",
+      "display": "4.13",
+      "status": "ok",
+      "unit": "CNY"
+    },
+    "irr": {
+      "value": "0.130662386291807460",
+      "display": "13.07",
+      "status": "ok",
+      "unit": "fraction"
+    },
+    "payback_period": {
+      "value": "1.666666666666666667",
+      "display": "1.67",
+      "status": "ok",
+      "unit": "year"
+    },
+    "peak_funding_requirement": {
+      "value": "100.000000000000000000",
+      "display": "100.00",
+      "status": "ok",
+      "unit": "CNY"
+    },
+    "peakOrdinal": 0
+  },
+  "T2": {
+    "unit_labor_before": "1.000000000000000000",
+    "unit_labor_after": "1.200000000000000000",
+    "annual_labor_change": "2000.000000000000000000",
+    "operating_profit_change": "-2000.000000000000000000",
+    "cash_flow_change": "-2000.000000000000000000",
+    "npv_change": "-1818.181818181818181818",
+    "npv_change_display": "-1818.18"
+  }
+}

@@ -1,0 +1,159 @@
+{
+  "step": "P11",
+  "browser": "Chrome",
+  "viewports": [
+    [
+      1440,
+      1000
+    ],
+    [
+      390,
+      844
+    ]
+  ],
+  "checks": [
+    "Homepage NPV reaches a Year 0 cash low and Year 1 recovery",
+    "Funding event opens ME and procurement evidence plus payment schedule",
+    "Asset back link restores returns filters and funding row focus",
+    "Settlement link opens the single linked agreement and receivable",
+    "Receipt delay changes NPV and liquidity duration with zero lifetime investment, contract, recovery, and profit changes",
+    "Receipt change connects to cash, NPV and funding impact",
+    "Saved result exactly matches preview digest",
+    "Reloaded agreement retains the delayed receipt and the same Year 0 low",
+    "Independent asset increase keeps customer contract and receipt fixed and increases funding need",
+    "Saved result exactly matches preview digest",
+    "Full-cost basis shows depreciation independently of incremental cash",
+    "Operating terms preview ties 16,000 of working capital and 22,000 of cash tax to 2027 cash",
+    "Saved result exactly matches preview digest",
+    "Existing shared asset editor preserves incremental profit and acquisition cash",
+    "Saved result exactly matches preview digest",
+    "Narrow-screen home navigation can open the saved 2028 settlement",
+    "CQA returns shows original inventory, receivable, payable and tax sources",
+    "CQA archive displays real investment sources and read-only action scope",
+    "No uncaught page errors"
+  ],
+  "reconciliation": {
+    "receiptTiming": {
+      "capital": [
+        "10000.00",
+        "10000.00",
+        "0.00"
+      ],
+      "payments": [
+        "10000.00",
+        "10000.00",
+        "0.00"
+      ],
+      "received": [
+        "10000.00",
+        "10000.00",
+        "0.00"
+      ],
+      "contract": [
+        "10000.00",
+        "10000.00",
+        "0.00"
+      ],
+      "netCapital": [
+        "0.00",
+        "0.00",
+        "0.00"
+      ],
+      "npv": [
+        "-909.09",
+        "-1735.54",
+        "-826.45"
+      ],
+      "peak": [
+        "10000.00",
+        "10000.00",
+        "0.00"
+      ],
+      "profit": [
+        "-10000.00",
+        "-10000.00",
+        "0.00"
+      ],
+      "cbt": [
+        "-10000.00",
+        "-10000.00",
+        "0.00"
+      ],
+      "cashDelta": [
+        "0.00",
+        "-10000.00",
+        "10000.00"
+      ],
+      "firstMinimum": [
+        "year-0",
+        "year-0"
+      ],
+      "payback": [
+        "1.00",
+        "2.00",
+        "ok"
+      ]
+    },
+    "purchaseAmount": {
+      "capital": [
+        "10000.00",
+        "12000.00",
+        "2000.00"
+      ],
+      "payments": [
+        "10000.00",
+        "12000.00",
+        "2000.00"
+      ],
+      "received": [
+        "10000.00",
+        "10000.00",
+        "0.00"
+      ],
+      "contract": [
+        "10000.00",
+        "10000.00",
+        "0.00"
+      ],
+      "netCapital": [
+        "0.00",
+        "2000.00",
+        "2000.00"
+      ],
+      "npv": [
+        "-909.09",
+        "-2909.09",
+        "-2000.00"
+      ],
+      "peak": [
+        "10000.00",
+        "12000.00",
+        "2000.00"
+      ],
+      "profit": [
+        "-10000.00",
+        "-12000.00",
+        "-2000.00"
+      ],
+      "cbt": [
+        "-10000.00",
+        "-12000.00",
+        "-2000.00"
+      ],
+      "cashDelta": [
+        "-2000.00",
+        "0.00",
+        "0.00"
+      ],
+      "firstMinimum": [
+        "year-0",
+        "year-0"
+      ],
+      "payback": [
+        "1.00",
+        null,
+        "not_recovered"
+      ]
+    }
+  }
+}

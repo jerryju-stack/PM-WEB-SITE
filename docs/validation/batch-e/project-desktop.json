@@ -1,0 +1,32 @@
+{
+  "at": "2026-11-16T12:07:22.178Z",
+  "registry": [
+    {
+      "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\WINPROJ.EXE",
+      "found": false
+    },
+    {
+      "key": "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\WINPROJ.EXE",
+      "found": false
+    },
+    {
+      "key": "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\App Paths\\WINPROJ.EXE",
+      "found": false
+    }
+  ],
+  "candidates": [
+    {
+      "path": "C:/Program Files/Microsoft Office/root/Office16/WINPROJ.EXE",
+      "exists": false
+    },
+    {
+      "path": "C:/Program Files (x86)/Microsoft Office/root/Office16/WINPROJ.EXE",
+      "exists": false
+    },
+    {
+      "path": "C:/Program Files/Microsoft Office/Office16/WINPROJ.EXE",
+      "exists": false
+    }
+  ],
+  "conclusion": "No available Microsoft Project desktop app was found in standard App Paths/Office locations; no desktop open/re-import was performed, and no paid application was installed. MSPDI support does not establish desktop interoperability."
+}

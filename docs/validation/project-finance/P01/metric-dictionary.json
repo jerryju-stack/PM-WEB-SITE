@@ -1,0 +1,702 @@
+{
+  "version": "P01.1",
+  "language": "zh-CN",
+  "groups": [
+    {
+      "id": "revenue",
+      "metrics": [
+        "revenue"
+      ]
+    },
+    {
+      "id": "operating",
+      "metrics": [
+        "operating_profit",
+        "operating_margin"
+      ]
+    },
+    {
+      "id": "npv",
+      "metrics": [
+        "npv"
+      ]
+    },
+    {
+      "id": "irr",
+      "metrics": [
+        "irr"
+      ]
+    },
+    {
+      "id": "payback",
+      "metrics": [
+        "payback_period"
+      ]
+    },
+    {
+      "id": "funding",
+      "metrics": [
+        "peak_funding_requirement"
+      ]
+    }
+  ],
+  "formats": {
+    "money": {
+      "multiplier": 1,
+      "deltaUnit": "currency"
+    },
+    "percent": {
+      "multiplier": 100,
+      "deltaUnit": "percentage_point"
+    },
+    "years": {
+      "multiplier": 1,
+      "deltaUnit": "year"
+    },
+    "seconds": {
+      "multiplier": 1,
+      "deltaUnit": "source_seconds_unit"
+    }
+  },
+  "mappingStates": {
+    "mapped": "已按原表核对",
+    "mapped_cqa_cash": "历史 CEA 现金流可用于本样本回报",
+    "derived": "从完整分期现金流推导",
+    "mapped_cqa_gross": "样本按原表毛投资边界核对",
+    "mapped_cqa_incremental": "样本按原表增量营运资金核对",
+    "pending_finance": "标准指标待财务签认",
+    "to_collect": "须另采原始业务记录",
+    "design_only": "现有记录为设计假设",
+    "pending_inputs": "需补齐同期间输入"
+  },
+  "resultContext": [
+    "metricKey",
+    "dictionaryVersion",
+    "basis",
+    "project",
+    "version",
+    "asOf",
+    "productScope",
+    "periods",
+    "currency",
+    "unit",
+    "value",
+    "status",
+    "sourceIds"
+  ],
+  "comparison": {
+    "columns": [
+      "批准基线",
+      "当前预测",
+      "差额",
+      "候选预览（编辑时）"
+    ],
+    "delta": "当前预测减批准基线。预览明确显示编辑前版本，差额为候选减编辑前。同币种、期间、产品范围及财务口径可比后计算。",
+    "units": "金额差带符号及币种单位。利润率和 IRR 差用百分点。回收期差用年。峰值同时列首次发生期。"
+  },
+  "states": {
+    "ok": "有效，含经核实的数值零",
+    "no_activity": "无业务，来源明确该范围未启用",
+    "missing_input": "缺数据、公式缓存为空或原表错误",
+    "pending_finance": "待财务核对口径",
+    "zero_denominator": "分母为零",
+    "invalid_rate": "折现率缺乏有效定义或不大于 −100%",
+    "no_irr": "全零或没有正负两种现金流，收益率无可解释解",
+    "ambiguous_irr": "多次变号，收益率唯一性待核对",
+    "solver_failed": "求解未收敛或残差超限",
+    "not_recovered": "全期未回收",
+    "no_funding_required": "全期无资金缺口，金额或年数为 0",
+    "recrossed": "曾回收，之后又有资金缺口，保留首次回收值并提示"
+  },
+  "policy": {
+    "period": "完整保留原期间标签。Year 0 是估值时点，投入立即计入。第 1 至第 n 期按各年末折现，零现金流年份也占一期。项目先按同一币种、期间逐产品合并，每笔共用项或内部抵销只计一次。",
+    "discount": "年有效折现率用小数存储，r > −1。零和有效负利率可计算，缺值返回 missing_input。档案项目比较取 project_cash 的 rate，逐一核产品 local_cash 的 rate。演示用 10%。每个新版本须有自己的折现依据。",
+    "irr": "忽略零项判变号，期间本身仍保留。在 r > −1 内求解。同号或全零返回 no_irr。一次变号可返回唯一根（含负收益率和零）。多次变号在唯一性获证前返回 ambiguous_irr。未收敛或经折现的残差超出金额容差时返回 solver_failed。所有无结果状态的值均为 null。",
+    "payback": "令 S[t] 为第 0 期起的未折现累计。如果从未出现负累计则为 0 年。首次负累计之后，取首个 S[t] ≥ 0 的期末，值为 t−1 + (−S[t−1])/CF[t]。恰好为零取整期。零流量的等待年占一期。至末仍未首次回收则返回 not_recovered、值 null。其后再为负标记 recrossed。",
+    "peak": "金额为 max(0, −min S[t])。并列最低点取首次出现的原期间。全期无缺口时金额为 0、发生期为 null。输入不齐时不从残缺曲线求资金指标。",
+    "precision": "先用原精度合计、折现、换算、插值和求差，只在显示的最后一步按十进制四舍五入（中点远离零）。核对原缓存用未显示舍入的值，先换到同币种同量纲。屏上舍入值不作核对输入。",
+    "displayDecimals": {
+      "money": 2,
+      "unit_price": 4,
+      "percent": 2,
+      "years": 2,
+      "count": 0,
+      "seconds": 2
+    },
+    "absoluteTolerance": {
+      "money_in_major_currency": "0.01",
+      "money_in_thousands": "0.00001",
+      "unit_price": "0.000001",
+      "ratio_as_fraction": "0.00000001",
+      "years": "0.000001",
+      "count_or_period": "0"
+    },
+    "variance": "逐产品、逐期及全期分别取绝对差，等于阈值通过。异常报源行和期间。缺数、状态、方向、币种、倍率、产品集合与首次最低期须精确匹配，不能靠容差放行。"
+  },
+  "examples": {
+    "portfolio": {
+      "unit": "CNY",
+      "annualRate": "0.10",
+      "products": [
+        {
+          "id": "A",
+          "sold": 10,
+          "price": "20",
+          "approvedFullCosts": "170",
+          "cash": [
+            "-80",
+            "40",
+            "50"
+          ]
+        },
+        {
+          "id": "B",
+          "sold": 20,
+          "price": "5",
+          "approvedFullCosts": "106",
+          "cash": [
+            "-20",
+            "20",
+            "10"
+          ]
+        }
+      ],
+      "expectedDisplay": {
+        "revenue": "300.00",
+        "operating_profit": "24.00",
+        "operating_margin": "8.00",
+        "npv": "4.13",
+        "irr": "13.07",
+        "payback_period": "1.67",
+        "peak_funding_requirement": "100.00"
+      },
+      "peakPeriod": 0
+    },
+    "cashEdges": [
+      {
+        "cash": [
+          "-100",
+          "80"
+        ],
+        "irr": "-20.00",
+        "paybackStatus": "not_recovered",
+        "peak": "100",
+        "peakPeriod": 0
+      },
+      {
+        "cash": [
+          "-100",
+          "0",
+          "100"
+        ],
+        "irr": "0.00",
+        "payback": "2.00",
+        "peak": "100",
+        "peakPeriod": 0
+      },
+      {
+        "cash": [
+          "-100",
+          "230",
+          "-132"
+        ],
+        "irrStatus": "ambiguous_irr",
+        "paybackStatus": "recrossed",
+        "payback": "0.43",
+        "peak": "100",
+        "peakPeriod": 0
+      },
+      {
+        "cash": [
+          "0",
+          "20",
+          "30"
+        ],
+        "irrStatus": "no_irr",
+        "paybackStatus": "no_funding_required",
+        "payback": "0.00",
+        "peak": "0",
+        "peakPeriod": null
+      },
+      {
+        "cash": [
+          "0",
+          "0",
+          "0"
+        ],
+        "irrStatus": "no_irr",
+        "paybackStatus": "no_funding_required",
+        "payback": "0.00",
+        "peak": "0",
+        "peakPeriod": null
+      },
+      {
+        "cash": [
+          "0",
+          "-30",
+          "0",
+          "30"
+        ],
+        "irr": "0.00",
+        "payback": "3.00",
+        "peak": "30",
+        "peakPeriod": 1
+      }
+    ],
+    "rateEdges": [
+      {
+        "cash": [
+          "-100",
+          "110"
+        ],
+        "rate": "0",
+        "npv": "10.00"
+      },
+      {
+        "cash": [
+          "-100",
+          "90"
+        ],
+        "rate": "-0.10",
+        "npv": "0.00"
+      },
+      {
+        "cash": [
+          "-100",
+          "110"
+        ],
+        "rate": "-1",
+        "state": "invalid_rate"
+      },
+      {
+        "cash": [
+          "-100",
+          "110"
+        ],
+        "rate": null,
+        "state": "missing_input"
+      },
+      {
+        "cash": [
+          "-100",
+          null,
+          "110"
+        ],
+        "rate": "0.1",
+        "state": "missing_input"
+      }
+    ]
+  },
+  "metrics": {
+    "revenue": {
+      "zh": "营业收入",
+      "format": "money",
+      "en": "Revenue",
+      "basis": "website",
+      "unit": "报告币金额",
+      "period": "按版本覆盖第 0 期至末期，可按同范围年度或产品下钻",
+      "definition": "本项目在所选期间销售各产品取得的收入。",
+      "formula": "Σ(各产品各市场销量 × 含已约定件价摊回的净售价 × 当期原币至报告币汇率)，保留年降和单位换算。",
+      "sources": [
+        "volume",
+        "price",
+        "full_pl",
+        "exec_pl"
+      ],
+      "mapping": "mapped",
+      "example": "虚构项目 A 售 10 件、每件 20 元，B 售 20 件、每件 5 元，全期收入 300.00 元。"
+    },
+    "operating_profit": {
+      "zh": "经营利润",
+      "format": "money",
+      "en": "Operating Profit",
+      "basis": "website",
+      "unit": "报告币金额",
+      "period": "按版本覆盖第 0 期至末期，可按同范围年度或产品下钻",
+      "definition": "按财务批准的全成本管理范围，销售收入扣除归属于本项目的经营成本和费用后剩下的金额。",
+      "formula": "同范围已映射收入 − 已映射全成本及经营费用。先确认折旧、分摊、工程净额和税前边界。",
+      "sources": [
+        "full_pl",
+        "operating_bridge"
+      ],
+      "mapping": "pending_finance",
+      "example": "按已核准的示例口径，A 盈利 30 元、B 亏损 6 元，合计经营利润 24.00 元。"
+    },
+    "operating_margin": {
+      "zh": "经营利润率",
+      "format": "percent",
+      "en": "Operating Margin",
+      "basis": "website",
+      "unit": "比例",
+      "period": "按版本覆盖第 0 期至末期，可按同范围年度或产品下钻",
+      "definition": "每一元营业收入中有多少成为同口径经营利润。",
+      "formula": "Σ经营利润 / Σ营业收入。收入为 0 返回 zero_denominator，经营利润映射未定返回 pending_finance。",
+      "sources": [
+        "full_pl",
+        "operating_bridge"
+      ],
+      "mapping": "pending_finance",
+      "example": "两款产品利润合计 24 元、收入合计 300 元，项目利润率为 8.00%。"
+    },
+    "npv": {
+      "zh": "净现值",
+      "format": "money",
+      "en": "Net Present Value (NPV)",
+      "basis": "website",
+      "unit": "报告币金额",
+      "period": "等长年度，第 0 期至末期",
+      "definition": "把未来各期项目现金流按本版本折现率折回起算日，加上当天的投入或收款。",
+      "formula": "Σ CF[t]/(1+r)^t，t 从 0 开始。",
+      "sources": [
+        "local_cash",
+        "project_cash"
+      ],
+      "mapping": "mapped_cqa_cash",
+      "example": "第 0 期支出 100 元，以后两年末各收 60 元，年折现率 10%，净现值为 4.13 元。"
+    },
+    "irr": {
+      "zh": "内部收益率",
+      "format": "percent",
+      "en": "Internal Rate of Return (IRR)",
+      "basis": "website",
+      "unit": "年有效收益率",
+      "period": "等长年度，第 0 期至末期",
+      "definition": "使合并项目现金流净现值为零的年收益率。",
+      "formula": "求 r > −1 使 Σ CF[t]/(1+r)^t = 0，状态见 policy.irr。",
+      "sources": [
+        "local_cash",
+        "project_cash"
+      ],
+      "mapping": "mapped_cqa_cash",
+      "example": "现金流 −100、60、60 元的 IRR 为 13.07%。两笔均为支出时显示「无可解释解」。"
+    },
+    "payback_period": {
+      "zh": "投资回收期",
+      "format": "years",
+      "en": "Payback Period",
+      "basis": "website",
+      "unit": "年",
+      "period": "等长年度，第 0 期至末期",
+      "definition": "从第 0 期算起，累计收回最初资金缺口需要多久。",
+      "formula": "按 policy.payback 对合并未折现现金流的首次回收期线性插值。",
+      "sources": [
+        "project_cash",
+        "local_cash"
+      ],
+      "mapping": "derived",
+      "example": "−100、60、60 元在第 1 年末尚差 40 元，第 2 年收回，回收期为 1 + 40/60 = 1.67 年。"
+    },
+    "peak_funding_requirement": {
+      "zh": "峰值资金需求",
+      "format": "money",
+      "en": "Peak Funding Requirement",
+      "basis": "website",
+      "unit": "报告币金额及首次发生期",
+      "period": "等长年度，第 0 期至末期",
+      "definition": "项目累计现金流在最紧张时还需要多少资金，并指出首次出现该缺口的期间。",
+      "formula": "max(0, −min S[t])，各期从第 0 期起累计。",
+      "sources": [
+        "project_cash",
+        "local_cash"
+      ],
+      "mapping": "derived",
+      "example": "−100、60、60 元的累计为 −100、−40、20 元，最大缺口为 100.00 元，首次在第 0 期。"
+    },
+    "ebit": {
+      "zh": "息税前利润",
+      "format": "money",
+      "en": "Earnings Before Interest and Taxes (EBIT)",
+      "basis": "website",
+      "unit": "报告币金额",
+      "period": "按版本覆盖第 0 期至末期，可按同范围年度或产品下钻",
+      "definition": "利息和所得税之前的利润，经营与非经营项目按项目财务政策界定。",
+      "formula": "按批准的税前利润范围加回利息净额。与经营利润的差项逐项列明。",
+      "sources": [
+        "operating_bridge"
+      ],
+      "mapping": "pending_finance"
+    },
+    "nopat": {
+      "zh": "税后经营利润",
+      "format": "money",
+      "en": "Net Operating Profit After Tax (NOPAT)",
+      "basis": "website",
+      "unit": "报告币金额",
+      "period": "分年或同范围全期",
+      "definition": "经营利润承担对应经营税额后的金额。",
+      "formula": "已核准经营利润 − 相应经营税额。按版本明确亏损税盾。",
+      "sources": [
+        "operating_bridge",
+        "tax_assets"
+      ],
+      "mapping": "pending_finance"
+    },
+    "capex": {
+      "zh": "资本性支出",
+      "format": "money",
+      "en": "Capital Expenditure (CAPEX)",
+      "basis": "website",
+      "unit": "报告币金额",
+      "period": "按投入或付款期注明",
+      "definition": "用于取得或改良长期资产的毛支出。",
+      "formula": "汇总合格资产投资。分别记录新增、已有资产分摊、付款及客户补偿。",
+      "sources": [
+        "investment"
+      ],
+      "mapping": "mapped_cqa_gross"
+    },
+    "nwc": {
+      "zh": "净营运资金",
+      "format": "money",
+      "en": "Net Working Capital (NWC)",
+      "basis": "website",
+      "unit": "报告币期末余额",
+      "period": "各期末",
+      "definition": "日常经营占用的经营性流动资产扣除经营性流动负债。",
+      "formula": "按确认范围合计存货、应收、其他经营资产，扣应付等经营负债。现金流使用本期相对上期的增减。",
+      "sources": [
+        "working_capital"
+      ],
+      "mapping": "mapped_cqa_incremental"
+    },
+    "fcff": {
+      "zh": "企业自由现金流",
+      "format": "money",
+      "en": "Free Cash Flow to the Firm (FCFF)",
+      "basis": "website",
+      "unit": "报告币金额",
+      "period": "各期",
+      "definition": "项目经营、税款、再投资之后，可供资本提供者的现金。",
+      "formula": "NOPAT + 非现金折旧摊销 − 毛资本支出 − ΔNWC，加减经核准的项目现金调整。",
+      "sources": [
+        "operating_bridge",
+        "local_cash",
+        "investment"
+      ],
+      "mapping": "pending_finance"
+    },
+    "roic": {
+      "zh": "投入资本回报率",
+      "format": "percent",
+      "en": "Return on Invested Capital (ROIC)",
+      "basis": "website",
+      "unit": "比例",
+      "period": "同一年度",
+      "definition": "该期税后经营利润相对平均投入资本的回报。",
+      "formula": "NOPAT / 平均(期初投入资本,期末投入资本)。分母为零或投入资本范围未定须标状态。",
+      "sources": [
+        "tax_assets",
+        "operating_bridge"
+      ],
+      "mapping": "pending_finance"
+    },
+    "etc": {
+      "zh": "剩余完工成本估算",
+      "format": "money",
+      "en": "Estimate to Complete (ETC)",
+      "basis": "website",
+      "unit": "报告币金额",
+      "period": "数据截止日以后至完工",
+      "definition": "完成剩余范围预计还需投入的成本。",
+      "formula": "Σ剩余工作预测，剔除已由确认实绩覆盖的部分。",
+      "sources": [
+        "budget_actual"
+      ],
+      "mapping": "to_collect"
+    },
+    "eac": {
+      "zh": "预计完工成本",
+      "format": "money",
+      "en": "Estimate at Completion (EAC)",
+      "basis": "website",
+      "unit": "报告币金额",
+      "period": "截止日及同一完工范围",
+      "definition": "按当前执行情况，预计完工总共花多少钱。",
+      "formula": "截至期已确认实绩 + 同范围 ETC。预计完工差额 = 批准预算 − EAC。",
+      "sources": [
+        "budget_actual"
+      ],
+      "mapping": "to_collect"
+    },
+    "cqa.dvp": {
+      "zh": "直接变动利润",
+      "format": "money",
+      "en": "Direct Variable Profit (DVP)",
+      "basis": "cqa_full",
+      "unit": "原币千元",
+      "period": "原年度及全期",
+      "definition": "收入扣除直接材料、直接人工和净报废后的利润。",
+      "formula": "186 − 190 = 191。增量对应 265 − 269 = 270。",
+      "sources": [
+        "full_pl",
+        "incremental_pl"
+      ],
+      "mapping": "mapped"
+    },
+    "cqa.mpbitri": {
+      "zh": "CQA 全成本管理利润",
+      "format": "money",
+      "en": "MPBITRI (Full Cost)",
+      "basis": "cqa_full",
+      "unit": "原币千元",
+      "period": "按版本覆盖第 0 期至末期，可按同范围年度或产品下钻",
+      "definition": "全成本工厂利润再扣事业部等分摊及净应用工程费用，是历史管理利润。",
+      "formula": "204 − 209 − 210 = 212。",
+      "sources": [
+        "full_pl",
+        "engineering"
+      ],
+      "mapping": "mapped"
+    },
+    "cqa.mpbitri_margin": {
+      "zh": "CQA 全成本管理利润率",
+      "format": "percent",
+      "en": "MPBITRI %",
+      "basis": "cqa_full",
+      "unit": "比例",
+      "period": "按版本覆盖第 0 期至末期，可按同范围年度或产品下钻",
+      "definition": "每单位收入对应的原表全成本管理利润。",
+      "formula": "Σ212 / Σ186，含第 0 期费用。",
+      "sources": [
+        "full_pl",
+        "exec_pl"
+      ],
+      "mapping": "mapped"
+    },
+    "cqa.ros": {
+      "zh": "CQA 销售回报率",
+      "format": "percent",
+      "en": "Return on Sales (ROS)",
+      "basis": "cqa_full",
+      "unit": "比例（E45/H45 原值为百分数）",
+      "period": "按版本覆盖第 0 期至末期，可按同范围年度或产品下钻",
+      "definition": "此表使用全成本管理利润扣原表所得税后的销售回报。",
+      "formula": "Σ(235 + 已带符号的 236) / Σ186。产品 E45/H45 的原数值除 100，Exec Sum 的 M 列已经是比率。",
+      "sources": [
+        "tax_assets",
+        "full_pl"
+      ],
+      "mapping": "mapped"
+    },
+    "cqa.roae": {
+      "zh": "CQA 平均占用资产回报率",
+      "format": "percent",
+      "en": "Return on Average Assets Employed (ROAE)",
+      "basis": "cqa_full",
+      "unit": "比例",
+      "period": "全项目经营期平均资产口径",
+      "definition": "原表税后管理利润相对于原表平均占用资产的回报。",
+      "formula": "产品 D232 = (O235 + O236) / O230，E47/H47 表示百分数。Exec Sum 的 P 列为税后、Q 列为税前。",
+      "sources": [
+        "tax_assets"
+      ],
+      "mapping": "mapped"
+    },
+    "cqa.eva_full": {
+      "zh": "CQA 全成本经济增加值",
+      "format": "money",
+      "en": "Economic Value Added (EVA), Full Cost",
+      "basis": "cqa_full",
+      "unit": "原币千元",
+      "period": "按年，另列全期折现值",
+      "definition": "原表税后全成本管理利润扣除平均资产资本费用后创造的经济利润。",
+      "formula": "238 = 235 + 236 + 237，O239 为第 0 期加后期折现，O241 为千美元。",
+      "sources": [
+        "tax_assets"
+      ],
+      "mapping": "mapped"
+    },
+    "cqa.cbt": {
+      "zh": "CEA 增量税前贡献",
+      "format": "money",
+      "en": "Contribution Before Tax (CBT)",
+      "basis": "cqa_incremental",
+      "unit": "原币千元",
+      "period": "按版本覆盖第 0 期至末期，可按同范围年度或产品下钻",
+      "definition": "增量销售扣增量工厂成本、增量折旧及净工程费用后的税前贡献。",
+      "formula": "265 − 285 = 286，毛资本支出另入现金流。",
+      "sources": [
+        "incremental_pl",
+        "engineering"
+      ],
+      "mapping": "mapped"
+    },
+    "cqa.eva_incremental": {
+      "zh": "CEA 增量经济增加值",
+      "format": "money",
+      "en": "Economic Value Added (EVA), Incremental",
+      "basis": "cqa_incremental",
+      "unit": "原币千元",
+      "period": "按年，另列全期折现值",
+      "definition": "增量税前贡献扣税及增量占用资本费用后的经济利润。",
+      "formula": "331 = 328 + 329 + 330，O332 为折现值。",
+      "sources": [
+        "tax_assets",
+        "incremental_pl"
+      ],
+      "mapping": "mapped"
+    },
+    "cqa.cash_flow": {
+      "zh": "CEA 增量项目现金流",
+      "format": "money",
+      "en": "Incremental Cash Flow",
+      "basis": "cqa_incremental",
+      "unit": "原币千元或千美元",
+      "period": "Year 0 及十个年末",
+      "definition": "按历史表增量贡献、税、投资及营运资金生成的项目现金流。",
+      "formula": "343 = Σ338:342，349 = 343 × 245。汇总后对 Exec Sum 的 177 行。",
+      "sources": [
+        "local_cash",
+        "project_cash"
+      ],
+      "mapping": "mapped"
+    },
+    "ct": {
+      "zh": "工序周期时间",
+      "format": "seconds",
+      "en": "Cycle Time (CT)",
+      "basis": "engineering",
+      "unit": "秒/循环",
+      "period": "按工序、线体、版本或实测批次",
+      "definition": "同一道工序完成一个作业循环所用时间。",
+      "formula": "每件人时 = 人数 × CT × 每件重复次数 / (3600 × 每循环产出)，效率损失按定义计一次。",
+      "sources": [
+        "line_design",
+        "labor",
+        "station_actual"
+      ],
+      "mapping": "design_only"
+    },
+    "takt_time": {
+      "zh": "需求节拍",
+      "format": "seconds",
+      "en": "Takt Time",
+      "basis": "engineering",
+      "unit": "秒/需求件",
+      "period": "同一班次或期间",
+      "definition": "为满足需求，按有效可生产时间平均每隔多少秒须完成一件。",
+      "formula": "有效可用生产秒数 / 该期间需求件数。",
+      "sources": [
+        "volume",
+        "line_design",
+        "station_actual"
+      ],
+      "mapping": "pending_inputs"
+    },
+    "oee": {
+      "zh": "设备综合效率",
+      "format": "percent",
+      "en": "Overall Equipment Effectiveness (OEE)",
+      "basis": "engineering",
+      "unit": "比例",
+      "period": "同线同班次或设计版本",
+      "definition": "计划生产时间中实际产出合格品的综合效率。",
+      "formula": "开动率 × 性能效率 × 良品率。AME 的整体系数属设计假设。",
+      "sources": [
+        "line_design",
+        "station_actual"
+      ],
+      "mapping": "design_only"
+    }
+  }
+}
