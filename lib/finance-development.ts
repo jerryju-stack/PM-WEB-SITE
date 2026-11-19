@@ -3,6 +3,7 @@ import type {FinanceInput,FinanceSnapshot,FixedDecimal} from './finance-contract
 import {Decimal,ONE,sum,ZERO} from './finance-decimal.ts';
 import {archived,businessSlug} from './finance-business.ts';
 import {invalid} from './contracts.ts';
+import {sourceFinanceCurrency} from './finance-fx.ts';
 
 export const DEVELOPMENT_VERSION='P10.1';
 export const developmentModules=['engineering','prototypes','validation'] as const;
@@ -75,7 +76,7 @@ function periodKey(s:FinanceSnapshot,value:unknown) {
 function parseQuantity(value:unknown,module:DevelopmentModule,category:string) {
   return number(value,'quantity or hours',module==='engineering'||category==='internal_test'?8:0);
 }
-function parseCost(s:FinanceSnapshot,module:DevelopmentModule,ref:string,raw:unknown):DevelopmentCost {
+function parseCost(s:FinanceSnapshot,module:DevelopmentModule,ref:string,raw:unknown,currency:string):DevelopmentCost {
   const record=object(raw,['title','group','category','role','stage','quantity','components','period','paymentPeriod','reference','allocationBasis','allocations','coverage','recovery']);
   const category=label(record.category,'cost category');
   if(!(developmentCategories[module] as readonly string[]).includes(category))fail('Choose a category for this page.');
@@ -101,7 +102,7 @@ function parseCost(s:FinanceSnapshot,module:DevelopmentModule,ref:string,raw:unk
   if(method==='lump_sum'||method==='piece_price'){
     const earnedPeriod=periodKey(s,recoveryRaw.earnedPeriod),receiptPeriod=periodKey(s,recoveryRaw.receiptPeriod);
     if(method==='piece_price'&&periodOrdinal(s,receiptPeriod)<periodOrdinal(s,earnedPeriod))fail('Forecast piece-price receipts must follow sales recognition. Record any actual advance separately.');
-    const schedule={amount:number(recoveryRaw.amount,'customer recovery rate or amount',method==='piece_price'?8:s.policy.currencyScales[developmentCurrency(s)]),
+    const schedule={amount:number(recoveryRaw.amount,'customer recovery rate or amount',method==='piece_price'?8:s.policy.currencyScales[currency]),
       earnedPeriod,receiptPeriod};
     if(method==='piece_price'){
       const productKey=financeKey(recoveryRaw.productKey??(allocations.length===1?allocations[0].productKey:null));
@@ -138,9 +139,9 @@ export function validateDevelopmentLinks(s:FinanceSnapshot) {
 
 export function applyDevelopmentChange(s:FinanceSnapshot,raw:unknown,selected:string[],seen:Set<string>) {
   if(!supportsDevelopment(s))fail('Development costs require a manufacturing or CQA version.');
-  const change=object(raw,['collection','action','module','costRef','key','record','quantity']);
+  const change=object(raw,['collection','action','module','costRef','key','record','quantity','currency']);
   const rows=developmentCosts(s),action=change.action;
-  let key:string,cost:DevelopmentCost,actual:DevelopmentActual|undefined,previous:FinanceInput|undefined;
+  let key:string,cost:DevelopmentCost,actual:DevelopmentActual|undefined,previous:FinanceInput|undefined,currency:string;
   if(action==='new'||action==='edit'){
     const module=change.module;
     if(!isDevelopmentModule(module))return fail('Choose a development page.');
@@ -151,16 +152,20 @@ export function applyDevelopmentChange(s:FinanceSnapshot,raw:unknown,selected:st
     if(action==='edit'&&(!existing||existing.module!==module||existing.key!==change.key))fail('Use the original cost identity and page.');
     if(action==='edit'&&developmentActuals(s).some(row=>row.conversion.actual.costKey===key))fail('Correct the actual source after execution has been recorded.');
     previous=existing;
-    cost=parseCost(s,module,ref,change.record);
+    currency=sourceFinanceCurrency(s,change.currency,existing?.currency??developmentCurrency(s));
+    cost=parseCost(s,module,ref,change.record,currency);
   } else {
     key=financeKey(change.key);
     const existing=rows.find(row=>row.key===key);
     if(!existing)return fail('This cost is outside the selected version.');
     cost=existing.conversion.cost;previous=existing;
+    currency=sourceFinanceCurrency(s,existing.currency,developmentCurrency(s));
     if(action==='quantity'){
       if(developmentActuals(s).some(row=>row.conversion.actual.costKey===key))fail('Correct the actual source after execution has been recorded.');
       cost={...cost,quantity:parseQuantity(change.quantity,cost.module,cost.category)};
     } else if(action==='actual'){
+      previous=developmentActuals(s).find(row=>row.key===key+':actual');
+      currency=sourceFinanceCurrency(s,change.currency,previous?.currency??currency);
       const record=object(change.record,['incurred','payment','receipt']);
       const fact=(value:unknown):Fact|null=>{
         if(value===null)return null;
@@ -168,18 +173,17 @@ export function applyDevelopmentChange(s:FinanceSnapshot,raw:unknown,selected:st
         if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date)fail('Enter a valid event date.');
         const year=s.periods.find(item=>item.key===period)?.metadata.calendarYear;
         if(Number.isInteger(year)&&Number(date.slice(0,4))!==year)fail('Event date and fiscal year do not align.');
-        return {amount:number(row.amount,'actual amount',s.policy.currencyScales[developmentCurrency(s)]),period,date,reference:label(row.reference,'event evidence',240)};
+        return {amount:number(row.amount,'actual amount',s.policy.currencyScales[currency]),period,date,reference:label(row.reference,'event evidence',240)};
       };
       actual={costKey:key,incurred:fact(record.incurred),payment:fact(record.payment),receipt:fact(record.receipt)};
       if(!actual.incurred&&!actual.payment&&!actual.receipt)fail('Record at least one execution event.');
       key+=':actual';
-      previous=developmentActuals(s).find(row=>row.key===key);
     } else return fail('Unsupported development action.');
   }
   if(!selected.includes(cost.period))fail('The cost occurrence period is outside the preview range.');
   if(seen.has(key))fail('A cost or actual record may only be changed once per preview.');
   seen.add(key);
-  const currency=developmentCurrency(s),sourceKey=key+':source',observation=actual?'measured':'budget',sourceFact=actual?.incurred??actual?.payment??actual?.receipt;
+  const sourceKey=key+':source',observation=actual?'measured':'budget',sourceFact=actual?.incurred??actual?.payment??actual?.receipt;
   const period=sourceFact?.period??cost.period,date=sourceFact?.date??s.asOf;
   const reference=sourceFact?.reference??cost.reference;
   const amount=actual?q(sourceFact!.amount):plannedCost(cost);

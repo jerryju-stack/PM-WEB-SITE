@@ -1,6 +1,6 @@
 import type {CalculationBuilder,CalculationOutput,Value} from './finance-calculation-types.ts';
 import {Decimal,ONE,sum,ZERO} from './finance-decimal.ts';
-import {capitalAssets,capitalCurrency,capitalOrdinal,capitalQuoteRows,capitalRows,resolveAssetGross} from './finance-capital.ts';
+import {capitalAssets,capitalCurrency,capitalEstimates,capitalOrdinal,capitalQuoteRows,capitalRows,resolveAssetGross} from './finance-capital.ts';
 import type {CapitalRow,RecoveryRecord,TermsRecord,ValuationRecord} from './finance-capital.ts';
 import {bridgeInput} from './finance-bridge-inputs.ts';
 import type {BridgeTerm} from './finance-bridge-inputs.ts';
@@ -27,37 +27,52 @@ export function capitalDiscount(b:CalculationBuilder,fallback:Value){
 
 export function createCapitalCalculation(b:CalculationBuilder){
   const s=b.snapshot,currency=capitalCurrency(s),assets=capitalAssets(s),quotes=assets.some(row=>row.conversion.capital.gross===null)?capitalQuoteRows(s):[];
+  const estimates=new Map(capitalEstimates(s).map(row=>[row.key,row]));
   const recoveries=capitalRows(s).filter(row=>row.conversion.capital.kind==='recovery') as CapitalRow<RecoveryRecord>[];
   const pieces=new Map<string,Value[]>();
   const grossOptions=new Map(assets.map(row=>[row.key,resolveAssetGross(s,row.conversion.capital,quotes)]));
   const zeroes=()=>({gross:[] as Value[],allocated:[] as Value[],added:[] as Value[],payment:[] as Value[],receipt:[] as Value[],agreed:[] as Value[],
-    due:[] as Value[],actual:[] as Value[],salvage:[] as Value[],dep:[] as Value[],incDep:[] as Value[],piece:[] as Value[],pieceReceipt:[] as Value[]});
+    due:[] as Value[],actual:[] as Value[],salvage:[] as Value[],dep:[] as Value[],incDep:[] as Value[],piece:[] as Value[],pieceReceipt:[] as Value[],
+    replacedCash:[] as Value[]});
   return (product:string,period:string,ordinal:number,volume:Value,def:Define,archive?:{gross:Value;receipt:Value})=>{
     const items=zeroes();
     const opts={unit:currency,currency,periods:[period],productScope:[product]};
-    const evidence=(row:CapitalRow,name:string,value:Decimal|null,reference:string,unit=currency)=>{
+    const evidence=(row:CapitalRow,name:string,value:Decimal|null,reference:string,suffix='',fxPeriod=period)=>{
       const id=product+':'+period+':'+row.key+':'+name;
-      return b.values.get(id)??b.input({id,inputKey:row.key,sourceKey:row.sourceKey,unit,currency:unit===currency?currency:null,
-        periods:[period],value:value?.text()??null,status:value===null?'missing_input':'ok',role:name,cell:reference},value);
+      const from=suffix==='fraction'?null:row.currency;
+      const input={id,inputKey:row.key,sourceKey:row.sourceKey,unit:from?from+suffix:suffix,currency:from,
+        periods:[fxPeriod],value:value?.text()??null,status:value===null?'missing_input' as const:'ok' as const,role:name,cell:reference};
+      return b.values.get(id+':fx')??b.values.get(id)??(from?b.money(input,value,currency,fxPeriod):b.input(input,value));
     };
     const event=(id:string,source:CapitalCashEvent,deps:Value[],formula:(amount:Decimal[])=>Decimal)=>
       b.calc(product+':'+period+':capital-event:'+id,'capital_cash_event',deps,formula,{...opts,details:{capitalEvent:source}});
     for(const row of assets){
       const asset=row.conversion.capital,allocation=asset.allocations.find(item=>item.productKey===product);
       if(!allocation)continue;
+      const link=asset.estimate,estimate=link?estimates.get(link.key):undefined;
+      const quoted=estimate?.conversion.capital;
+      if(link&&estimate&&quoted?.cashInputKey&&quoted.period===period){
+        const original=s.inputs.find(input=>input.key===quoted.cashInputKey);
+        const amount=q(link.amount);
+        items.replacedCash.push(b.money({id:product+':'+period+':'+row.key+':replace-quoted-payment',
+          inputKey:quoted.cashInputKey,sourceKey:original?.sourceKey??null,value:amount.text(),periods:[period],
+          role:'Original forecast payment replaced by '+asset.assetId,cell:quoted.reference,
+          status:'ok',unit:estimate.unit,currency:estimate.currency},amount,currency,period));
+      }
       const share=q(allocation.share),total=sum(asset.allocations.map(item=>q(item.share))),service=capitalOrdinal(s,asset.servicePeriod);
-      const depreciation=ordinal>=service&&ordinal<service+asset.life,payments=asset.payments.filter(item=>item.period===period);
-      const salvage=asset.mode==='new'&&ordinal===service+asset.life-1&&q(asset.residual).n>0n;
-      if(period!==asset.orderPeriod&&!depreciation&&!payments.length&&!salvage)continue;
-      const valuation=grossOptions.get(row.key)!,quote=valuation.quote,fx=valuation.fx;
-      const doc=evidence(row,'Asset gross capital',valuation.amount,asset.purchaseReference);
-      const quoteInput=quote?b.input({id:product+':'+period+':'+quote.key+':capital-quote',inputKey:quote.key,sourceKey:quote.sourceKey,
-        value:q(quote.value).text(),periods:[period],role:'Supplier tooling quote',status:'ok',unit:quote.unit,currency:quote.currency},q(quote.value)):null;
-      const fxEvidence=fx?.source?b.input({id:product+':'+period+':'+row.key+':capital-fx',inputKey:fx.input?.key??null,sourceKey:fx.source.key,
-        value:fx.rate.text(),periods:[period],role:'Supplier tooling FX',status:'ok',unit:currency+'/'+quote?.currency,currency:null,
-        sheet:fx.source.sheet,cell:fx.source.cell??fx.source.externalKey},fx.rate):null;
-      const gross=b.calc(product+':'+period+':'+row.key+':capital_basis','capital_basis',[doc,...(quoteInput?[quoteInput]:[]),...(fxEvidence?[fxEvidence]:[])],([amount])=>{
-        if(amount.cmp(q(asset.residual))<0)throw Error('Asset residual exceeds the gross cost of its linked quote.');
+      const age=ordinal-service,life=q(asset.life),remaining=life.sub(q(age));
+      const depreciation=age>=0&&remaining.n>0n;
+      const payments=asset.payments.filter(item=>item.period===period);
+      const salvage=asset.mode==='new'&&depreciation&&remaining.cmp(ONE)<=0&&q(asset.residual).n>0n;
+      if(period!==asset.orderPeriod&&!depreciation&&!payments.length)continue;
+      const quote=grossOptions.get(row.key)!.quote;
+      const doc=quote&&!quote.conversion.archiveCapitalized?b.money({id:product+':'+period+':'+quote.key+':capital-quote',
+        inputKey:quote.key,sourceKey:quote.sourceKey,value:q(quote.value).text(),periods:[quote.periodKey],
+        role:'Supplier tooling quote',status:'ok',unit:quote.unit,currency:quote.currency},q(quote.value),currency,quote.periodKey):
+        evidence(row,'Asset gross capital',asset.gross===null?null:q(asset.gross),asset.purchaseReference,'',asset.orderPeriod);
+      const totalResidual=evidence(row,'Asset residual basis',q(asset.residual),asset.meReference,'',asset.orderPeriod);
+      const gross=b.calc(product+':'+period+':'+row.key+':capital_basis','capital_basis',[doc,totalResidual],([amount,residual])=>{
+        if(amount.cmp(residual)<0)throw Error('Asset residual exceeds the gross cost of its linked quote.');
         return amount;
       },{...opts,details:{message:'Asset '+asset.assetId+' requires a valid gross amount and residual value.'}});
       const alloc=evidence(row,'Allocation share',share,asset.basis,'fraction');
@@ -69,9 +84,11 @@ export function createCapitalCalculation(b:CalculationBuilder){
       }
       for(const payment of payments)items.payment.push(event(row.key+':payment:'+payment.id,{kind:'payment',key:row.key,label:asset.title+' · '+payment.id,
         reference:payment.reference,actual:false},[allocated],([amount])=>amount.mul(q(payment.share))));
-      const residual=evidence(row,'Asset residual',q(asset.residual).mul(share),asset.meReference);
+      const residual=evidence(row,'Asset residual',q(asset.residual).mul(share),asset.meReference,'',asset.orderPeriod);
       if(depreciation){
-        const charge=b.calc(product+':'+period+':'+row.key+':asset-dep','asset_depreciation',[allocated,residual],([amount,remainder])=>amount.sub(remainder).div(q(asset.life)),opts);
+        const fraction=minimum(remaining,ONE).div(life);
+        const charge=b.calc(product+':'+period+':'+row.key+':asset-dep','asset_depreciation',[allocated,residual],
+          ([amount,remainder])=>amount.sub(remainder).mul(fraction),opts);
         items.dep.push(charge);
         if(asset.mode==='new')items.incDep.push(charge);
       }
@@ -94,21 +111,22 @@ export function createCapitalCalculation(b:CalculationBuilder){
       }
       const prior=pieces.get(row.key)??[];
       if(piece&&ordinal>=capitalOrdinal(s,piece.first)&&ordinal<=capitalOrdinal(s,piece.last)){
-        const rate=evidence(row,'Recovery uplift',q(piece.rate),agreement.reference,currency+'/piece');
-        const agreementCap=evidence(row,'Customer agreement cap',amount,agreement.reference);
+        const rate=evidence(row,'Recovery uplift',q(piece.rate),agreement.reference,'/piece');
+        const agreementCap=evidence(row,'Customer agreement cap',amount,agreement.reference,'',agreement.agreementPeriod);
         const earned=b.calc(product+':'+period+':'+row.key+':piece-earned','piece_recovery_accrual',[volume,rate,agreementCap,...prior],
           ([qty,price,cap,...earned])=>minimum(qty.mul(price),positive(cap.sub(sum(earned)))),{...opts,
             details:{message:'Piece-price recovery requires a valid volume for '+agreement.agreementId+'.'}});
         prior.push(earned);pieces.set(row.key,prior);
         if(!piece.included)items.piece.push(earned);
       }
-      const settled=sum(agreement.receipts.map(item=>q(item.amount))).mul(share);
       const forecastOrdinal=Math.max(capitalOrdinal(s,agreement.receiptPeriod),...agreement.receipts.map(item=>capitalOrdinal(s,item.period)));
       if(ordinal===forecastOrdinal&&!piece?.included){
         const planned=evidence(row,'Collectible recovery',due,agreement.receivable?.reference??agreement.reference);
+        const settled=agreement.receipts.map(item=>evidence(row,'Settled customer receipt '+item.id,q(item.amount).mul(share),item.reference,'',item.period));
         cashEvents.push(event(row.key+':forecast',{kind:piece?'piece_receipt':'receipt',key:row.key,
           label:agreement.title+' · Forecast balance',reference:agreement.receivable?.reference??agreement.reference,actual:false},
-          [planned,...prior],([limit,...earned])=>positive((piece?minimum(sum(earned),limit):limit).sub(settled))));
+          [planned,...settled,...prior],([limit,...values])=>positive((piece?minimum(sum(values.slice(settled.length)),limit):limit)
+            .sub(sum(values.slice(0,settled.length))))));
       }
     }
     const total=(key:string,deps:Value[])=>def(key,deps,sum,opts);
@@ -131,7 +149,8 @@ export function createCapitalCalculation(b:CalculationBuilder){
       add('salvage',items.salvage);add('piece_receipts',items.pieceReceipt);
       if(archive){add('capital_payments',[archive.gross],-1);add('capital_receipts',[archive.receipt]);}
     }
-    return {cash,cashTerms,dep:total('capital_depreciation',items.dep),incrementalDep:total('capital_incremental_dep',items.incDep),
+    return {cash,cashTerms,replacedCash:total('capital_quote_cash_replacement',items.replacedCash),
+      dep:total('capital_depreciation',items.dep),incrementalDep:total('capital_incremental_dep',items.incDep),
       piece:total('capital_piece_earned',items.piece),pieceCash:total('capital_piece_cash',items.pieceReceipt)};
   };
 }

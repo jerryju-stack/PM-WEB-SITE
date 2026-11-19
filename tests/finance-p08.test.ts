@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {calculateFinance,compareCalculations} from '../lib/finance-calculation.ts';
 import {addBusinessRecord,businessInputs} from '../lib/finance-business.ts';
+import {commercialWorkspace} from '../lib/finance-commercial-workspace.ts';
 import {applyFinanceChanges} from '../lib/finance-preview.ts';
 import {openStore} from '../lib/database.ts';
 import {financeService} from '../lib/finance.ts';
@@ -18,6 +19,22 @@ const row=(snapshot:ReturnType<typeof p08Scenario>,field:string,year='year-1')=>
   .find(input=>input.metricKey==='p08.'+field&&input.periodKey===year)!;
 const change=(snapshot:ReturnType<typeof p08Scenario>,field:string,value:number,scale=0)=>({collection:'inputs',key:row(snapshot,field).key,value:fixedValue(value,scale)});
 const scenario=()=>p08Scenario();
+
+test('Commercial schedule uses configured periods and preserves price evidence for a zero-volume market',()=>{
+  const snapshot=scenario();
+  addBusinessRecord(snapshot,{collection:'business',recordType:'commercial',productKey:'product-a',marketKey:'na',
+    reference:'Zero-volume quote',currency:'CNY',values:{vehicles:fixedValue(0),units_per_vehicle:fixedValue(2),
+      configuration:fixedValue(1),sales_price:fixedValue(33)}},['year-1']);
+  const report=calculateFinance(snapshot),workspace=commercialWorkspace(snapshot,report,businessInputs(snapshot));
+  assert.deepEqual(workspace.periods.map(item=>item.key),['year-1']);
+  assert.equal(workspace.products[0].years[0].volume,'1000');
+  assert.equal(workspace.products[0].years[0].unitPrice,'20.00');
+  const market=workspace.markets.find(item=>item.market==='na');
+  assert.equal(market?.volume,'0');
+  assert.equal(market?.unitPrice,'33.00');
+  assert.equal(market?.revenue,'0');
+  assert.equal(report.products['product-a'].periodic[1].market_revenue_na.displayValue,'0.00');
+});
 
 test('P08 T3 applies quantity once, separates tooling and retains part price, period and source',()=>{
   const before=scenario(),part=row(before,'part_price');

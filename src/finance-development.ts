@@ -3,6 +3,7 @@ import type {Dictionary} from '/finance-view.js';
 import type {OperationEditor} from '/finance-impact.js';
 import type {DevelopmentCost,DevelopmentModule} from '../lib/finance-development.ts';
 import type {developmentWorkspace} from '../lib/finance-development-calculation.ts';
+import {currencyOptions} from '/finance-fx.js';
 
 type Workspace=ReturnType<typeof developmentWorkspace>;
 type Source=Workspace['rows'][number];
@@ -47,10 +48,60 @@ function renderDetails(row:Source,link:Link,periodLabel:(s:string)=>string,produ
     (row.includes.length?'<p>Package includes '+row.includes.map(target=>financeUrl(link(target.module,target.key),target.title)+' ('+html(target.quantity)+')').join(', ')+'</p>':'')+
     (actual?table(['Execution event','Amount','Period','Date','Evidence'],factTypes.flatMap(kind=>{
       const fact=actual[kind];
-      return fact?['<tr><th scope="row">'+factLabels[kind]+'</th>'+td(fact.amount+' '+currency)+td(periodLabel(fact.period))+td(fact.date)+td(fact.reference)+'</tr>']:[];
+      return fact?['<tr><th scope="row">'+factLabels[kind]+'</th>'+td(fact.amount+' '+row.actualCurrency)+td(periodLabel(fact.period))+td(fact.date)+td(fact.reference)+'</tr>']:[];
     }).join('')):'')+
     (canEdit?'<div class="fin-actions">'+(!actual?financeUrl(link(cost.module,'edit-'+row.key),'Edit forecast','fin-development-edit'):'')+
       financeUrl(link(cost.module,'actual-'+row.key),actual?'Review actuals':'Record actuals','fin-development-actual')+'</div>':'')+'</article>';
+}
+
+function departmentOverview(data:Workspace,module:DevelopmentModule,link:Link,periodLabel:(key:string)=>string,productLabel:(key:string)=>string){
+  const money=(value:string|null|undefined,code:string)=>value==null?null:
+    new Intl.NumberFormat('en',{minimumFractionDigits:data.currencies[code],maximumFractionDigits:data.currencies[code]}).format(Number(value))+' '+code;
+  const product=(row:Workspace['rows'][number])=>row.cost.allocations.map(item=>productLabel(item.productKey)).join(', ');
+  const panel=(title:string,body:string)=>'<section class="fin-panel fin-business-overview"><h2>'+title+'</h2>'+body+'</section>';
+  const source=(row:Workspace['rows'][number])=>financeUrl(link(module,row.key),row.cost.reference,'department-source-'+row.key);
+  const scope=(row:Workspace['rows'][number])=>row.modelScope?'Quote specification '+row.modelScope:row.cost.group;
+  if(!data.rows.length)return '';
+  if(module==='engineering'){
+    const pm=data.pmTotals;
+    return panel('Engineering work packages', (pm?'<dl class="fin-op-metrics">'+[
+      ['PM hours',new Intl.NumberFormat('en').format(Number(pm.hours))],
+      ['PM labor',money(pm.labor,pm.currency)],['PM travel',money(pm.travel,pm.currency)],['PM planned cost',money(pm.total,pm.currency)]
+    ].map(([label,value])=>'<div><dt>'+html(label)+'</dt><dd>'+html(value)+'</dd></div>').join('')+'</dl>':'')+
+      table(['Product / source','Role','Period','Hours','Hourly rate','Labor','Travel','Planned cost'],data.rows.map(row=>
+        '<tr><th scope="row">'+html(product(row))+'<small class="fin-state">'+source(row)+'</small></th>'+
+        td(row.cost.role??row.cost.category)+td(periodLabel(row.cost.period))+td(row.labor===null?null:row.cost.quantity)+
+        td(row.labor===null?null:money(row.cost.components.rate,row.originalCurrency))+
+        td(money(row.labor,row.originalCurrency))+td(money(row.travel,row.originalCurrency))+
+        td(money(row.planned,row.originalCurrency))+'</tr>').join('')));
+  }
+  if(module==='prototypes')return panel('Sample quotes and delivery',
+    table(['Product / source','Specification / batch','Quote scope','Physical pieces','Original quote','Reporting amount','Delivery evidence'],data.rows.map(row=>{
+      const coverage=row.related.map(item=>financeUrl(link(item.module,item.provider),item.title)).join(' · ');
+      return '<tr><th scope="row">'+html(product(row))+'<small class="fin-state">'+source(row)+'</small></th>'+
+        td(scope(row))+'<td>'+html(row.quoteBundle?'Quoted cost package':'Sample quantity')+
+        (coverage?'<small class="fin-state">Covered by '+coverage+'</small>':'')+'</td>'+
+        td(row.quoteBundle?'To collect':row.cost.quantity)+td(money(row.planned,row.originalCurrency))+td(money(row.reporting,data.currency))+
+        td(row.actual?.payment?'Payment evidence recorded. Delivery date and acceptance evidence to collect.':
+          'Delivery date and acceptance evidence to collect')+'</tr>';
+    }).join(''))+
+    '<p class="fin-muted">Samples or fixtures included in a validation package stay with its paying package.</p>');
+  const rows=new Map(data.rows.map(row=>[row.key,row]));
+  const detail=data.validationGroups.map(group=>{
+    const costRows=group.items.map(key=>rows.get(key)!);
+    const included=costRows.filter(row=>/含样件及夹具|includes samples and fixtures/i.test(row.cost.title)||row.includes.length>0);
+    const archivedCoverage=group.scope&&group.stage==='PV'&&costRows.some(row=>/^PV cost!Y\d+/.test(row.cost.reference))?
+      '<small class="fin-state">3C, ECE and FMVSS covered by DV · PV cost!V'+html(group.scope)+':X'+html(group.scope)+'</small>':'';
+    return '<tr><th scope="row">'+html(group.scope?'Quote specification '+group.scope:costRows[0].cost.group)+'</th>'+
+      td(group.products.map(productLabel).join(', '))+td(group.region??'Not specified')+td(group.stage)+
+      td(money(group.original,group.currency))+td(money(group.reporting,data.currency))+
+      '<td><details><summary>Quote evidence</summary>'+costRows.map(row=>'<span class="fin-detail-link">'+source(row)+'</span>').join('')+
+      '</details>'+(included.length?'<small class="fin-state">Includes covered samples or fixtures</small>':'')+archivedCoverage+'</td>'+
+      td('Test report or certificate to collect')+'</tr>';
+  });
+  return panel('Validation by specification and stage',table(['Specification','Product','Region','Phase','Original quote','Reporting amount',
+    'Coverage and sources','Execution evidence'],detail.join(''))+
+    '<p class="fin-muted">Use the validation package once. Archived PV columns V–X identify items already covered by DV where the workbook supplies them.</p>');
 }
 
 export function developmentPage(data:Workspace,module:DevelopmentModule,source:string,link:Link,periods:Item[],products:Item[],rights:Rights,activeDraft:boolean,dictionary:Dictionary){
@@ -67,14 +118,15 @@ export function developmentPage(data:Workspace,module:DevelopmentModule,source:s
     summaryKeys.map(key=>td(period.metrics[key]==null?null:period.metrics[key]+' '+data.currency)).join('')+'</tr>').join(''));
   const list=data.rows.length?table(['Source row','Stage / batch / round','Occurrence','Payment','Net payable forecast'],data.rows.map(item=>
     '<tr><th scope="row">'+financeUrl(link(module,item.key),item.cost.title,'development-'+item.key)+'<small class="fin-state">'+html(item.cost.costRef)+'</small></th>'+
-    td(item.cost.group)+td(periodLabel(item.cost.period))+td(periodLabel(item.cost.paymentPeriod))+td(item.planned+' '+data.currency)+'</tr>').join('')):'<p>No development records in this scope.</p>';
-  return '<section class="fin-panel"><div class="fin-panel-head"><h2>'+labels[module]+'</h2></div><div class="fin-actions">'+
+    td(item.cost.group)+td(periodLabel(item.cost.period))+td(periodLabel(item.cost.paymentPeriod))+td(item.planned+' '+item.originalCurrency)+'</tr>').join('')):'<p>No development records in this scope.</p>';
+  return departmentOverview(data,module,link,periodLabel,productLabel)+
+    '<section class="fin-panel"><div class="fin-panel-head"><h2>'+labels[module]+'</h2></div><div class="fin-actions">'+
     (Object.keys(labels) as DevelopmentModule[]).filter(key=>key!==module).map(key=>financeUrl(link(key),labels[key])).join('')+'</div>'+
     '<h3>Development by period</h3>'+metrics+(archive?'<p class="fin-muted">Gross development and development cash here show added detail. Net engineering includes the archived Financials schedule.</p>':'')+
-    actions+list+(row?renderDetails(row,link,periodLabel,productLabel,data.currency,!!rights[module]&&activeDraft):'')+archive+'</section>';
+    actions+list+(row?renderDetails(row,link,periodLabel,productLabel,row.originalCurrency,!!rights[module]&&activeDraft):'')+archive+'</section>';
 }
 
-function editCost(data:Workspace,module:DevelopmentModule,cost:DevelopmentCost|undefined,periods:Item[],products:Item[],period:string,product:string){
+function editCost(data:Workspace,module:DevelopmentModule,cost:DevelopmentCost|undefined,periods:Item[],products:Item[],period:string,product:string,currency:string){
   const category=cost?.category??categoryKeys[module][0],cash=cost?.recovery;
   const unitLabels=module==='prototypes'?'Each component is a rate per sample.':'Set the quantity to one for a fixed charge.';
   return field('costRef','Unique cost / commitment reference',cost?.costRef,'maxlength="100" required'+(cost?' readonly data-fixed':''))+
@@ -83,7 +135,7 @@ function editCost(data:Workspace,module:DevelopmentModule,cost:DevelopmentCost|u
     (module==='engineering'?textField('role','Role / discipline',cost?.role??''):'')+
     (module==='validation'?select('stage','Validation stage',['DV','PV','Certification'].map(key=>({key,label:key})),cost?.stage??'DV'):'')+
     decimal('quantity',module==='engineering'?'Hours or travel units':module==='prototypes'?'Required samples':'Hours or units',cost?.quantity)+
-    '<p>'+html(unitLabels)+' Cost currency '+html(data.currency)+'.</p>'+
+    '<p>'+html(unitLabels)+'</p><label>Source currency<select name="currency">'+currencyOptions(data.currencies,currency)+'</select></label>'+
     Object.entries(components[module]).map(([key,label])=>decimal('component:'+key,label,cost?.components[key],false)).join('')+
     select('incurrence','Occurrence period',periods,cost?.period??period)+select('payment','Payment period',periods,cost?.paymentPeriod??period)+
     textField('reference','Evidence reference',cost?.reference,240)+textField('allocationBasis','Allocation basis',cost?.allocationBasis,240)+
@@ -116,6 +168,7 @@ export function developmentEditor(data:Workspace,module:DevelopmentModule,source
   const row=data.rows.find(item=>'edit-'+item.key===source||'actual-'+item.key===source);
   if(row&&source.startsWith('actual-')){
     return wrap('Record execution · '+row.cost.title,'<p>For each event, enter the amount, date and evidence. Leave events awaiting evidence blank.</p>'+
+      '<label>Posting currency<select name="currency">'+currencyOptions(data.currencies,row.actualCurrency)+'</select></label>'+
       factTypes.filter(kind=>kind!=='receipt'||row.cost.recovery.method!=='none').map(kind=>{
         const fact=row.actual?.[kind];
         const fallback=kind==='incurred'?row.cost.period:kind==='payment'?row.cost.paymentPeriod:row.cost.recovery.method!=='none'?row.cost.recovery.receiptPeriod:row.cost.period;
@@ -127,14 +180,14 @@ export function developmentEditor(data:Workspace,module:DevelopmentModule,source
           const amount=form.get(kind+'-amount');
           return [kind,amount?{amount,period:form.get(kind+'-period'),date:form.get(kind+'-date'),reference:form.get(kind+'-reference')}:null];
         }));
-        return {collection:'development',action:'actual',key:row.key,record};
+        return {collection:'development',action:'actual',key:row.key,currency:form.get('currency'),record};
       });
   }
   if(source!=='new'&&(!row||row.actual))return;
   const original=row?.cost;
-  return wrap(original?'Edit forecast · '+original.title:'New development cost',editCost(data,module,original,periods,products,defaultPeriod,product||products[0]?.key),form=>{
+  return wrap(original?'Edit forecast · '+original.title:'New development cost',editCost(data,module,original,periods,products,defaultPeriod,product||products[0]?.key,row?.originalCurrency??data.currency),form=>{
     const numbers=(prefix:string)=>[...form].filter(([name,value])=>name.startsWith(prefix)&&String(value).trim()).map(([name,value])=>[name.slice(prefix.length),value]);
-    return {collection:'development',action:original?'edit':'new',module,costRef:form.get('costRef'),...(row?{key:row.key}:{}),
+    return {collection:'development',action:original?'edit':'new',module,costRef:form.get('costRef'),currency:form.get('currency'),...(row?{key:row.key}:{}),
       record:{title:form.get('title'),group:form.get('group'),category:form.get('category'),role:form.get('role'),stage:form.get('stage'),
         quantity:form.get('quantity'),components:Object.fromEntries(numbers('component:')),period:form.get('incurrence'),paymentPeriod:form.get('payment'),
         reference:form.get('reference'),allocationBasis:form.get('allocationBasis'),allocations:numbers('allocation:').map(([productKey,share])=>({productKey,share})),

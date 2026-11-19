@@ -3,6 +3,7 @@ import type {FinanceInput,FinanceSnapshot,FixedDecimal} from './finance-contract
 import {archived,businessSlug} from './finance-business.ts';
 import {invalid} from './contracts.ts';
 import {Decimal,ONE,sum,ZERO} from './finance-decimal.ts';
+import {sourceFinanceCurrency} from './finance-fx.ts';
 
 export const OPERATIONS_VERSION='P09.1';
 const hour=Decimal.from(3600);
@@ -62,7 +63,7 @@ export function applyOperationsChange(s:FinanceSnapshot,raw:unknown,periods:stri
   const type=rawRecord?.type;
   const fields={
     design:['revision','lines','stations'],actual:['designKey','batch','date','revision','stage','personHours','goodPieces','times','capacityFactors'],
-    rate:['rate'],selection:['sourceKey','mode']
+    rate:['rate','currency'],selection:['sourceKey','mode']
   };
   if(typeof type!=='string'||!Object.hasOwn(fields,type))return fail('Unknown operations action.');
   const rec=object(rawRecord,['type','reviewer','reference',...fields[type as keyof typeof fields]]);
@@ -118,7 +119,7 @@ export function applyOperationsChange(s:FinanceSnapshot,raw:unknown,periods:stri
   if(previous&&(type==='design'||type==='actual'))fail('This record already exists. Use a new design or measurement revision.');
   const content:OperationsRecord={...payload,reviewer,reference};
   const day=payload.type==='actual'?payload.date:s.asOf;
-  const currency=archived(s)?'CNY':s.currency;
+  const currency=sourceFinanceCurrency(s,rec.currency,scope.find(row=>keyOf(row).type==='rate')?.currency??(archived(s)?'CNY':s.currency));
   const unit=payload.type==='rate'?currency+'/person-hour':'record';
   const value:FixedDecimal=payload.type==='rate'?{coefficient:BigInt(payload.rate.replace('.','')).toString(),scale:payload.rate.split('.')[1]?.length??0}:{coefficient:'1',scale:0};
   const source={key:sourceKey,system:'Manufacturing route',externalKey:reference,fingerprint:null,sheet:null,cell:null,owner:reviewer,

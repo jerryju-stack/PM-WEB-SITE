@@ -36,7 +36,7 @@ function entryFields(entry:Entry,currencies:Record<string,number>,base:string) {
       '<option value="">Shared / choose market</option>'+renderOptions(entry.markets,entry.market)+'</select></label>':'')+
     (entry.module==='bom'?'<label>Part number<input name="partNumber" required maxlength="100"></label><label>Tooling asset reference, if entered<input name="assetKey" maxlength="160"></label>':'')+
     '<label>Source reference<input name="reference" required maxlength="200"></label>'+
-    (entry.module!=='factory'?'<label>Quote currency<select name="currency">'+renderOptions(Object.keys(currencies).map(code=>({key:code,label:code})),base)+'</select></label>':'')+
+    '<label>Source currency<select name="currency">'+renderOptions(Object.keys(currencies).map(code=>({key:code,label:code})),base)+'</select></label>'+
     fields.map(([id,[,label,unit]])=>'<label>'+escapeHtml(label)+(unit==='fraction'?' · 0 to 1':'')+
       '<input name="field:'+id+'" inputmode="decimal"'+(id==='configuration'?' value="1"':id==='landed_adjustment'?' value="0"':'')+
       (['vehicles','configuration','units_per_vehicle','part_quantity','part_price','landed_adjustment'].includes(id)?' required':'')+'></label>').join('')+
@@ -54,13 +54,13 @@ export function mountImpactPanel({root,projectId,version,driver,entry,operation,
   const canPreview=!!(entry||operation||driver?.canPreview)&&!!selected;
   const canSave=canPreview&&details.status==='draft';
   let saving=false,closed=false,result:Preview|null=null,saveKey='',pending=false;
-  const source=driver?.source,base=version.basis==='cqa_incremental'||version.basis==='cqa_full'?'CNY':version.currency;
+  const source=driver?.source,base=version.basis==='cqa_incremental'||version.basis==='cqa_full'?'CNY':version.details.currency;
   const allowedEnds=entry?possible:version.periods.filter(p=>driver?.applicable?.includes(p.key));
   const periodIndex=(value:string|undefined)=>version.periods.findIndex(p=>p.key===value);
   const endPeriods=allowedEnds.filter(p=>periodIndex(p.key)>=periodIndex(selected));
-  const quoteCurrency=driver?.business&&['sales_price','part_price'].includes(driver.business.businessField);
+  const quoteCurrency=!!driver?.currency&&(version.basis==='website'||!!driver.business&&['sales_price','part_price'].includes(driver.business.businessField));
   const editor=operation?operation.markup:entry?entryFields(entry,currencies,base):
-    (quoteCurrency?'<label>Quote currency<select name="currency">'+renderOptions(Object.keys(currencies).map(code=>({key:code,label:code})),driver?.currency??base)+'</select></label>':'')+
+    (quoteCurrency?'<label>Source currency<select name="currency">'+renderOptions(Object.keys(currencies).map(code=>({key:code,label:code})),driver?.currency??base)+'</select></label>':'')+
     '<label>Candidate value<input inputmode="decimal" name="value" required value="'+escapeHtml(initial(selected!))+'"></label>';
   const heading=operation?escapeHtml(operation.title):entry?'New business record':metricLabel(dictionary,driver!.metricKey)+' · '+escapeHtml(driver!.unit);
   root.innerHTML='<details class="fin-impact'+(operation?.development||operation?.capital||operation?.budget?' fin-dev-impact':'')+'" open><summary>Change Impact</summary><div class="fin-impact-body">'+
@@ -127,7 +127,7 @@ export function mountImpactPanel({root,projectId,version,driver,entry,operation,
       return {effectivePeriod,changeSet:[{collection:'business',recordType:entry.module,productKey:data.get('productKey'),marketKey:data.get('marketKey')||null,
         reference:data.get('reference'),...(entry.module==='bom'?{partNumber:data.get('partNumber')}:{ }),...(assetKey?{assetKey}:{}),currency,values}]};
     }
-    const value=candidateValue(valueInput!.value,driver?.valueKind==='money'?(driver.currency?currencies[driver.currency]:driver.value.scale):undefined);
+    const value=candidateValue(valueInput!.value,driver?.valueKind==='money'?currencies[currency]??driver.value.scale:undefined);
     return value?{effectivePeriod,changeSet:[{collection:'inputs',key:driver!.key,value,...(quoteCurrency?{currency}:{})}]}:null;
   };
   function show(response:Preview) {
@@ -155,6 +155,7 @@ export function mountImpactPanel({root,projectId,version,driver,entry,operation,
     const row=(label:string,metric:typeof comparison.metrics[string])=>'<tr><th>'+label+'</th><td>'+amountCell(metric.before)+'</td><td>'+amountCell(metric.after)+'</td><td>'+amountCell(metric.delta,true)+'</td></tr>';
     const periodKeys=['unit_labor','labor','unit_sales','unit_material','material','revenue','volume','voh','foh','factory_profit','reported_profit','other_costs','cash_flow'];
     const periodImpact=new Set(periodKeys);
+    const marketRevenueKey=driver?.business?.businessField==='sales_price'?'market_revenue_'+String(driver.marketKey):null;
     const phasedKeys=operation?.capital?capitalKeys:operation?.development?developmentKeys:[];
     const phasedRows=phasedKeys.length?comparison.periodic.flatMap((period,index)=>phasedKeys.flatMap(key=>{
       const metric=period[key];
@@ -164,10 +165,11 @@ export function mountImpactPanel({root,projectId,version,driver,entry,operation,
       const index=response.candidate.periods.indexOf(period);
       const products:string[]=[...new Set<string>(response.fields.filter(f=>f.period===period).map(f=>f.productKey).filter(Boolean))];
       return products.flatMap(product=>Object.entries(comparison.products[product]?.periodic[index]??{})
-        .filter(([key,metric])=>(periodImpact.has(key)||key.startsWith('landed:'))&&
+        .filter(([key,metric])=>(periodImpact.has(key)||key.startsWith('landed:')||key===marketRevenueKey)&&
           (operation?metric.before?.value!==metric.after?.value:metric.delta.value!=null&&Number(metric.delta.value)!==0))
         .sort(([a],[b])=>operation?periodKeys.indexOf(a)-periodKeys.indexOf(b):0)
-        .map(([key,metric])=>row(escapeHtml(labelPeriod(period))+' · '+metricLabel(dictionary,key.startsWith('landed:')?'landed_contribution':key),metric)));
+        .map(([key,metric])=>row(escapeHtml(labelPeriod(period))+' · '+(key===marketRevenueKey?'Selected market sales':
+          metricLabel(dictionary,key.startsWith('landed:')?'landed_contribution':key)),metric)));
     }).join(''):'';
     const funding=operation?.capital?['peak_funding_requirement','payback_period'].map(key=>{
       const comparisonMetric=comparison.metrics[key],field=key==='payback_period'?'recoveryPeriod':'firstPeriod';

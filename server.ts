@@ -146,6 +146,7 @@ const server=http.createServer(async(req,res)=>{
             if(parts[6]==='calculation'&&method==='GET')return json(200,finance.calculation(user,p,v));
             if(parts[6]==='compare'&&method==='POST')return json(200,finance.compare(user,p,v,body));
             if(parts[6]==='preview'&&method==='POST')return json(200,url.searchParams.get('view')==='panel'?finance.panelPreview(user,p,v,body):finance.preview(user,p,v,body));
+            if(parts[6]==='fx-preview'&&method==='POST')return json(200,finance.previewFx(user,p,v,body));
             if(parts[6]==='freeze'&&method==='POST')return json(200,finance.freeze(user,p,v,body,context));
             if(parts[6]==='activate'&&method==='POST')return json(200,finance.activate(user,p,v,body,context));
           }
@@ -294,6 +295,8 @@ const server=http.createServer(async(req,res)=>{
     const scripts:Record<string,string>={'/app.js':'src/app.ts','/timing.js':'src/timing.ts','/timing-layout.js':'src/timing-layout.ts','/timing-history.js':'src/timing-history.ts','/timing-io.js':'src/timing-io.ts','/task-index.ts':'lib/task-index.ts','/task-index.js':'lib/task-index.ts','/schedule.js':'lib/schedule.ts','/drafts.js':'src/drafts.ts','/access-ui.js':'src/access-ui.ts','/finance.js':'src/finance.ts','/finance-view.js':'src/finance-view.ts','/finance-impact.js':'src/finance-impact.ts','/finance-operations.js':'src/finance-operations.ts','/finance-development.js':'src/finance-development.ts','/finance-capital.js':'src/finance-capital.ts','/finance-preview-state.js':'src/finance-preview-state.ts'};
     scripts['/finance-budget.js']='src/finance-budget.ts';
     scripts['/finance-compare.js']='src/finance-compare.ts';
+    scripts['/finance-fx.js']='src/finance-fx.ts';
+    scripts['/finance-business-view.js']='src/finance-business-view.ts';
     if(scripts[url.pathname]){res.writeHead(200,{'Content-Type':'text/javascript; charset=utf-8','Cache-Control':'no-cache'});return res.end(stripTypeScriptTypes(await readFile(join(root,scripts[url.pathname]),'utf8')));}
     if(['/styles.css','/timing.css','/finance.css'].includes(url.pathname)){res.writeHead(200,{'Content-Type':'text/css; charset=utf-8','Cache-Control':'no-cache'});return res.end(await readFile(join(root,'src',url.pathname.slice(1))));}
     if(url.pathname==='/finance-dictionary.json')return json(200,JSON.parse(await readFile(join(root,'docs/validation/project-finance/P01/metric-dictionary.json'),'utf8')));

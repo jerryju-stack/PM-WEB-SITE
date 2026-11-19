@@ -2,6 +2,7 @@ import {amountCell,escapeHtml as html,financeUrl,metricLabel} from '/finance-vie
 import type {Dictionary} from '/finance-view.js';
 import {candidateValue,inputDecimal} from '/finance-impact.js';
 import type {OperationEditor} from '/finance-impact.js';
+import {currencyOptions} from '/finance-fx.js';
 import type {budgetWorkspace} from '../lib/finance-budget-calculation.ts';
 
 type Workspace=ReturnType<typeof budgetWorkspace>;
@@ -41,7 +42,7 @@ function ledgerRow(row:Posting,link:Link,periods:Option[]){
 }
 
 export function budgetPage(data:Workspace,source:string,link:Link,home:string,periods:Option[],products:Option[],product:string,rights:Rights,
-  draft:boolean,actors:Record<string,string>,dictionary:Dictionary){
+  draft:boolean,actors:Record<string,string>,dictionary:Dictionary,period:string){
   const editing=rights.edit&&draft,{scope,row}=selectedSource(data,source),policy=data.policy;
   const scopeRows=data.scopes.filter(item=>!product||item.productKey===product||item.key===scope?.key).map(item=>{
     const variance=item.metrics.completion_variance?.value;
@@ -52,7 +53,23 @@ export function budgetPage(data:Workspace,source:string,link:Link,home:string,pe
   const actions: string[]=[];
   if(draft&&rights.setup&&!policy)actions.push(financeUrl(link('policy'),'Set budget policy','fin-budget-policy'));
   if(editing&&policy)actions.push(financeUrl(link('new-scope'),'Add cost scope','fin-budget-new-scope'));
-  return '<section class="fin-panel"><div class="fin-panel-head"><h2>Budget Policy &amp; Cost Scopes</h2></div>'+
+  const periodStatus=policy?data.scopes.filter(item=>!product||item.productKey===product).flatMap(item=>
+    item.periodStatuses.filter(row=>!period||row.period===period).map(row=>{
+      const status=(record:typeof row.draft,empty:string,detail:string)=>{
+        if(!record.keys.length)return td(empty);
+        const value=record.amount===null?'Exchange rate required':record.amount+' '+policy.currency;
+        return '<td>'+financeUrl(link(record.keys.length===1?record.keys[0]:detail),value)+'</td>';
+      };
+      return '<tr><th scope="row">'+itemLink(link,item.key,item.title)+'</th>'+
+        td(labels(periods,row.period))+status(row.draft,'No draft allocation',item.key)+
+        status(row.approved,'Approval not recorded',item.key)+status(row.confirmed,'No cost posting',item.key)+
+        status(row.payments,'No payment posting',item.key)+
+        status({...row.remaining,amount:item.metrics.etc?.displayValue??null},'ETC not recorded',item.key)+'</tr>';
+    })): [];
+  const execution='<section class="fin-panel fin-business-overview"><h2>Budget status by period</h2>'+
+    (periodStatus.length?table(['Cost scope / product','Period','Draft allocation','Approved budget','Confirmed cost','Payment','Current ETC'],
+      periodStatus.join('')):'<p class="fin-muted">No budget postings in this scope. An explicit zero appears when a record supplies it.</p>')+'</section>';
+  return execution+'<section class="fin-panel"><div class="fin-panel-head"><h2>Budget Policy &amp; Cost Scopes</h2></div>'+
     (policy?'<p id="fin-budget-policy-summary">'+html(policy.currency+' · '+data.currencyScale+' decimal places · '+taxes[policy.taxBasis]+' · '+recognitions[policy.recognition])+'</p>'+
       '<p>Policy source · '+html(policy.reference)+'</p>':'<p>Set a project budget policy to record independent approvals and remaining forecasts.</p>')+
     (data.legacyEvents?'<p class="fin-muted">This version contains '+data.legacyEvents+' legacy budget or cost events.'+
@@ -75,14 +92,15 @@ function scopeDetails(scope:Scope,row:Posting|undefined,link:Link,home:string,pe
   return '<article id="fin-budget-source" class="fin-budget-source"><h3>'+html(scope.title)+'</h3><p>'+html(scope.scopeId+' · '+scope.reference)+'</p>'+
     (amount?.value&&Number(amount.value)<0?'<p class="fin-budget-overrun">Forecast exceeds the approved scope budget.</p>':'')+
     metricsHTML+controls(actions)+
-    (etc?'<h4>Remaining forecast source</h4><dl>'+term('Forecast cutoff',label(etc.periodKey))+term('Entered remaining forecast',inputDecimal(etc.amount)+' '+currency)+
-      term('Consumed by confirmed work',etc.consumed?etc.consumed+' '+currency:'—')+term('Evidence',etc.reference)+'</dl>':
+    (etc?'<h4>Remaining forecast source</h4><dl>'+term('Forecast cutoff',label(etc.periodKey))+term('Entered remaining forecast',inputDecimal(etc.amount)+' '+etc.currency)+
+      '<dt>Consumed by confirmed work</dt><dd>'+amountCell(etc.consumed)+'</dd>'+term('Evidence',etc.reference)+'</dl>':
       '<p>Enter remaining ETC with a cutoff, including zero for completed work.</p>')+
     '<h4>Postings</h4>'+(scope.postings.length?table(['Document','Stage','Accounting period','Posting date','Amount'],
       scope.postings.map(item=>ledgerRow(item,link,periods)).join('')):'<p>No postings recorded.</p>')+
     (row?postingDetail(row,scope,link,periods,edit,confirm,actors):'')+
     (scope.timeline.length?'<h4>Occurrence and payment by period</h4>'+table(['Period','Confirmed cost','Recorded payments'],scope.timeline.map(item=>
-      '<tr><th scope="row">'+html(label(item.period))+'</th>'+td(item.confirmed+' '+currency)+td(item.payments+' '+currency)+'</tr>').join('')):'')+
+      '<tr><th scope="row">'+html(label(item.period))+'</th>'+td(item.confirmed===null?'Exchange rate required':item.confirmed+' '+currency)+
+      td(item.payments===null?'Exchange rate required':item.payments+' '+currency)+'</tr>').join('')):'')+
     controls([financeUrl(home,'Back to Finance Dashboard','fin-budget-dashboard')])+'</article>';
 }
 
@@ -139,13 +157,16 @@ export function budgetEditor(data:Workspace,source:string,periods:Option[],produ
     ({scopeId:form.get('scope-id'),title:form.get('title'),productKey:form.get('product')==='__shared__'?null:form.get('product'),reference:form.get('reference')}),
     undefined,'Save Scope');
   if(!scope||!action)return;
-  const amountField=(value='')=>input('amount','Amount ('+policy.currency+')',value,'inputmode="decimal"');
-  const readAmount=(form:FormData)=>candidateValue(String(form.get('amount')??''),data.currencyScale);
+  const amountField=(value='',currency=policy.currency,linked=false)=>(linked?
+    '<input type="hidden" name="posting-currency" value="'+html(currency)+'"><p>Posting currency '+html(currency)+'</p>':
+    '<label>Posting currency<select name="posting-currency">'+currencyOptions(currencies,currency)+'</select></label>')+
+    input('amount','Amount',value,'inputmode="decimal"');
+  const readAmount=(form:FormData)=>candidateValue(String(form.get('amount')??''),currencies[String(form.get('posting-currency'))]);
   if(action==='forecast')return wrap('etc','Record remaining forecast · '+scope.title,
     '<p>Use the work still expected after the cutoff. The ledger consumes this estimate as matching work is confirmed.</p>'+
-    select('accounting-period','Forecast cutoff',periods,selectedPeriod)+amountField()+input('reference','Forecast evidence'),form=>{
+    select('accounting-period','Forecast cutoff',periods,selectedPeriod)+amountField('',scope.remainingInput?.currency)+input('reference','Forecast evidence'),form=>{
       const amount=readAmount(form);
-      return amount?{scope:scope.key,period:form.get('accounting-period'),amount,reference:form.get('reference')}:null;
+      return amount?{scope:scope.key,period:form.get('accounting-period'),currency:form.get('posting-currency'),amount,reference:form.get('reference')}:null;
     },undefined,'Save ETC');
   const entry=row?.entry,canDecide=entry&&entry.type!=='payment'&&entry.status==='draft';
   if(action==='confirm'||action==='withdraw'){
@@ -158,16 +179,17 @@ export function budgetEditor(data:Workspace,source:string,periods:Option[],produ
   if((action==='adjust'||action==='pay')&&(!row||entry?.type!=='cost'||entry.status!=='confirmed'||row.event.relatedKey))return;
   const allocation=action==='allocation'||action==='edit'&&entry?.type==='allocation',payment=action==='pay';
   const existing=action==='edit'?row:undefined;
+  const linked=payment||action==='adjust'||!!existing?.event.relatedKey;
   return wrap(allocation?'allocation':payment?'payment':'cost',
     (action==='edit'?'Edit draft':allocation?'Add budget allocation':payment?'Record payment':action==='adjust'?'Add linked adjustment':'Add cost draft')+' · '+scope.title,
     input('document-id','Document ID',existing?.entry.documentId,existing?'readonly data-fixed':'')+
     input('title','Posting title',existing?.entry.title)+select('accounting-period','Accounting period',periods,existing?.event.periodKey??selectedPeriod)+
     (!allocation?input('date','Posting date',existing?.event.eventDate??'','type="date"'):'')+
-    amountField(existing?inputDecimal(existing.event.amount):'')+
+    amountField(existing?inputDecimal(existing.event.amount):'',existing?.event.currency??(linked?row?.event.currency:undefined),linked)+
     (action==='adjust'?'<p>Enter the signed amount of the change to the confirmed original cost.</p>':'')+
     input('reference','Source evidence',existing?.entry.reference),form=>{
       const amount=readAmount(form);
-      return amount?{scope:scope.key,period:form.get('accounting-period'),amount,reference:form.get('reference'),documentId:form.get('document-id'),
+      return amount?{scope:scope.key,period:form.get('accounting-period'),currency:form.get('posting-currency'),amount,reference:form.get('reference'),documentId:form.get('document-id'),
         title:form.get('title'),date:form.get('date'),relatedKey:payment||action==='adjust'?row?.event.key:existing?.event.relatedKey??null}:null;
     },existing?.event.key,payment?'Save Payment':'Save Draft');
 }

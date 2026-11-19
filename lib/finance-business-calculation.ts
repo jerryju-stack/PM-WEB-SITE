@@ -16,11 +16,11 @@ const weight=(values:Decimal[])=>{
 
 export function createBusinessCalculation(builder:CalculationBuilder) {
   const snapshot=builder.snapshot,isArchive=archived(snapshot),stored=snapshot.inputs.filter(isBusiness);
-  if(!stored.length)return null;
+  if(!stored.length&&!isArchive)return null;
   const persisted=new Set(stored.map(row=>row.key));
   const touchedProducts=new Set(stored.map(row=>row.productKey));
   const byProductPeriod=new Map<string,Rows>();
-  for(const row of businessInputs(snapshot).filter(row=>touchedProducts.has(row.productKey))){
+  for(const row of businessInputs(snapshot).filter(row=>isArchive||touchedProducts.has(row.productKey))){
     const key=row.productKey+':'+row.periodKey;
     const existing=byProductPeriod.get(key);
     if(existing)existing.push(row);else byProductPeriod.set(key,[row]);
@@ -68,7 +68,10 @@ export function createBusinessCalculation(builder:CalculationBuilder) {
       const volume=define('market_volume_'+tag,[get(rows,'vehicles'),get(rows,'configuration'),get(rows,'units_per_vehicle')],
           ([demand,configuration,units])=>demand.mul(configuration).mul(units),
           {...countUnit,formula:'Vehicle demand × configuration rate × units per vehicle'});
+      define('market_price_'+tag,[quote],([price])=>price,moneyUnit);
       const effectiveQuote=volume.q?.n===0n?define('inactive_market_quote_'+tag,[volume],()=>ZERO,moneyUnit):quote;
+      define('market_revenue_'+tag,[volume,effectiveQuote],([pieces,price])=>pieces.mul(price),
+        {unit:base,currency:base,formula:'Forecast market pieces × effective selling price'});
       quotes.push({market:rows[0].marketKey,slot:Number(rows[0].conversion.marketSlot??0),volume,quote:effectiveQuote});
     }
     const vehicleVolume=quotes.map(row=>row.volume);

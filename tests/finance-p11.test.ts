@@ -91,3 +91,50 @@ test('P11 links the P08 supplier quote once and flows subsequent quote edits thr
   const adjusted=applyFinanceChanges(saved,[{collection:'inputs',key:quote.key,value:fixedValue(80000,2)}],{from:'year-1',to:'year-1'}).candidate;
   assert.equal(calculateFinance(adjusted).metrics.capital_payments.displayValue,'800.00');
 });
+
+test('Capital life prorates the final service period and settles residual once across shared products',()=>{
+  const start=p11Scenario();
+  start.products.push({key:'product-b',label:'Product B',metadata:{active:true}});
+  for(let ordinal=3;ordinal<=12;ordinal++){
+    start.periods.push({key:'year-'+ordinal,label:'Year '+ordinal,metadata:{ordinal}});
+  }
+  const shared={
+    ...t5Asset,gross:'8200',residual:'1000',life:'7.2',
+    allocations:[{productKey:'product-a',share:'0.6'},{productKey:'product-b',share:'0.4'}]
+  };
+  const candidate=change(start,capitalChange(shared));
+  const r=calculateFinance(candidate);
+  const charges=(report:typeof r)=>report.periodic.map(row=>row.capital_depreciation.displayValue);
+  assert.deepEqual(charges(r),['0.00',...Array(7).fill('1000.00'),'200.00',...Array(4).fill('0.00')]);
+  assert.equal(r.products['product-a'].periodic[8].capital_depreciation.displayValue,'120.00');
+  assert.equal(r.products['product-b'].periodic[8].capital_depreciation.displayValue,'80.00');
+  assert.equal(r.periodic[8].capital_salvage.displayValue,'1000.00');
+  assert.equal(r.periodic[9].capital_salvage.displayValue,'0.00');
+  assert.equal(r.metrics.capital_payments.displayValue,'8200.00');
+  const full=calculateFinance(change(start,capitalChange({...shared,life:'10'})));
+  assert.deepEqual(charges(full),['0.00',...Array(10).fill('720.00'),'0.00','0.00']);
+  assert.equal(full.periodic[10].capital_salvage.displayValue,'1000.00');
+  assert.throws(()=>change(start,capitalChange({...shared,life:'0.2'})),/at least one year/);
+});
+
+test('Tooling estimate consumes the original forecast once and keeps unbooked amounts source-linked',()=>{
+  const snapshot=p08Scenario(),quote=capitalQuoteRows(snapshot)[0],range={from:'year-0',to:'year-1'};
+  const estimate={kind:'estimate',estimateId:'QUOTE-SUMMARY',title:'Tooling quotation',category:'supplier_tooling',
+    productKey:'product-a',period:'year-0',gross:'1000',life:'7.2',reference:'Quote schedule D299',
+    cashInputKey:'cash_adjustment-0',quoteKeys:[quote.key]};
+  const pending=applyFinanceChanges(snapshot,[capitalChange(estimate)],range);
+  const key=pending.fields[0].key;
+  const asset={...t5Asset,assetId:quote.conversion.assetKey,category:'supplier_tooling',gross:null,life:'7.2'};
+  assert.throws(()=>applyFinanceChanges(pending.candidate,[capitalChange(asset)],range),/already contains its supplier quote/);
+  assert.throws(()=>applyFinanceChanges(pending.candidate,[capitalChange({...asset,estimate:{key,amount:'1001'}})],range),/exceed the original estimate/);
+  const booked=applyFinanceChanges(pending.candidate,[capitalChange({...asset,estimate:{key,amount:'700'}})],range).candidate;
+  const before=calculateFinance(pending.candidate),after=calculateFinance(booked);
+  assert.deepEqual(after.periodic.map(row=>row.cash_flow.displayValue),before.periodic.map(row=>row.cash_flow.displayValue));
+  assert.equal(after.periodic[0].capital_payments.displayValue,'700.00');
+  assert.equal(after.products['product-a'].periodic[0].capital_quote_cash_replacement.displayValue,'700.00');
+  const view=capitalWorkspace(booked,after,null,null,true);
+  assert.equal(view.estimateDetails[0].balance,'300.00');
+  assert.equal(view.toolingQuotes[0].estimate,key);
+  assert.equal(view.toolingQuotes[0].asset,view.assets[0].key);
+  assert.throws(()=>applyFinanceChanges(booked,[capitalChange({...asset,estimate:{key,amount:'700'}})],range),/existing source row/);
+});

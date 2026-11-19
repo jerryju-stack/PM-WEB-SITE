@@ -97,7 +97,6 @@ export function applyFinanceChanges(before:FinanceSnapshot,raw:unknown,effective
       business=undefined;
       continue;
     }
-    if(change.currency!==undefined)invalid('Currency changes require a business quote row.');
     const collection=change.collection as 'inputs'|'events',row=candidate[collection].find(r=>r.key===change.key);
     if(!row)invalid('Finance change references an unavailable field: '+change.key);
     if('value' in row!) {
@@ -106,22 +105,33 @@ export function applyFinanceChanges(before:FinanceSnapshot,raw:unknown,effective
       if(!supported)invalid('Unsupported calculation driver: '+input.metricKey+'. Its dependency model must be implemented before preview/save.');
       if(['volume','unit_sales','unit_material'].includes(input.metricKey))editedAggregates.add(input.key);
       if(input.metricKey==='fx_to_base'&&Decimal.from(value).n<=0n)invalid('An approved FX rate must be positive.');
+      if(input.metricKey==='fx_to_base'&&before.policy.fx)invalid('Edit the version FX snapshot to change the active exchange rates.');
       if(input.module==='operations'&&before.inputs.some(row=>row.metricKey==='p09.selection')){
         const routes=operationsIndex(before);
         if(before.products.some(product=>(!input.productKey||product.key===input.productKey)&&
           selected.some(period=>routes.scope(product.key,period).selected)))invalid('Use the active route source to change manufacturing labor for these periods.');
       }
       if(!isCqa&&!selected.includes(input.periodKey))invalid('Finance input period falls outside the requested effectivePeriod.');
-      if(input.valueKind==='money'&&value.scale!==before.policy.currencyScales[input.currency!])invalid('Finance money precision must match its declared currency.');
+      const nextCurrency=change.currency??input.currency;
+      if(change.currency!==undefined&&(isCqa||!input.currency||typeof nextCurrency!=='string'||!Object.hasOwn(before.policy.currencyScales,nextCurrency)))
+        invalid('Choose a configured original currency for a native monetary input.');
+      if(input.valueKind==='money'&&value.scale!==before.policy.currencyScales[nextCurrency!])invalid('Finance money precision must match its declared currency.');
       if(isCqa) {
         const applicable=input.metricKey.startsWith('cqa.operations.')?selected:selected.filter(p=>p===input.periodKey);
         if(!applicable.length)invalid('CQA annual input is outside the requested effectivePeriod.');
         const overrides={...((input.conversion.p06Overrides??{}) as Record<string,FixedDecimal>)};
         for(const period of applicable) {fields.push({collection,key:input.key,metricKey:input.metricKey,period,productKey:input.productKey,lineKey:input.lineKey,sourceKey:input.sourceKey,unit:input.unit,currency:input.currency,before:overrides[period]??input.value,after:value});overrides[period]=value;}
         input.conversion={...input.conversion,p06Overrides:overrides};
-      } else {fields.push({collection,key:input.key,metricKey:input.metricKey,period:input.periodKey,productKey:input.productKey,lineKey:input.lineKey,sourceKey:input.sourceKey,unit:input.unit,currency:input.currency,before:input.value,after:value});input.value=value;}
+      } else {
+        const previousCurrency=input.currency;
+        if(previousCurrency&&nextCurrency!==previousCurrency)input.unit=nextCurrency+input.unit.slice(previousCurrency.length);
+        fields.push({collection,key:input.key,metricKey:input.metricKey,period:input.periodKey,productKey:input.productKey,lineKey:input.lineKey,
+          sourceKey:input.sourceKey,unit:input.unit,currency:nextCurrency,beforeCurrency:previousCurrency,before:input.value,after:value});
+        input.currency=nextCurrency;input.value=value;
+      }
     } else {
       const event=row!;
+      if(change.currency!==undefined)invalid('Use the budget posting workflow to maintain event currencies.');
       if(hasBudgetExecution(before)&&!isBudgetEvent(event)&&!(event.kind==='budget'&&isDevelopmentModule(event.module)&&supportsDevelopment(before)))
         invalid('Edit the active budget execution scope or posting for this version.');
       if(isBudgetEvent(event))invalid('Use the budget execution workflow for this posting.');

@@ -15,6 +15,7 @@ export function workspaceReport(snapshot:FinanceSnapshot,report:CalculationRepor
   collect(report.metrics);collect(report.budget);periodic.forEach(collect);
   for(const product of Object.values(products)){collect(product.metrics);product.periodic.forEach(collect);}
   return {asOf:report.asOf,currency:report.currency,basis:report.basis,calculationVersion:report.calculationVersion,
+    model:snapshot.policy.rules.model,
     periods:report.periods.map(key=>({key,label:snapshot.periods.find(period=>period.key===key)?.label??key})),
     productLabels:labels(snapshot.products.filter(product=>report.productScope.includes(product.key))),
     metrics:report.metrics,budget:report.budget,periodic,products,

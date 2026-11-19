@@ -135,8 +135,11 @@ function returns(side:BridgeSide,scope:string[],periods:string[]){
     const values=periodic.map(row=>exact(row[key]));return values.some(q=>q===null)?null:sum(values as Decimal[]);
   };
   const revenue=value('reported_revenue'),profit=value('reported_profit'),approved=report.metrics[profitKey]?.status!=='pending_finance';
-  metrics.revenue=make('revenue',revenue);
-  metrics[profitKey]=make(profitKey,approved?profit:null,approved?{}:{status:'pending_finance'});
+  const missingFx=(key:string):Partial<CalculationOutput>=>periodic.some(row=>row[key].status==='missing_fx')?{status:'missing_fx'}:{};
+  metrics.revenue=make('revenue',revenue,missingFx('reported_revenue'));
+  if(report.metrics.total_cost)metrics.total_cost=make('total_cost',revenue&&profit?revenue.sub(profit):null,
+    {...missingFx('reported_revenue'),...missingFx('reported_profit')});
+  metrics[profitKey]=make(profitKey,approved?profit:null,approved?missingFx('reported_profit'):{status:'pending_finance'});
   metrics[marginKey]=make(marginKey,approved&&revenue?.n&&profit?profit.div(revenue):null,
     {unit:'fraction',currency:null,...(!approved?{status:'pending_finance'}:revenue?.n===0n?{status:'zero_denominator'}:{})});
   const rate=inputs.rate??b.make('comparison:rate','discount_rate',null,[],{unit:'fraction'});
@@ -155,7 +158,7 @@ function returns(side:BridgeSide,scope:string[],periods:string[]){
   return {metrics,periodic,profitKey};
 }
 
-export function financeBridges(before:BridgeSide,after:BridgeSide,cutoff:string|null,product:string|null){
+export function financeBridges(before:BridgeSide,after:BridgeSide,cutoff:string|null,product:string|null,attribution=true){
   const a=before.snapshot,z=after.snapshot,scale=a.currencyScale;
   const sorted=(s:FinanceSnapshot)=>[...s.periods].sort((x,y)=>Number(x.metadata.ordinal)-Number(y.metadata.ordinal));
   const left=sorted(a),right=sorted(z),periods:string[]=[];
@@ -185,6 +188,7 @@ export function financeBridges(before:BridgeSide,after:BridgeSide,cutoff:string|
     [key,difference(old.periodic[i][key],next.periodic[i][key],scale,false)]))}));
   const budget=Object.fromEntries(union(Object.keys(before.report.budget),Object.keys(after.report.budget)).map(key=>
     [key,difference(before.report.budget[key],after.report.budget[key],after.report.budget[key]?.displayDecimals??scale)]));
+  if(!attribution)return {...common,reason:null,data:{metrics,periodic,budget,profitKey:next.profitKey,profit:null,npv:null}};
   const driverEntries={profit:[] as Entry[],npv:[] as Entry[]};
   const rate0=before.inputs.rate?.q,rate1=after.inputs.rate?.q,df0=rate0&&ONE.add(rate0),df1=rate1&&ONE.add(rate1);
   const activePeriod=(side:BridgeSide,key:string)=>side.report.periods.indexOf(key);

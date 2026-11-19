@@ -3,6 +3,7 @@ import type {FinanceEvent, FinanceInput, FinanceSnapshot, FinanceSource} from '.
 import {businessSlug} from './finance-business.ts';
 import {Decimal, sum} from './finance-decimal.ts';
 import {invalid} from './contracts.ts';
+import {caseFinanceRate,sourceFinanceCurrency} from './finance-fx.ts';
 
 export const BUDGET_VERSION='P12.1';
 export const isBudgetSource=(row:{key:string})=>row.key.startsWith('p12:');
@@ -111,10 +112,9 @@ export function applyBudgetChange(s:FinanceSnapshot,raw:unknown,selected:string[
       before:null,after:value,afterLabel:reference};
   }
   if(!policy)return fail('Establish the budget policy first.');
-  const currency=policy.currency,scale=s.policy.currencyScales[currency];
-  const money=(value:unknown)=>{
+  const money=(value:unknown,currency:string)=>{
     const amount=fixedDecimal(value);
-    if(amount.scale!==scale)fail('Use the budget currency precision.');
+    if(amount.scale!==s.policy.currencyScales[currency])fail('Use the original posting currency precision.');
     return amount;
   };
   let event:FinanceEvent,entry:BudgetEntry;
@@ -132,8 +132,13 @@ export function applyBudgetChange(s:FinanceSnapshot,raw:unknown,selected:string[
         if(net.n<0n)fail('Linked adjustments cannot reduce the original cost below zero.');
       }
       if(record.type==='allocation'){
+        const valued=(event:FinanceEvent)=>{
+          const rate=caseFinanceRate(s,event.currency,policy.currency,event.periodKey);
+          if(!rate)return fail('Provide an exchange rate for '+event.currency+' before confirming this allocation.');
+          return q(event.amount).mul(rate);
+        };
         const net=sum(entries.filter(row=>row.entry.type==='allocation'&&row.entry.status==='confirmed'&&row.entry.scope===record.scope)
-          .map(row=>q(row.event.amount))).add(q(original.event.amount));
+          .map(row=>valued(row.event))).add(valued(original.event));
         if(net.n<0n)fail('Approved scope budget cannot fall below zero.');
       }
     }
@@ -141,8 +146,11 @@ export function applyBudgetChange(s:FinanceSnapshot,raw:unknown,selected:string[
     entry={...record,status:action==='confirm'?'confirmed':'withdrawn',confirmedBy:action==='confirm'?actorUid:null,order:action==='confirm'?order+1:null,
       decisionReference:reference};
   }else{
-    const record=fields(command.record,action==='etc'?['scope','period','amount','reference']:['scope','period','amount','reference','documentId','title','date','relatedKey']);
-    const reference=text(record.reference,'the source evidence'),amount=money(record.amount),period=eventPeriod(record.period);
+    const record=fields(command.record,action==='etc'?['scope','period','amount','reference','currency']:['scope','period','amount','reference','documentId','title','date','relatedKey','currency']);
+    const currency=sourceFinanceCurrency(s,record.currency,original?.event.currency??policy.currency);
+    const reference=text(record.reference,'the source evidence'),amount=money(record.amount,currency),period=eventPeriod(record.period);
+    if(!caseFinanceRate(s,currency,policy.currency,period)||s.policy.fx&&!caseFinanceRate(s,currency,s.currency,period))
+      return fail('Provide a documented exchange rate for '+currency+' in '+period+'.');
     const selectedScope=scope(record.scope),productKey=selectedScope.productKey;
     let kind:FinanceEvent['kind'],key:string,relatedKey:string|null=null,date:string|null=null;
     if(action==='etc'){
@@ -169,6 +177,7 @@ export function applyBudgetChange(s:FinanceSnapshot,raw:unknown,selected:string[
         const root=entries.find(row=>row.event.key===relatedKey);
         if(!root||root.entry.type!=='cost'||root.entry.status!=='confirmed'||root.event.relatedKey||root.entry.scope!==selectedScope.key)
           return fail('Use a confirmed original cost in the same scope.');
+        if(root.event.currency!==currency)return fail('Linked postings use the original cost currency.');
         if(budgetOrdinal(s,period)<budgetOrdinal(s,root.event.periodKey)||date!<root.event.eventDate!)
           fail('Corrections and payments cannot precede the original occurrence.');
         if(action==='payment'&&sum(entries.filter(row=>row.entry.type==='payment'&&row.event.relatedKey===relatedKey).map(row=>q(row.event.amount))).add(q(amount)).n<0n)
@@ -182,6 +191,7 @@ export function applyBudgetChange(s:FinanceSnapshot,raw:unknown,selected:string[
     event={...scopeFields,key,kind,productKey,periodKey:period,sourceKey:key+':source',amount,currency,eventDate:date,relatedKey,evidenceKey:reference};
   }
   const previous=s.events.find(row=>row.key===event.key);
+  const currency=event.currency,scale=s.policy.currencyScales[currency];
   upsertSource(event.sourceKey,{externalKey:entry.reference,observation:entry.type==='payment'||entry.type==='cost'&&entry.status==='confirmed'?'measured':'budget',
     originalCurrency:currency,originalUnit:currency,originalPeriod:event.periodKey,effectiveFrom:event.eventDate??s.asOf,metadata:{execution:entry}});
   s.events=replace(s.events,event);

@@ -28,6 +28,8 @@ export const groups=[
 ];
 export const budgetKeys=['approved_budget','confirmed_actual','etc','eac','budget_balance','completion_variance'];
 const supplemental:Dictionary['metrics']={
+  total_cost:{en:'Total Cost',zh:'总成本',definition:'与列示收入对应的全成本金额，等于列示收入减经营利润。'},
+  full_cost_management_profit:{en:'Full-cost management profit',zh:'全成本管理利润',definition:'当前版本模型按全成本计算的管理利润。标准营业利润及利润率另按获批口径显示。'},
   volume:{en:"Volume",zh:"销量",definition:"当期计入项目预测的产品件数，按市场需求、配置率和单车用量折算为整件。"},
   reported_profit:{en:"Reported Profit",zh:"列示利润",definition:"按当前版本的全成本经营口径列示的逐期利润。历史 CQA 使用原表 MPBITRI。"},
   cash_flow:{en:"Period Cash Flow",zh:"当期现金流",definition:"该期项目现金流入减现金流出，包含适用的投资、回款、营运资金和税。"},
@@ -213,13 +215,14 @@ export const nameOf=(dictionary:Dictionary,key:string)=>definition(dictionary,ke
 const statusText:Record<string,string>={missing_input:'Data missing',pending_finance:'Awaiting finance approval',
   zero_denominator:'Zero denominator',not_recovered:'Not recovered',no_irr:'No meaningful IRR',
   ambiguous_irr:'IRR is not unique',solver_failed:'IRR could not be resolved',recrossed:'Funding gap recurs',
-  invalid_rate:'Invalid discount rate',incompatible_scope:'Incompatible scope',unavailable:'Unavailable'};
+  invalid_rate:'Invalid discount rate',missing_fx:'Exchange rate required',incompatible_scope:'Incompatible scope',unavailable:'Unavailable'};
 export function amountText(amount?:FinanceAmount|null,delta=false) {
   if(!amount?.displayValue)return '—';
   const [whole,fraction]=amount.displayValue.split('.');
   const number=whole.replace(/\B(?=(\d{3})+(?!\d))/g,',')+(fraction?'.'+fraction:'');
   const unit=amount.unit==='fraction'?'%':amount.unit==='percentage_point'?' pp':amount.unit==='year'?' yr':amount.unit?' '+amount.unit:'';
-  if(delta&&!Number(amount.displayValue)&&Number(amount.value))return (Number(amount.value)>0?'+':'−')+'<0.'+'1'.padStart(fraction?.length??2,'0')+unit;
+  if(delta&&!Number(amount.displayValue)&&Number(amount.value))return (Number(amount.value)>0?'+':'−')+
+    (fraction?'<0.'+'1'.padStart(fraction.length,'0'):'<1')+unit;
   return (delta&&Number(amount.value)>0?'+':'')+number+unit;
 }
 export function amountCell(amount?:FinanceAmount|null,delta=false,missing='Unavailable') {
@@ -230,7 +233,7 @@ export function amountCell(amount?:FinanceAmount|null,delta=false,missing='Unava
 export function varianceCell(amount:FinanceAmount|undefined,key:string,missing='No comparison') {
   const value=Number(amount?.value);
   if(!value||!Number.isFinite(value))return amountCell(amount,true,missing);
-  const favorable=value>0!==['payback_period','peak_funding_requirement','eac','etc'].includes(key);
+  const favorable=value>0!==['total_cost','payback_period','peak_funding_requirement','eac','etc'].includes(key);
   return '<span class="'+(favorable?'fin-favorable':'fin-unfavorable')+'">'+escapeHtml(amountText(amount,true))+
     '<small class="fin-state">'+(favorable?'Favorable':'Unfavorable')+'</small></span>';
 }
@@ -249,7 +252,7 @@ export const financeUrl=(href:string,label:string,id='')=>'<a class="fin-link" d
 export const scopeFor=(report:FinanceReport|null,product:string)=>!report?null:product?Object.hasOwn(report.products,product)?report.products[product]:null:report;
 export const rowFor=(data:FinanceReport|null,product:string,period:string)=>data?scopeFor(data,product)?.periodic[data.periods.findIndex(option=>option.key===period)]:undefined;
 
-export function cashChart(container:HTMLElement,series:{name:string;values:(number|null)[]}[],labels:string[],currency:string) {
+export function cashChart(container:HTMLElement,series:{name:string;values:(number|null)[];bars?:boolean}[],labels:string[],currency:string) {
   const canvas=container.querySelector('canvas')!;
   const surface=canvas.getContext('2d');
   if(!surface)return ()=>{};
@@ -274,7 +277,17 @@ export function cashChart(container:HTMLElement,series:{name:string;values:(numb
     surface.textAlign='center';
     const step=Math.ceil(labels.length/(width<500?4:8));
     labels.forEach((label,index)=>{if(index%step===0||(labels.length-1)%step>1&&index===labels.length-1)surface.fillText(label,x(index),height-14);});
-    series.forEach(({values},j)=>{
+    series.forEach(({values,bars},j)=>{
+      if(bars){
+        const barWidth=Math.min(30,(right-left)/Math.max(1,labels.length)*.55),zero=y(0);
+        const positive=style.getPropertyValue('--ds-success').trim();
+        values.forEach((value,i)=>{
+          if(value===null||value===0||!Number.isFinite(value))return;
+          surface.fillStyle=value>0?positive:colors[0];
+          surface.fillRect(x(i)-barWidth/2,Math.min(y(value),zero),barWidth,Math.abs(y(value)-zero));
+        });
+        return;
+      }
       surface.strokeStyle=colors[j];surface.fillStyle=colors[j];surface.setLineDash(j?[ ]:[5,4]);surface.lineWidth=2;
       surface.beginPath();let started=false;
       values.forEach((value,i)=>{if(value===null||!Number.isFinite(value)){started=false;return;}
@@ -283,7 +296,7 @@ export function cashChart(container:HTMLElement,series:{name:string;values:(numb
       values.forEach((value,i)=>{if(value===null||!Number.isFinite(value))return;surface.beginPath();surface.arc(x(i),y(value),3,0,Math.PI*2);surface.fill();});
     });
   }
-  canvas.setAttribute('aria-label','Cumulative cash flow, '+currency+'. Exact values are in the Project Returns table.');
+  canvas.setAttribute('aria-label',series.map(item=>item.name).join(' and ')+', '+currency+'. Exact values are in the Project Returns table.');
   const resize=new ResizeObserver(draw);resize.observe(canvas);draw();
   return ()=>resize.disconnect();
 }

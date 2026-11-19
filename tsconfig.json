@@ -20,11 +20,13 @@
       "/finance.js": ["./src/finance.ts"],
       "/finance-view.js": ["./src/finance-view.ts"],
       "/finance-impact.js": ["./src/finance-impact.ts"],
+      "/finance-business-view.js": ["./src/finance-business-view.ts"],
       "/finance-operations.js": ["./src/finance-operations.ts"],
       "/finance-development.js": ["./src/finance-development.ts"],
       "/finance-capital.js": ["./src/finance-capital.ts"],
       "/finance-budget.js": ["./src/finance-budget.ts"],
       "/finance-compare.js": ["./src/finance-compare.ts"],
+      "/finance-fx.js": ["./src/finance-fx.ts"],
       "/finance-preview-state.js": ["./src/finance-preview-state.ts"],
       "/timing-layout.js": [
         "./src/timing-layout.ts"

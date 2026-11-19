@@ -22,7 +22,13 @@ export async function eRecoveryDrill(){
  const runtime=join(parent,'d9-runtime'),source=join(parent,'d9-data'),d9Snapshot=join(parent,'d9-snapshot'),upgraded=join(parent,'upgraded'),eSnapshot=join(parent,'e-snapshot'),restored=join(parent,'restored');
  mkdirSync(runtime);process.env.ADMIN_PASSWORD='Isolated-E-Recovery-2026';
  const git=['-c','safe.directory='+root],oldCommit=execFileSync('git',[...git,'rev-parse','0b3f05f'],{cwd:root,encoding:'utf8'}).trim(),codeVersion=execFileSync('git',[...git,'rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
- assert.equal(execFileSync('git',[...git,'diff','--name-only',oldCommit,codeVersion,'--','package.json','pnpm-lock.yaml'],{cwd:root,encoding:'utf8'}).trim(),'','Historical runtime requires the same locked dependencies');
+ const runtimeManifest=(revision:string)=>{
+  const manifest=JSON.parse(execFileSync('git',[...git,'show',revision+':package.json'],{cwd:root,encoding:'utf8'}));
+  delete manifest.version;
+  return manifest;
+ };
+ assert.deepEqual(runtimeManifest(oldCommit),runtimeManifest(codeVersion),'Historical runtime requires matching package settings');
+ assert.equal(execFileSync('git',[...git,'diff','--name-only',oldCommit,codeVersion,'--','pnpm-lock.yaml'],{cwd:root,encoding:'utf8'}).trim(),'','Historical runtime requires the same locked dependencies');
  const archive=execFileSync('git',[...git,'archive','--format=zip',oldCommit,'lib','assets'],{cwd:root,maxBuffer:64*1024*1024});
  for(const [name,bytes] of Object.entries(unzipSync(archive))){const path=resolve(runtime,name),rel=relative(runtime,path);if(rel==='..'||rel.startsWith('..'+sep))throw Error('Unsafe code archive');if(name.endsWith('/'))mkdirSync(path,{recursive:true});else{mkdirSync(dirname(path),{recursive:true});writeFileSync(path,bytes);}}
  // The temporary historical modules resolve the existing locked workspace packages through

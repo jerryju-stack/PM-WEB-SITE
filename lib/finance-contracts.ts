@@ -1,5 +1,7 @@
 import {invalid} from './contracts.ts';
 import {financeEditCapabilities} from './finance-schema.ts';
+import {readFxSnapshot} from './finance-fx.ts';
+import type {FinanceFxSnapshot} from './finance-fx.ts';
 
 export type FixedDecimal={coefficient:string;scale:number};
 export type FinanceModule=keyof typeof financeEditCapabilities;
@@ -23,7 +25,7 @@ export type FinanceEvent={
 export type FinanceSnapshot={
   name:string;currency:string;currencyScale:number;basis:'website'|'cqa_full'|'cqa_incremental';asOf:string;
   dictionaryVersion:string;calculationVersion:string;
-  policy:{currencyScales:Record<string,number>;cashFlowOriginPeriod:string;rounding:'half_away_from_zero';rules:Record<string,unknown>};
+  policy:{currencyScales:Record<string,number>;cashFlowOriginPeriod:string;rounding:'half_away_from_zero';rules:Record<string,unknown>;fx?:FinanceFxSnapshot};
   products:Dimension[];markets:Dimension[];lines:Dimension[];periods:Dimension[];sources:FinanceSource[];
   inputs:FinanceInput[];events:FinanceEvent[]
 };
@@ -31,6 +33,7 @@ export type FinanceProjectState={approvedBaselineId:string|null;currentVersionId
 export type FinanceVersionSummary={
   id:string;projectId:string;parentId:string|null;name:string;status:'draft'|'frozen';revision:number;
   currency:string;currencyScale:number;basis:FinanceSnapshot['basis'];asOf:string;dictionaryVersion:string;calculationVersion:string;
+  model?:string;
   createdUid:string;updatedUid:string;approvedUid:string|null;createdAt:string;updatedAt:string;approvedAt:string|null
 };
 export type FinanceWriteResult=FinanceProjectState&{ok:true;id:string;projectId:string;revision:number;status:'draft'|'frozen';changeSetId:string;snapshotSha256:string};
@@ -66,14 +69,16 @@ function scope(v:any) {
 }
 export function financeSnapshot(value:unknown,limit=2000):FinanceSnapshot {
   const v=obj(value,['name','currency','currencyScale','basis','asOf','dictionaryVersion','calculationVersion','policy','products','markets','lines','periods','sources','inputs','events']);
-  const p=obj(v.policy,['currencyScales','cashFlowOriginPeriod','rounding','rules']),scales:Record<string,number>={};
+  const p=obj(v.policy,['currencyScales','cashFlowOriginPeriod','rounding','rules','fx']),scales:Record<string,number>={};
+  if(p.fx!==undefined&&p.rules?.importFormat==='cqa-import-P05.1')fail('CQA workbook versions retain their approved workbook FX basis');
   for(const [key,scale] of Object.entries(obj(p.currencyScales))) {
     currency(key);if(!Number.isInteger(scale)||Number(scale)<0||Number(scale)>4)fail('invalid currency precision');scales[key]=Number(scale);
   }
   const result:FinanceSnapshot={
     name:str(v.name),currency:currency(v.currency),currencyScale:v.currencyScale,basis:choice(v.basis,['website','cqa_full','cqa_incremental']),
     asOf:date(v.asOf),dictionaryVersion:str(v.dictionaryVersion,100),calculationVersion:str(v.calculationVersion,100),
-    policy:{currencyScales:scales,cashFlowOriginPeriod:financeKey(p.cashFlowOriginPeriod),rounding:choice(p.rounding,['half_away_from_zero']),rules:metadata(p.rules)},
+    policy:{currencyScales:scales,cashFlowOriginPeriod:financeKey(p.cashFlowOriginPeriod),rounding:choice(p.rounding,['half_away_from_zero']),rules:metadata(p.rules),
+      ...(p.fx===undefined?{}:{fx:readFxSnapshot(p.fx,scales)})},
     products:unique(array(v.products,dim)),markets:unique(array(v.markets,dim)),lines:unique(array(v.lines,dim)),periods:unique(array(v.periods,dim)),
     sources:unique(array(v.sources,(r:any):FinanceSource=>{
       obj(r,['key','system','externalKey','fingerprint','sheet','cell','owner','observation','mappingStatus','originalCurrency','originalUnit','originalPeriod','effectiveFrom','effectiveTo','metadata']);

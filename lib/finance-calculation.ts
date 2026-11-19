@@ -18,8 +18,9 @@ import {capitalDiscount,capitalLifetime,capitalMetrics,createCapitalCalculation,
 import {BUDGET_VERSION,hasBudgetExecution} from './finance-budget.ts';
 import {calculateBudgetExecution} from './finance-budget-calculation.ts';
 
-const calculationVersions=[FINANCE_CALCULATION_VERSION,BUSINESS_VERSION,OPERATIONS_VERSION,DEVELOPMENT_VERSION,CAPITAL_VERSION,BUDGET_VERSION];
-export const financeCalculationVersion=(s:FinanceSnapshot)=>hasBudgetExecution(s)?BUDGET_VERSION:hasCapitalModel(s)?CAPITAL_VERSION:hasDevelopmentModel(s)?DEVELOPMENT_VERSION:
+const FX_CALCULATION_VERSION='P15.1';
+const calculationVersions=[FINANCE_CALCULATION_VERSION,BUSINESS_VERSION,OPERATIONS_VERSION,DEVELOPMENT_VERSION,CAPITAL_VERSION,BUDGET_VERSION,FX_CALCULATION_VERSION];
+export const financeCalculationVersion=(s:FinanceSnapshot)=>s.policy.fx?FX_CALCULATION_VERSION:hasBudgetExecution(s)?BUDGET_VERSION:hasCapitalModel(s)?CAPITAL_VERSION:hasDevelopmentModel(s)?DEVELOPMENT_VERSION:
   hasOperationsModel(s)?OPERATIONS_VERSION:hasBusinessModel(s)?BUSINESS_VERSION:FINANCE_CALCULATION_VERSION;
 
 function websiteCalculation(b:CalculationBuilder) {
@@ -33,8 +34,13 @@ function websiteCalculation(b:CalculationBuilder) {
     const matches=s.inputs.filter(v=>v.metricKey===key&&v.productKey===product&&v.periodKey===period&&v.lineKey===line),r=matches[0];
     const source=r&&sourceMap.get(r.sourceKey),currency=unit.startsWith(s.currency)?s.currency:null;
     let q:Decimal|null=null;
-    if(matches.length===1&&source&&source.mappingStatus!=='to_collect'&&source.mappingStatus!=='pending_inputs'&&r.unit===unit&&r.currency===currency)q=Decimal.from(r.value);
-    return b.input({id:'input:'+(r?.key??product+':'+period+':'+line+':'+key),sourceKey:source?.key??null,inputKey:r?.key??null,role:matches.length>1?'duplicate input scope':'business input',unit,currency,periods:[period],value:q?.text()??null,status:q===null?'missing_input':'ok',sheet:source?.sheet,cell:source?.cell},q);
+    const expectedUnit=currency&&r?.currency?r.currency+unit.slice(currency.length):unit;
+    if(matches.length===1&&source&&source.mappingStatus!=='to_collect'&&source.mappingStatus!=='pending_inputs'&&r.unit===expectedUnit&&
+      (currency?!!r.currency:r.currency===null))q=Decimal.from(r.value);
+    const evidence={id:'input:'+(r?.key??product+':'+period+':'+line+':'+key),sourceKey:source?.key??null,inputKey:r?.key??null,
+      role:matches.length>1?'duplicate input scope':'business input',unit:r?.unit??unit,currency:r?.currency??null,periods:[period],
+      value:q?.text()??null,status:q===null?'missing_input' as const:'ok' as const,sheet:source?.sheet,cell:source?.cell};
+    return currency?b.money(evidence,q,currency,period):b.input(evidence,q);
   }
   let discount:Decimal|null=null;try{if(s.policy.rules.discountRate)discount=Decimal.from(s.policy.rules.discountRate as any);}catch{}
   const rate=b.input({id:'policy:discount_rate',sourceKey:null,inputKey:null,role:String(s.policy.rules.discountSource??'annual discount assumption'),unit:'fraction',currency:null,periods:periods.map(p=>p.key),value:discount?.text()??null,status:discount===null?'missing_input':discount.cmp(Decimal.from(-1))<=0?'invalid_rate':'ok'},discount&&discount.cmp(Decimal.from(-1))>0?discount:null);
@@ -101,8 +107,8 @@ function websiteCalculation(b:CalculationBuilder) {
           ([p,e,d,r])=>p.sub(e).sub(d).add(r));
         const wc=workingCapital(product.key,p,ordinal,revenue,material,incremental,def);
         const cashAdjustment=get('cash_adjustment');
-        def('cash_flow',[operating,cashAdjustment,dev.cash,investment.cash,investment.pieceCash,wc.change,wc.tax],sum,
-          {formula:'Factory operating cash + settlement timing + capital cash + working capital change + tax + explicit other cash adjustments'});
+        def('cash_flow',[operating,cashAdjustment,dev.cash,investment.cash,investment.pieceCash,wc.change,wc.tax,investment.replacedCash],sum,
+          {formula:'Factory operating cash + settlement timing + capital cash + working capital change + tax + other cash adjustments + replacement of previously forecast capital payments'});
         def('reported_revenue',[revenue,investment.piece],sum);def('reported_profit',[profit],([v])=>v);
         if(b.bridge){
           const operatingTerms=[
@@ -114,7 +120,8 @@ function websiteCalculation(b:CalculationBuilder) {
             profit:[...operatingTerms,...dev.profitTerms,cost('depreciation',depreciation),bridgeInput('piece_recovery',investment.piece),
               ...(allocation?[cost('factory_allocation',allocation)]:[])],
             cash:[...operatingTerms,...dev.cashTerms,...investment.cashTerms,bridgeInput('working_capital',wc.change),bridgeInput('tax',wc.tax),
-              bridgeInput('cash_adjustment',cashAdjustment)]
+              bridgeInput('cash_adjustment',cashAdjustment),
+              ...(investment.replacedCash.q?.n===0n?[]:[bridgeInput('cash_adjustment',investment.replacedCash)])]
           });
         }
       } else for(const key of ['cash_flow','reported_revenue','reported_profit'])record[key]=b.make(prefix+':'+key,key,null,[],{status:'missing_input',periods:[p],productScope:[product.key],details:{message:'Declare the complete cash_series or manufacturing model before calculating this version.'}});
@@ -131,8 +138,8 @@ function budget(b:CalculationBuilder) {
   const categories:Record<string,Value>={};
   for(const [key,kind] of [['approved_budget','budget'],['confirmed_actual','incurred'],['etc','etc']] as const) {
     const events=s.events.filter(e=>e.kind===kind),deps=events.map(e=>{
-      const source=s.sources.find(r=>r.key===e.sourceKey),q=source&&!['to_collect','pending_inputs'].includes(source.mappingStatus)&&e.currency===s.currency&&(kind!=='incurred'||s.policy.rules.budgetIncurredBasis==='confirmed')?Decimal.from(e.amount):null;
-      return b.input({id:'event:'+e.key,sourceKey:e.sourceKey,inputKey:e.key,role:kind==='incurred'?'P04 recorded incurred event; approval workflow belongs to P12':kind,unit:e.currency,currency:e.currency,periods:[e.periodKey],value:q?.text()??null,status:q===null?'missing_input':'ok'},q);
+      const source=s.sources.find(r=>r.key===e.sourceKey),q=source&&!['to_collect','pending_inputs'].includes(source.mappingStatus)&&(kind!=='incurred'||s.policy.rules.budgetIncurredBasis==='confirmed')?Decimal.from(e.amount):null;
+      return b.money({id:'event:'+e.key,sourceKey:e.sourceKey,inputKey:e.key,role:kind==='incurred'?'P04 recorded incurred event; approval workflow belongs to P12':kind,unit:e.currency,currency:e.currency,periods:[e.periodKey],value:q?.text()??null,status:q===null?'missing_input':'ok'},q,s.currency,e.periodKey);
     });
     const explicit=s.policy.rules.budgetComplete===true;
     categories[key]=events.length||explicit?b.calc('budget:'+key,key,deps,sum,{basis:'budget_events',formula:'sum of distinct '+kind+' events; payment/recovery never counted as incurred costs'}):b.make('budget:'+key,key,null,[],{status:'missing_input',basis:'budget_events',details:{message:'No complete '+kind+' event set has been supplied.'}});
@@ -146,10 +153,12 @@ function budget(b:CalculationBuilder) {
 }
 
 /** Single engine for baseline, forecast, preview, budget and version comparison. No storage calls. */
-export function calculateFinance(raw:FinanceSnapshot,bridge?:FinanceBridgeInputs):CalculationReport {
-  const s=financeSnapshot(raw,50000),b=new CalculationBuilder(s,bridge),periods=[...s.periods].sort((a,c)=>Number(a.metadata.ordinal)-Number(c.metadata.ordinal));
+export function calculateFinance(raw:FinanceSnapshot,bridge?:FinanceBridgeInputs,fxReference?:FinanceSnapshot):CalculationReport {
+  const s=financeSnapshot(raw,50000),b=new CalculationBuilder(s,bridge,fxReference),periods=[...s.periods].sort((a,c)=>Number(a.metadata.ordinal)-Number(c.metadata.ordinal));
   if(!['not_implemented',...calculationVersions].includes(s.calculationVersion))throw Object.assign(new Error('Unsupported stored finance calculation version; an explicit version migration is required.'),{status:409});
-  if(hasBudgetExecution(s)||hasCapitalModel(s)||hasDevelopmentModel(s)||hasOperationsModel(s)||hasBusinessModel(s))s.calculationVersion=financeCalculationVersion(s);
+  if(s.policy.fx||s.calculationVersion===FX_CALCULATION_VERSION||hasBudgetExecution(s)||hasCapitalModel(s)||hasDevelopmentModel(s)||hasOperationsModel(s)||hasBusinessModel(s))
+    s.calculationVersion=financeCalculationVersion(s);
+  if(fxReference?.policy.fx)s.calculationVersion=FX_CALCULATION_VERSION;
   if(periods.length>201||periods.some((p,i)=>p.metadata.ordinal!==i))throw Object.assign(new Error('Finance calculation requires contiguous annual periods beginning at Year 0.'),{status:400});
   const isCqa=s.policy.rules.importFormat==='cqa-import-P05.1';
   if(isCqa&&!['CNY','USD'].includes(s.currency))throw Object.assign(new Error('CQA calculation supports the approved CNY and USD reporting currencies.'),{status:400});
@@ -163,7 +172,13 @@ export function calculateFinance(raw:FinanceSnapshot,bridge?:FinanceBridgeInputs
     const profit=b.calc(prefix+':profit',isCqa?'cqa.mpbitri':'operating_profit',rows.map(r=>r.reported_profit),sum,{...opts,basis:isCqa?'cqa_full':'website'});
     const margin=b.calc(prefix+':margin',isCqa?'cqa.mpbitri_margin':'operating_margin',[profit,revenue],([p,r])=>p.div(r),{...opts,unit:'fraction',currency:null,basis:profit.out.basis,formula:'sum(profit) / sum(revenue)'});
     metrics.revenue=revenue.out;
+    if(!isCqa&&s.policy.rules.model==='manufacturing'&&(s.policy.fx||fxReference))metrics.total_cost=b.calc(prefix+':total_cost','total_cost',
+      [revenue,profit],([sales,operating])=>sales.sub(operating),{...opts,formula:'Reported revenue less modeled operating profit'}).out;
     if(isCqa){metrics['cqa.mpbitri']=profit.out;metrics['cqa.mpbitri_margin']=margin.out;}
+    if(!isCqa&&s.policy.rules.model==='manufacturing'&&s.policy.rules.operatingMapping!=='approved'){
+      metrics.full_cost_management_profit=b.calc(prefix+':full_cost_management_profit','full_cost_management_profit',
+        [profit],([value])=>value,{...opts,formula:'Modeled full-cost profit before operating-profit mapping approval'}).out;
+    }
     if(!isCqa&&s.policy.rules.operatingMapping==='approved'){metrics.operating_profit=profit.out;metrics.operating_margin=margin.out;}
     else for(const key of ['operating_profit','operating_margin'])metrics[key]=b.make(prefix+':'+key,key,null,[profit,revenue],{...opts,basis:'website',unit:key.endsWith('margin')?'fraction':s.currency,currency:key.endsWith('margin')?null:s.currency,status:'pending_finance',details:{message:'The website operating-profit mapping requires finance approval. CQA MPBITRI retains its original basis.'}}).out;
     const returns=calculateReturns(b,prefix,rows.map(r=>r.cash_flow),built.rate,productScope,isCqa?'cqa_incremental':'website');

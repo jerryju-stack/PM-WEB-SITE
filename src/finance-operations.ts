@@ -2,6 +2,7 @@ import {escapeHtml as html,financeUrl,help} from '/finance-view.js';
 import type {Dictionary} from '/finance-view.js';
 import type {OperationEditor} from '/finance-impact.js';
 import type {operationsWorkspace} from '../lib/finance-operations-calculation.ts';
+import {currencyOptions} from '/finance-fx.js';
 
 type Scope=NonNullable<ReturnType<typeof operationsWorkspace>>[number];
 type Source=Scope['records'][number];
@@ -35,8 +36,34 @@ function renderSource(scope:Scope,item:Source,dictionary:Dictionary) {
         (station.bottleneck?'<strong class="fin-state">Bottleneck</strong>':'')+'</td></tr>').join(''))+'</section>').join('')+'</div>';
 }
 
-export function operationsPage(scopes:Scope[],source:string,link:RecordLink,periodLabel:string,canOperate:boolean,canCalibrate:boolean,draft:boolean,dictionary:Dictionary) {
-  return '<section class="fin-panel"><div class="fin-panel-head"><h2>Routes &amp; Batch Measurements</h2></div>'+
+export function operationsPage(scopes:Scope[],source:string,link:RecordLink,periodLabel:string,canOperate:boolean,canCalibrate:boolean,draft:boolean,
+  dictionary:Dictionary,yearLabel:(key:string)=>string,linkedAsset:(scope:Scope,line:string)=>string|null) {
+  const percent=(value:string|null|undefined)=>value==null?'—':new Intl.NumberFormat('en',{style:'percent',maximumFractionDigits:2}).format(Number(value));
+  const rows=scopes.flatMap(scope=>{
+    const selected=scope.records.find(row=>row.key===scope.selectedKey);
+    const rate=scope.hourlyRate??scope.archive?.rate.value??null;
+    if(selected)return selected.lines.flatMap(line=>line.stations.map(station=>{
+      const asset=linkedAsset(scope,line.line);
+      const origin=selected.record.type==='actual'?'Measured · '+selected.record.date:'Design · '+selected.record.revision;
+      return '<tr><th scope="row">'+html(scope.label)+'<small class="fin-state">'+
+        financeUrl(link(scope,selected.key),station.operation)+'</small></th><td>'+
+        (asset?financeUrl(asset,line.line):html(line.line))+(line.shared?' · Shared':'')+'</td>'+
+        [station.people,station.observedCt??station.ct,station.repeats,percent(line.oee),percent(station.efficiency),
+          rate?rate+' '+scope.currency:null,scope.currentUnitLabor?scope.currentUnitLabor+' '+scope.currency:null,origin].map(cell).join('')+'</tr>';
+    }));
+    return scope.archive?.operations.map(row=>'<tr><th scope="row">'+html(scope.label)+'</th>'+
+      [row.line+(row.shared?' · Shared':''),row.people.value,row.ct.value,row.repeats,percent(row.oee?.value),percent(row.efficiency.value),
+        rate?rate+' '+scope.currency:null,scope.currentUnitLabor?scope.currentUnitLabor+' '+scope.currency:null,row.financials].map(cell).join('')+'</tr>')??[];
+  });
+  const years=[...new Set(scopes.flatMap(scope=>scope.laborByPeriod.filter(item=>item.value!==null&&Number(item.value)>0).map(item=>item.period)))];
+  const overview='<section class="fin-panel fin-business-overview"><h2>Operations and direct labor</h2>'+
+    '<p class="fin-muted">'+html(periodLabel)+' · Hourly rates per person-hour, unit labor per good piece.</p>'+
+    (rows.length?table(['Product / operation','Line','Operators','Cycle time (s)','Cycles / piece','Equipment OEE','Labor efficiency',
+      'Hourly rate','Product unit labor','Evidence basis'],rows.join('')):'<p class="fin-muted">No station assumptions are recorded for this period.</p>')+
+    (years.length?'<details><summary>Unit labor by year</summary>'+table(['Product',...years.map(yearLabel)],scopes.map(scope=>
+      '<tr><th scope="row">'+html(scope.label)+'</th>'+years.map(year=>cell(scope.laborByPeriod.find(item=>item.period===year)?.value??null)).join('')+'</tr>'
+    ).join(''))+'</details>':'')+'</section>';
+  return overview+'<section class="fin-panel"><div class="fin-panel-head"><h2>Routes &amp; Batch Measurements</h2></div>'+
     '<p>Production period <strong>'+html(periodLabel)+'</strong> · '+(draft?'Draft':'Approved version')+'</p>'+
     '<p class="fin-muted">Station load is CT × repeats ÷ units per cycle. Demand takt uses allocated net time and demand. Line balance divides total station load by the number of stations and the bottleneck load. '+
     'Effective capacity applies the equipment loss factor once. Design labor uses independent labor efficiency. Measured labor uses actual person-hours and good pieces.</p>'+
@@ -59,7 +86,7 @@ export function operationsPage(scopes:Scope[],source:string,link:RecordLink,peri
         '</tr>').join('')):'<p>No station route or measured batch has been recorded for this period.</p>';
       return '<section class="fin-op-product"><h3>'+html(scope.label)+'</h3><p>Demand '+text(scope.demand)+' good pieces · Current unit labor <strong>'+
         text(scope.currentUnitLabor)+' '+html(scope.currency)+'/piece</strong> · '+html(selected?name(selected):archive?'Archived design':'Existing labor basis')+'</p>'+
-        (scope.rate?'<p>Calibrated rate '+html(scope.rate.rate)+' '+html(scope.currency)+'/person-hour · '+html(scope.rate.reviewer)+' · '+html(scope.rate.reference)+'</p>':'')+
+        (scope.rate?'<p>Calibrated rate '+html(scope.rate.rate)+' '+html(scope.rateCurrency)+'/person-hour · '+html(scope.rate.reviewer)+' · '+html(scope.rate.reference)+'</p>':'')+
         (scope.selection?'<p>Basis reviewed by '+html(scope.selection.reviewer)+' · '+html(scope.selection.reference)+'</p>':'')+
         actions+archiveTable+records+
         (picked&&canOperate&&draft&&picked.record.type==='design'?'<p>'+financeUrl(link(scope,'batch-'+picked.key),'Record measured batch','fin-record-batch')+'</p>':'')+
@@ -114,8 +141,9 @@ export function operationsEditor(scope:Scope,source:string,canOperate:boolean,ca
       });
     });
   if(source==='rate'&&canCalibrate&&draft)return wrap('Calibrate hourly rate',
-    decimal('hourly-rate','Hourly rate ('+scope.currency+'/person-hour)',scope.rate?.rate),
-    data=>({type:'rate',rate:data.get('hourly-rate')}));
+    '<label>Source currency<select name="currency">'+currencyOptions(scope.currencies,scope.rateCurrency)+'</select></label>'+
+    decimal('hourly-rate','Hourly rate per person-hour',scope.rate?.rate),
+    data=>({type:'rate',rate:data.get('hourly-rate'),currency:data.get('currency')}));
   const target=scope.records.find(record=>record.key===source||'batch-'+record.key===source);
   if(!target)return;
   if(source.startsWith('batch-')&&draft&&target.record.type==='design'){

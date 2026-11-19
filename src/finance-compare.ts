@@ -1,7 +1,9 @@
 import {amountCell,cashChart,escapeHtml as html,financeUrl,help,metricLabel} from '/finance-view.js';
 import type {Dictionary,FinanceAmount,Workspace} from '/finance-view.js';
+import {displayCurrencySelect,fxBasisText} from '/finance-fx.js';
 
 type Comparison=NonNullable<Workspace['comparisonReport']>;
+type FxComparison=NonNullable<Workspace['fxComparison']>;
 type ComparisonData=NonNullable<Comparison['data']>;
 type Bridge=NonNullable<ComparisonData['profit']>;
 type Locator=NonNullable<Comparison['changes'][number]['before']>;
@@ -28,20 +30,29 @@ export function comparisonFilters(workspace:Workspace,params:URLSearchParams){
   if(!versions.length)return '';
   return '<div class="fin-filters">'+pick('from',comparison?.before.id)+pick('to',comparison?.after.id)+
     (comparison?selector('Through period','cutoff',comparison.periods,comparison.cutoff)+
-      selector('Product','compareProduct',comparison.products,comparison.product,'All products'):'')+'</div>';
+      selector('Product','compareProduct',comparison.products,comparison.product,'All products')+
+      displayCurrencySelect(workspace)+selector('FX comparison mode','fxMode',[
+        {key:'own',label:'Each version’s rates'},{key:'a',label:'Use version A rates'},{key:'b',label:'Use version B rates'}
+      ],workspace.fxComparison?.mode??'own'):'')+'</div>';
 }
 
 export function comparisonReturn(base:string,params:URLSearchParams) {
   const q=new URLSearchParams();
-  for(const key of ['from','to','cutoff','compareProduct','baseline','compareExample']){
+  for(const key of ['from','to','cutoff','compareProduct','baseline','compareExample','displayCurrency','fxMode']){
     const value=params.get(key);if(value)q.set(key,value);
   }
   return base+'/compare'+(q.size?'?'+q:'');
 }
 
-export function comparisonPage(comparison:Comparison|null,base:string,params:URLSearchParams,dictionary:Dictionary){
+function usesLegacyBridge(comparison:Comparison,fx:FxComparison|null){
+  return !fx||fx.mode==='own'&&fx.currency===comparison.currency&&comparison.before.currency===comparison.after.currency;
+}
+
+export function comparisonPage(comparison:Comparison|null,base:string,params:URLSearchParams,dictionary:Dictionary,fx:FxComparison|null){
   if(!comparison)return panel('Select two versions','<p class="fin-muted">Choose an available Before and After version for this project.</p>');
-  const {data,before,after,currency,cutoff,periods,products}=comparison;
+  const {before,after,cutoff,periods,products}=comparison;
+  const withBridge=usesLegacyBridge(comparison,fx),data=fx?fx.data:comparison.data;
+  const currency=fx?.currency??comparison.currency;
   const periodLabel=(key:string)=>periods.find(period=>period.key===key)?.label??key;
   const productLabel=(key:string)=>products.find(product=>product.key===key)?.label??key;
   const versionName=(version:typeof before)=>html(version.name)+' <small class="fin-state">'+
@@ -50,7 +61,19 @@ export function comparisonPage(comparison:Comparison|null,base:string,params:URL
     '<div><span>After</span><strong>'+versionName(after)+'</strong></div></div>'+
     '<p class="fin-muted">Changes are After minus Before.'+(cutoff?' Cash valuation and operating results cover Year 0 through '+html(periodLabel(cutoff))+'.':'')+
     (data?' Reporting currency '+html(currency)+'.':'')+'</p>';
-  if(!data)return panel('Comparison scope',scope+'<p role="status">'+html(comparison.reason)+'</p>');
+  const fxTable=(metrics:FxComparison['metrics'])=>table(['Metric','Original change','Constant-rate business change','FX impact'],
+    Object.entries(metrics).map(([key,item])=>row(metricLabel(dictionary,key),[amountCell(item.original,true),
+      amountCell(item.business,true),amountCell(item.fxImpact,true)])).join(''));
+  const fxSection=fx?panel('Business change and FX impact',
+    '<p>A · '+html(fxBasisText(fx.beforeBasis))+'<br>B · '+html(fxBasisText(fx.afterBasis))+'</p>'+
+    '<p class="fin-muted">Constant-rate basis · version '+fx.basis.toUpperCase()+' · '+html(fxBasisText(fx.basis==='a'?fx.beforeBasis:fx.afterBasis))+
+    ' · '+html(fx.currency)+'. FX impact equals the original change less the constant-rate business change.</p>'+
+    (fx.reason?'<p role="status">'+html(fx.reason)+'</p>':'')+
+    (Object.keys(fx.metrics).length?fxTable(fx.metrics):'')+
+    (Object.keys(fx.budget).length?'<details><summary>Budget FX differences</summary>'+fxTable(fx.budget)+'</details>':'')+
+    (fx.periodic.length?'<details><summary>Period FX differences</summary>'+fx.periodic.map(item=>'<h3>'+html(periodLabel(item.period))+'</h3>'+fxTable(item.metrics)).join('')+'</details>':'')+
+    '<button type="button" class="small-btn" id="fin-export-comparison">Export comparison</button>'):'';
+  if(!data)return panel('Comparison scope',scope+'<p role="status">'+html(fx?.reason??comparison.reason??'Comparable values are unavailable.')+'</p>')+fxSection;
 
   const sourceLink=(location:Locator,side:'before'|'after',id:string,link:Link=financeUrl)=>{
     const version=side==='before'?before:after,next=new URLSearchParams(params);
@@ -126,22 +149,24 @@ export function comparisonPage(comparison:Comparison|null,base:string,params:URL
   const sources=panel('Changed version records','<p class="fin-muted">Records include saved assumptions and evidence across the selected versions. The bridges use the valuation period shown above.</p>'+
     (changeRows?table(['Record','Source period','Impact scope','Before source','After source'],changeRows):
       '<p class="fin-muted">There are no changed records in this selection.</p>'));
-  return metrics+
-    '<p class="fin-muted">Volume or hours at the Before rate, then rate at the Before quantity, then their joint effect. Cash timing pairs offsetting movements on the same source. NPV values cash changes at the Before rate, then applies the After discount rate to After cash. IRR and other returns use each complete cash series through the selected period.</p>'+
-    bridgePanel('profit',(data.profitKey==='cqa.mpbitri'?'CQA MPBITRI':'Operating Profit')+' Bridge',data.profit)+
-    bridgePanel('npv','NPV Bridge',data.npv)+chart+panel('Period values',table(headers,periodRows))+sources+budget;
+  return metrics+fxSection+(withBridge?
+    '<p class="fin-muted">The operating and NPV bridges explain the original valuation using each version’s rates. Volume or hours use the Before rate, rate changes use the Before quantity, and the joint effect follows. Cash timing pairs offsetting movements on the same source. NPV values cash changes at the Before discount rate, then applies the After discount rate to After cash.</p>'+
+    bridgePanel('profit',(data.profitKey==='cqa.mpbitri'?'CQA MPBITRI':'Operating Profit')+' Bridge',comparison.data?.profit??null)+
+    bridgePanel('npv','NPV Bridge',comparison.data?.npv??null):'')+chart+panel('Period values',table(headers,periodRows))+sources+budget;
 }
 
-export function mountComparisonChart(root:HTMLElement,comparison:Comparison|null){
-  const chart=root.querySelector<HTMLElement>('.fin-compare-cash'),data=comparison?.data;
-  if(!comparison||!chart||!data)return ()=>{};
+export function mountComparisonChart(root:HTMLElement,comparison:Comparison|null,fx:FxComparison|null){
+  const chart=root.querySelector<HTMLElement>('.fin-compare-cash');
+  if(!comparison||!chart)return ()=>{};
+  const data=fx?fx.data:comparison.data,currency=fx?.currency??comparison.currency;
+  if(!data)return ()=>{};
   const values=(side:'before'|'after')=>data.periodic.map(item=>{
     const value=item.metrics.cumulative_cash[side]?.value;
     return value==null?null:Number(value);
   });
   const clean=cashChart(chart,[{name:comparison.before.name,values:values('before')},{name:comparison.after.name,values:values('after')}],
-    data.periodic.map(row=>comparison.periods.find(period=>period.key===row.period)?.label??row.period),comparison.currency);
-  chart.querySelector('canvas')?.setAttribute('aria-label','Cumulative cash flow, '+comparison.currency+'. Exact values are in Period values.');
+    data.periodic.map(row=>comparison.periods.find(period=>period.key===row.period)?.label??row.period),currency);
+  chart.querySelector('canvas')?.setAttribute('aria-label','Cumulative cash flow, '+currency+'. Exact values are in Period values.');
   return clean;
 }
 

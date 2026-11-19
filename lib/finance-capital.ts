@@ -3,6 +3,7 @@ import type {FinanceInput,FinanceSnapshot} from './finance-contracts.ts';
 import {Decimal,ONE,sum} from './finance-decimal.ts';
 import {archived,businessFx,businessInputs,businessSlug} from './finance-business.ts';
 import {invalid} from './contracts.ts';
+import {caseFinanceRate,sourceFinanceCurrency} from './finance-fx.ts';
 
 export const CAPITAL_VERSION='P11.1';
 export const isCapitalInput=(row:FinanceInput)=>row.key.startsWith('p11:')||row.metricKey.startsWith('p11.');
@@ -16,6 +17,12 @@ type Payment={id:string;period:string;share:string;reference:string};
 export type AssetRecord={
   kind:'asset';assetId:string;title:string;category:typeof assetKinds[number];mode:'new'|'existing_shared';purchaseReference:string;meReference:string;lineId:string|null;
   basis:string;allocations:Shares;orderPeriod:string;servicePeriod:string;life:number;residual:string;gross:string|null;payments:Payment[];
+  estimate?:{key:string;amount:string};
+  supplier?:string;partNumber?:string;quantity?:number;
+};
+export type CapitalEstimate={
+  kind:'estimate';estimateId:string;title:string;category:AssetRecord['category'];productKey:string;period:string;
+  gross:string;life:number|null;reference:string;cashInputKey:string|null;quoteKeys:string[];
 };
 type Receipt={id:string;date:string;period:string;amount:string;reference:string};
 type Receivable={period:string;amount:string;reference:string};
@@ -25,10 +32,11 @@ export type RecoveryRecord={kind:'recovery';agreementId:string;assetKey:string;t
 export type TermsRecord={kind:'terms';productKey:string;period:string;receivableDays:string;payableDays:string;inventoryDays:string;
   days:360|365;tax:string;release:boolean;reference:string};
 export type ValuationRecord={kind:'valuation';period:string;discount:string;reference:string};
-export type CapitalRecord=AssetRecord|RecoveryRecord|TermsRecord|ValuationRecord;
+export type CapitalRecord=AssetRecord|CapitalEstimate|RecoveryRecord|TermsRecord|ValuationRecord;
 export type CapitalRow<T extends CapitalRecord=CapitalRecord>=FinanceInput&{conversion:{capital:T}};
 export const capitalRows=(s:FinanceSnapshot)=>s.inputs.filter(isCapitalInput) as CapitalRow[];
 export const capitalAssets=(s:FinanceSnapshot)=>capitalRows(s).filter(row=>row.conversion.capital.kind==='asset') as CapitalRow<AssetRecord>[];
+export const capitalEstimates=(s:FinanceSnapshot)=>capitalRows(s).filter(row=>row.conversion.capital.kind==='estimate') as CapitalRow<CapitalEstimate>[];
 export const capitalOrdinal=(s:FinanceSnapshot,key:string)=>Number(s.periods.find(item=>item.key===key)?.metadata.ordinal);
 export const capitalQuoteRows=(s:FinanceSnapshot)=>businessInputs(s).filter(row=>row.conversion.businessField==='tooling'&&row.conversion.assetKey);
 export const capitalLines=(s:FinanceSnapshot)=>[...new Set([
@@ -79,14 +87,14 @@ export function resolveAssetGross(s:FinanceSnapshot,record:AssetRecord,quotes?:R
   return {amount:quote&&!quote.conversion.archiveCapitalized&&fx?q(quote.value).mul(fx.rate):null,quote,fx};
 }
 
-function parseAsset(s:FinanceSnapshot,raw:Record<string,unknown>):AssetRecord{
+function parseAsset(s:FinanceSnapshot,raw:Record<string,unknown>,currency:string):AssetRecord{
   const assetId=financeKey(raw.assetId),category=raw.category as AssetRecord['category'],mode=raw.mode;
   if(!assetKinds.includes(category)||mode!=='new'&&mode!=='existing_shared')return fail('Choose an asset category and ownership type.');
-  const money=(value:unknown,name:string)=>decimal(value,name,999999999999,s.policy.currencyScales[capitalCurrency(s)]);
+  const money=(value:unknown,name:string)=>decimal(value,name,999999999999,s.policy.currencyScales[currency]);
   const orderPeriod=period(s,raw.orderPeriod),servicePeriod=period(s,raw.servicePeriod);
   if(capitalOrdinal(s,servicePeriod)<capitalOrdinal(s,orderPeriod))fail('Service cannot precede the order period.');
   const gross=raw.gross===null?null:money(raw.gross,'gross capital'),residual=money(raw.residual,'residual value');
-  const life=Number(decimal(raw.life,'depreciation life',40,0));
+  const life=Number(decimal(raw.life,'depreciation life',40,8));
   if(life<1)fail('Enter a depreciation life of at least one year.');
   const lineId=raw.lineId===null?null:financeKey(raw.lineId);
   if(lineId&&!capitalLines(s).includes(lineId))fail('The ME line is outside this financial version.');
@@ -108,21 +116,53 @@ function parseAsset(s:FinanceSnapshot,raw:Record<string,unknown>):AssetRecord{
     fail('New asset payment shares must total 1. Existing shared assets have no new payments.');
   const result:AssetRecord={kind:'asset',assetId,title:label(raw.title,'asset title'),category,mode,gross,residual,life,orderPeriod,servicePeriod,allocations,payments,lineId,
     meReference:label(raw.meReference,'ME reference'),purchaseReference:label(raw.purchaseReference,'procurement reference'),basis:label(raw.basis,'allocation basis')};
+  if(raw.estimate!=null){
+    const estimate=obj(raw.estimate,['key','amount']);
+    result.estimate={key:financeKey(estimate.key),amount:money(estimate.amount,'linked quote amount')};
+    if(q(result.estimate.amount).n<=0n)fail('Enter a positive linked quote amount.');
+  }
+  if(raw.supplier)result.supplier=label(raw.supplier,'supplier',80);
+  if(raw.partNumber)result.partNumber=label(raw.partNumber,'part number',100);
+  if(raw.quantity!=null&&raw.quantity!==''){
+    const quantity=Number(decimal(raw.quantity,'asset quantity',999999999,0));
+    if(quantity<1)fail('Enter a positive asset quantity.');
+    result.quantity=quantity;
+  }
   const quotes=capitalQuoteRows(s).filter(row=>row.conversion.assetKey?.toLowerCase()===assetId.toLowerCase());
   if(quotes.some(row=>row.conversion.archiveCapitalized))fail('This archived supplier tool is already included in the Financials capital schedule.');
   if(quotes.length&&(category!=='supplier_tooling'||gross!==null||quotes.some(row=>!allocations.some(allocation=>allocation.productKey===row.productKey))))
     fail('Use the linked BOM quote and its product scope for this supplier tool.');
   if(gross===null&&category!=='supplier_tooling')fail('Enter a gross cost.');
   const amount=resolveAssetGross(s,result,quotes).amount;
-  if(!amount||q(residual).cmp(amount)>0)fail('A linked quote with an exchange rate is required, and residual value cannot exceed gross cost.');
+  const residualRate=gross===null?caseFinanceRate(s,currency,capitalCurrency(s),orderPeriod):ONE;
+  if(!amount||!residualRate||q(residual).mul(residualRate).cmp(amount)>0)fail('A linked quote with an exchange rate is required, and residual value cannot exceed gross cost.');
   return result;
 }
 
-function parseRecovery(s:FinanceSnapshot,raw:Record<string,unknown>):RecoveryRecord{
+function parseEstimate(s:FinanceSnapshot,raw:Record<string,unknown>,currency:string):CapitalEstimate{
+  const category=raw.category as AssetRecord['category'];
+  if(!assetKinds.includes(category))fail('Choose an estimate category.');
+  const productKey=activeProduct(s,raw.productKey),scope=period(s,raw.period);
+  const cashInputKey=raw.cashInputKey==null?null:financeKey(raw.cashInputKey);
+  const gross=decimal(raw.gross,'estimated purchase amount',999999999999,s.policy.currencyScales[currency]);
+  if(q(gross).n<=0n)fail('Enter a positive estimated purchase amount.');
+  if(cashInputKey&&!s.inputs.some(row=>row.key===cashInputKey&&row.metricKey==='cash_adjustment'&&
+    row.productKey===productKey&&row.periodKey===scope&&row.currency===currency))
+    fail('Choose the original cash adjustment for the same product, period and currency.');
+  const life=raw.life==null?null:Number(decimal(raw.life,'estimated depreciation life',40));
+  if(life!==null&&life<1)fail('Enter an estimated depreciation life of at least one year.');
+  const quoteKeys=raw.quoteKeys==null?[]:list(raw.quoteKeys,200).map(financeKey);
+  if(new Set(quoteKeys).size!==quoteKeys.length||quoteKeys.length&&category!=='supplier_tooling')
+    fail('Use distinct supplier tooling quotes for this estimate.');
+  return {kind:'estimate',estimateId:financeKey(raw.estimateId),title:label(raw.title,'estimate title'),category,productKey,
+    period:scope,gross,life,reference:label(raw.reference,'estimate evidence'),cashInputKey,quoteKeys:quoteKeys.sort()};
+}
+
+function parseRecovery(s:FinanceSnapshot,raw:Record<string,unknown>,currency:string):RecoveryRecord{
   const agreementId=financeKey(raw.agreementId),assetKey=financeKey(raw.assetKey);
   const asset=capitalAssets(s).find(item=>item.key===assetKey)?.conversion.capital;
   if(!asset)return fail('Choose an existing investment source.');
-  const money=(value:unknown,name:string)=>decimal(value,name,999999999999,s.policy.currencyScales[capitalCurrency(s)]);
+  const money=(value:unknown,name:string)=>decimal(value,name,999999999999,s.policy.currencyScales[currency]);
   const agreementPeriod=period(s,raw.agreementPeriod),receiptPeriod=period(s,raw.receiptPeriod),amount=money(raw.amount,'contract amount');
   const afterAgreement=(key:string)=>capitalOrdinal(s,key)>=capitalOrdinal(s,agreementPeriod);
   if(!afterAgreement(receiptPeriod))fail('Receipt forecast cannot precede the agreement.');
@@ -158,14 +198,19 @@ function parseRecovery(s:FinanceSnapshot,raw:Record<string,unknown>):RecoveryRec
 
 export function applyCapitalChange(s:FinanceSnapshot,value:unknown,selected:string[],seen:Set<string>){
   if(!supportsCapital(s))fail('Use a manufacturing or CQA forecast.');
-  const change=obj(value,['collection','key','record']),raw=change.record as Record<string,unknown>,kind=raw?.kind;
+  const change=obj(value,['collection','key','record','currency']),raw=change.record as Record<string,unknown>,kind=raw?.kind;
+  const old=capitalRows(s).find(row=>row.key===change.key);
+  const currency=sourceFinanceCurrency(s,change.currency,old?.currency??capitalCurrency(s));
   let record:CapitalRecord,key:string,scope:string,productKey:string|null=null;
   if(kind==='asset'){
     record=parseAsset(s,obj(raw,['kind','assetId','title','category','mode','purchaseReference','meReference','lineId','basis','allocations',
-      'orderPeriod','servicePeriod','life','residual','gross','payments']));
+      'orderPeriod','servicePeriod','life','residual','gross','payments','estimate','supplier','partNumber','quantity']),currency);
     key=identity(kind,record.assetId);scope=record.orderPeriod;
+  }else if(kind==='estimate'){
+    record=parseEstimate(s,obj(raw,['kind','estimateId','title','category','productKey','period','gross','life','reference','cashInputKey','quoteKeys']),currency);
+    key=identity(kind,record.estimateId);scope=record.period;productKey=record.productKey;
   }else if(kind==='recovery'){
-    record=parseRecovery(s,obj(raw,['kind','agreementId','assetKey','title','reference','agreementPeriod','amount','receivable','receiptPeriod','receipts','piece']));
+    record=parseRecovery(s,obj(raw,['kind','agreementId','assetKey','title','reference','agreementPeriod','amount','receivable','receiptPeriod','receipts','piece']),currency);
     key=identity(kind,record.agreementId);scope=record.agreementPeriod;
   }else if(kind==='terms'){
     const terms=obj(raw,['kind','productKey','period','receivableDays','payableDays','inventoryDays','days','tax','release','reference']);
@@ -184,8 +229,9 @@ export function applyCapitalChange(s:FinanceSnapshot,value:unknown,selected:stri
   if(change.key!==undefined&&change.key!==key||previous&&change.key===undefined)fail('Open the existing source row to update this identity.');
   if(!selected.includes(scope)||seen.has(key))fail('Use a unique source row within the preview period range.');
   seen.add(key);
-  const module=kind==='terms'||kind==='valuation'?'returns':'investment',sourceKey=key+':source',currency=capitalCurrency(s);
-  const amount=record.kind==='asset'?resolveAssetGross(s,record).amount!:q(record.kind==='recovery'?record.amount:record.kind==='terms'?record.tax:record.discount);
+  const module=kind==='terms'||kind==='valuation'?'returns':'investment',sourceKey=key+':source';
+  const amount=q(record.kind==='asset'?record.gross??record.residual:record.kind==='estimate'?record.gross:
+    record.kind==='recovery'?record.amount:record.kind==='terms'?record.tax:record.discount);
   const isMoney=module==='investment',scale=isMoney?s.policy.currencyScales[currency]:8;
   const nextValue={coefficient:BigInt(amount.text(scale).replace('.','')).toString(),scale};
   const reference=record.kind==='asset'?record.purchaseReference:record.reference;
@@ -201,6 +247,7 @@ export function applyCapitalChange(s:FinanceSnapshot,value:unknown,selected:stri
     if(item.kind==='recovery')return item.amount+' · receipt '+periodLabel(item.receiptPeriod);
     if(item.kind==='terms')return [item.receivableDays,item.payableDays,item.inventoryDays].join(' / ')+' days · tax '+item.tax;
     if(item.kind==='asset')return resolveAssetGross(s,item).amount?.text(scale)+' · service '+periodLabel(item.servicePeriod);
+    if(item.kind==='estimate')return item.gross+' · quote '+periodLabel(item.period);
     return item.discount;
   };
   return {collection:'capital',key,metricKey:row.metricKey,period:scope,productKey,sourceKey,unit,currency:rowCurrency,before:previous?.value??null,after:nextValue,
@@ -208,7 +255,43 @@ export function applyCapitalChange(s:FinanceSnapshot,value:unknown,selected:stri
 }
 
 export function validateCapitalLinks(s:FinanceSnapshot){
-  const rows=capitalRows(s),assets=new Map(capitalAssets(s).map(row=>[row.key,row.conversion.capital]));
+  const rows=capitalRows(s),assetRows=capitalAssets(s),assets=new Map(assetRows.map(row=>[row.key,row.conversion.capital]));
+  const estimates=new Map(capitalEstimates(s).map(row=>[row.key,row]));
+  const quotes=estimates.size?capitalQuoteRows(s):[];
+  const quotesByKey=new Map(quotes.map(row=>[row.key,row]));
+  const estimateForQuote=new Map<string,string>();
+  const references=new Set<string>();
+  for(const row of estimates.values()){
+    const record=row.conversion.capital;
+    const reference=[record.productKey,record.category,record.period,record.reference.toLowerCase()].join('|');
+    if(references.has(reference))fail('The same estimate evidence is already registered for this product and period.');
+    references.add(reference);
+    for(const quoteKey of record.quoteKeys){
+      const quote=quotesByKey.get(quoteKey);
+      if(!quote||quote.productKey!==record.productKey||quote.currency!==row.currency||quote.conversion.archiveCapitalized||estimateForQuote.has(quoteKey))
+        fail('A supplier quote must belong to a single estimate for its product and currency.');
+      estimateForQuote.set(quoteKey,row.key);
+    }
+  }
+  const portions=new Map<string,Decimal[]>();
+  for(const row of assetRows){
+    const asset=row.conversion.capital,link=asset.estimate;
+    const quote=asset.gross===null?resolveAssetGross(s,asset,quotes).quote:null;
+    const parent=quote&&estimateForQuote.get(quote.key);
+    if(parent&&link?.key!==parent)fail('Link this asset to the estimate that already contains its supplier quote.');
+    if(!link)continue;
+    const estimate=estimates.get(link.key),record=estimate?.conversion.capital;
+    if(!record||estimate!.currency!==row.currency||record.category!==asset.category||
+      asset.mode!=='new'||asset.allocations.length!==1||asset.allocations[0].productKey!==record.productKey||
+      q(asset.allocations[0].share).cmp(ONE)!==0)
+      fail('A linked estimate requires a new asset with the same category, currency and fully allocated product.');
+    const used=portions.get(link.key)??[];
+    used.push(q(link.amount));portions.set(link.key,used);
+  }
+  for(const [key,values] of portions){
+    const row=estimates.get(key)!;
+    if(sum(values).cmp(q(row.conversion.capital.gross))>0)fail('Linked asset amounts exceed the original estimate.');
+  }
   const receiptIds=new Set<string>();
   for(const row of rows){
     const record=row.conversion.capital;

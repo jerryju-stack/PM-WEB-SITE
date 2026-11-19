@@ -2,15 +2,16 @@ import type {CalculationBuilder, CalculationOutput, CalculationReport, Value} fr
 import type {FinanceSnapshot} from './finance-contracts.ts';
 import {budgetOrdinal, isBudgetEvent, readBudgetEntries, readBudgetPolicy, readBudgetScopes} from './finance-budget.ts';
 import {Decimal, sum, ZERO} from './finance-decimal.ts';
+import {caseFinanceRate} from './finance-fx.ts';
 
 const q=Decimal.from;
 const nonnegative=(amount:Decimal)=>amount.n<0n?ZERO:amount;
-export const budgetSummaryKeys=['approved_budget','confirmed_actual','draft_cost','etc','eac','budget_balance','completion_variance',
+export const budgetSummaryKeys=['approved_budget','confirmed_actual','draft_allocation','draft_cost','etc','eac','budget_balance','completion_variance',
   'recorded_payments','unpaid_confirmed'] as const;
 export const budgetScopeMetric=(scope:string,key:string)=>'budget:'+scope+':'+key;
 
 export function calculateBudgetExecution(b:CalculationBuilder){
-  const s=b.snapshot,policy=readBudgetPolicy(s)!,currency=policy.currency;
+  const s=b.snapshot,policy=readBudgetPolicy(s)!,currency=b.fxReference.policy.fx||s.policy.fx?s.currency:policy.currency;
   const options={basis:'budget_events',currency,unit:currency};
   const entries=readBudgetEntries(s),rowsByScope=new Map<string,typeof entries>();
   for(const row of entries){
@@ -22,8 +23,8 @@ export function calculateBudgetExecution(b:CalculationBuilder){
     const posting=(row:typeof rows[number])=>{
       const {event,entry}=row,id='event:'+event.key,value=q(event.amount);
       const role=entry.type==='cost'||entry.type==='allocation'?entry.status+' '+entry.type:entry.type;
-      return b.values.get(id)??b.input({id,sourceKey:event.sourceKey,inputKey:event.key,role,unit:currency,currency,
-        periods:[event.periodKey],value:value.text(),status:'ok',cell:entry.reference},value);
+      return b.values.get(id+':fx')??b.values.get(id)??b.money({id,sourceKey:event.sourceKey,inputKey:event.key,role,unit:event.currency,currency:event.currency,
+        periods:[event.periodKey],value:value.text(),status:'ok',cell:entry.reference},value,currency,event.periodKey);
     };
     const make=(key:string,deps:Value[],fn:(values:Decimal[])=>Decimal,formula:string)=>{
       const result=b.calc(budgetScopeMetric(scope.key,key),key,deps,fn,{...opts,formula});metrics[key]=result;return result;
@@ -33,6 +34,7 @@ export function calculateBudgetExecution(b:CalculationBuilder){
     const confirmed=rows.filter(row=>row.entry.type==='cost'&&row.entry.status==='confirmed');
     const budget=approved.length?make('approved_budget',approved.map(posting),sum,'Sum of independently approved allocations'):
       missing('approved_budget','A scope requires an approved allocation.');
+    make('draft_allocation',rows.filter(row=>row.entry.type==='allocation'&&row.entry.status==='draft').map(posting),sum,'Unapproved forecast allocations');
     const actual=make('confirmed_actual',confirmed.map(posting),sum,'Confirmed occurrences plus linked confirmed adjustments');
     make('draft_cost',rows.filter(row=>row.entry.type==='cost'&&row.entry.status==='draft').map(posting),sum,'Unconfirmed cost drafts and adjustments');
     const payment=make('recorded_payments',rows.filter(row=>row.entry.type==='payment').map(posting),sum,'Separate dated settlements of confirmed costs');
@@ -66,26 +68,48 @@ export function calculateBudgetExecution(b:CalculationBuilder){
 
 export function budgetWorkspace(snapshot:FinanceSnapshot,report:CalculationReport,actorUid:string) {
   const policy=readBudgetPolicy(snapshot),scopes=readBudgetScopes(snapshot),entries=readBudgetEntries(snapshot);
-  const format=(amount:Decimal)=>amount.text(policy?snapshot.policy.currencyScales[policy.currency]:snapshot.currencyScale);
+  const format=(amount:Decimal,code:string)=>amount.text(snapshot.policy.currencyScales[code]);
   const data=scopes.map(scope=>{
     const rows=entries.filter(row=>row.entry.scope===scope.key);
     const latest=rows.find(row=>row.entry.type==='etc');
-    const time=new Map<string,{confirmed:Decimal;payments:Decimal}>();
+    const time=new Map<string,{confirmed:Decimal|null;payments:Decimal|null}>();
+    const periods=new Map<string,typeof rows>();
     for(const {event,entry} of rows){
+      const postings=periods.get(event.periodKey)??[];
+      postings.push({event,entry});
+      periods.set(event.periodKey,postings);
+      if(!(entry.type==='cost'&&entry.status==='confirmed'||entry.type==='payment'))continue;
       const current=time.get(event.periodKey)??{confirmed:ZERO,payments:ZERO};
-      if(entry.type==='cost'&&entry.status==='confirmed')current.confirmed=current.confirmed.add(q(event.amount));
-      else if(entry.type==='payment')current.payments=current.payments.add(q(event.amount));
-      else continue;
+      const category=entry.type==='payment'?'payments':'confirmed';
+      const rate=caseFinanceRate(snapshot,event.currency,policy!.currency,event.periodKey);
+      current[category]=rate&&current[category]?current[category].add(q(event.amount).mul(rate)):null;
       time.set(event.periodKey,current);
     }
     return {...scope,metrics:Object.fromEntries(budgetSummaryKeys.map(key=>[key,compact(report.outputs[budgetScopeMetric(scope.key,key)])])),
+      periodStatuses:[...periods.entries()].sort(([a],[b])=>budgetOrdinal(snapshot,a)-budgetOrdinal(snapshot,b))
+        .map(([period,postings])=>{
+          const stat=(match:(entry:typeof rows[number]['entry'])=>boolean)=>{
+            const items=postings.filter(row=>match(row.entry));
+            const converted=items.map(({event})=>{
+              const rate=caseFinanceRate(snapshot,event.currency,policy!.currency,event.periodKey);
+              return rate?Decimal.from(event.amount).mul(rate):null;
+            });
+            return {amount:items.length&&converted.every(value=>value!==null)?format(sum(converted.map(value=>value!)),policy!.currency):null,
+              keys:items.map(row=>row.event.key)};
+          };
+          return {period,draft:stat(entry=>entry.type==='allocation'&&entry.status==='draft'),
+            approved:stat(entry=>entry.type==='allocation'&&entry.status==='confirmed'),
+            confirmed:stat(entry=>entry.type==='cost'&&entry.status==='confirmed'),payments:stat(entry=>entry.type==='payment'),
+            remaining:stat(entry=>entry.type==='etc')};
+        }),
       remainingInput:latest?{...latest.event,reference:latest.entry.reference,
-        consumed:report.outputs[budgetScopeMetric(scope.key,'etc_consumed')]?.displayValue??null}:null,
+        consumed:compact(report.outputs[budgetScopeMetric(scope.key,'etc_consumed')])}:null,
       postings:rows.flatMap(({event,entry})=>entry.type==='etc'?[]:[{event,entry,
-        amount:format(q(event.amount)),ownDraft:(entry.type==='allocation'||entry.type==='cost')&&entry.makers.includes(actorUid)}])
+        amount:format(q(event.amount),event.currency),ownDraft:(entry.type==='allocation'||entry.type==='cost')&&entry.makers.includes(actorUid)}])
         .sort((a,b)=>budgetOrdinal(snapshot,a.event.periodKey)-budgetOrdinal(snapshot,b.event.periodKey)||a.event.key.localeCompare(b.event.key)),
       timeline:[...time.entries()].sort(([a],[b])=>budgetOrdinal(snapshot,a)-budgetOrdinal(snapshot,b))
-        .map(([period,values])=>({period,confirmed:format(values.confirmed),payments:format(values.payments)}))};
+        .map(([period,values])=>({period,confirmed:values.confirmed?format(values.confirmed,policy!.currency):null,
+          payments:values.payments?format(values.payments,policy!.currency):null}))};
   });
   return {policy,scopes:data,currencyScale:policy?snapshot.policy.currencyScales[policy.currency]:snapshot.currencyScale,
     legacyEvents:snapshot.events.filter(event=>!isBudgetEvent(event)&&['budget','incurred','etc','payment'].includes(event.kind)).length};

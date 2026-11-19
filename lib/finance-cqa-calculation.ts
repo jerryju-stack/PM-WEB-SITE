@@ -109,6 +109,7 @@ export function cqaCalculation(b:CalculationBuilder) {
       const other=def('other_costs',[warrantyCost,freight,otherTax,launch,otherFixed],sum,{basis:'cqa_full',
         formula:repriced||warranty||pack||model?.factoryCost('launch')?'Warranty + packaging and freight + other factory costs + launch':'frozen P05 freight, warranty, other factory and launch schedules'});
       const allocations=def('allocations',[model?.factoryCost('allocation')??scaled(col+'209',t===0)],([v])=>v,{basis:'cqa_full'});
+      Object.assign(record,{factory_warranty:warrantyCost,factory_packaging:freight,factory_launch:launch,factory_allocation:allocations});
       const dev=development(product.key,p,volume,def);
       const archiveEngineering=scaled(col+'426'),archiveRecovery=scaled(col+'427',true);
       const engineering=def('engineering_budget',[archiveEngineering,dev.gross],sum);
@@ -129,7 +130,12 @@ export function cqaCalculation(b:CalculationBuilder) {
       const developmentCashAdjustment=def('development_cash_timing',[dev.gross,dev.recovery,dev.cash],([gross,recovery,cash])=>gross.sub(recovery).add(cash));
       const cash=def('cash_flow_cny',[cbt,incrementalDep,wc.tax,wc.change,investment.cash,developmentCashAdjustment,investment.pieceCash,investment.piece],
         values=>sum(values.slice(0,-1)).sub(values.at(-1)!),{formula:'CBT + depreciation + tax + NWC + net capital cash + settlement timing'});
-      const fx=def('usd_per_cny',[read('Input','C8',p,'CNY/USD')],([v])=>ONE.div(v),{unit:'USD/CNY',currency:null});
+      const usdQuote=read('Input','C8',p,'CNY/USD');
+      const fx=usdQuote.q&&usdQuote.q.n<=0n?
+        b.make(prefix+':usd_per_cny','usd_per_cny',null,[usdQuote],{unit:'USD/CNY',currency:null,periods:[p],productScope:scope,
+          basis:'cqa_incremental',status:'invalid_rate',details:{message:'The archived CQA C8 exchange rate must be positive.'}}):
+        def('usd_per_cny',[usdQuote],([v])=>ONE.div(v),{unit:'USD/CNY',currency:null});
+      record.usd_per_cny=fx;
       const usd=def('cash_flow_usd',[cash,fx],([c,r])=>c.mul(r),{currency:'USD',unit:'USD'});
       def('cash_flow',[s.currency==='USD'?usd:cash],([v])=>v,{currency:s.currency,unit:s.currency});
       def('reported_revenue',s.currency==='USD'?[earnedRevenue,fx]:[earnedRevenue],a=>a.length===2?a[0].mul(a[1]):a[0],{currency:s.currency,unit:s.currency,basis:'cqa_full'});

@@ -3,6 +3,7 @@ import {financeKey,fixedDecimal} from './finance-contracts.ts';
 import type {FinanceInput,FinanceSnapshot,FinanceSource,FixedDecimal} from './finance-contracts.ts';
 import type {CalculationBuilder,Value} from './finance-calculation-types.ts';
 import {Decimal,ONE,ZERO,sum} from './finance-decimal.ts';
+import {fxRate} from './finance-fx.ts';
 import {invalid} from './contracts.ts';
 
 export const BUSINESS_VERSION='P08.1';
@@ -54,6 +55,10 @@ export function makeBusinessInput(s:FinanceSnapshot,spec:{field:BusinessField;gr
 
 export function businessFx(s:FinanceSnapshot,currency:string,period:string) {
   const base=archived(s)?'CNY':s.currency;
+  if(s.policy.fx&&!archived(s)){
+    const rate=fxRate(s.policy.currencyScales,s.policy.fx,currency,base);
+    return rate?{rate,source:null,input:null}:null;
+  }
   if(currency===base)return {rate:ONE,source:null,input:null};
   if(archived(s)) {
     const cell=currency==='USD'?'C8':currency==='EUR'?'C9':null;
@@ -153,7 +158,7 @@ export function validateBusinessChange(s:FinanceSnapshot,row:BusinessInput,value
   if(field==='vehicles'&&q.d!==1n)invalid('Vehicle demand must be a whole count.');
   if(['configuration','annual_reduction','scrap','warranty'].includes(field)&&q.cmp(ONE)>0)invalid('Enter a fraction from 0 to 1.');
   if(field==='annual_reduction'&&q.cmp(ONE)===0)invalid('Annual price reduction must be below 100%.');
-  if(currency!==undefined&&(!['part_price','sales_price'].includes(field)||!Object.hasOwn(s.policy.currencyScales,currency)))invalid('Quote currency must be configured for this version.');
+  if(currency!==undefined&&(!row.currency||archived(s)&&!['part_price','sales_price'].includes(field)||!Object.hasOwn(s.policy.currencyScales,currency)))invalid('Source currency must be configured for this version.');
   const quoteCurrency=currency??row.currency;
   if(quoteCurrency&&!businessFx(s,quoteCurrency,row.periodKey))invalid('Missing approved FX for '+quoteCurrency+' in '+row.periodKey+'.');
 }
@@ -208,7 +213,7 @@ export function addBusinessRecord(s:FinanceSnapshot,raw:Record<string,unknown>,p
       const field=name as BusinessField,normalized=fixedDecimal(value);
       const qty=Decimal.from(normalized);
       const row=makeBusinessInput(s,{field,group,label,product,market,period,source,value:qty,
-        currency:field==='part_price'||field==='sales_price'||field==='tooling'?currency:undefined,
+        currency:field==='part_price'||field==='sales_price'||field==='tooling'||raw.recordType==='factory'?currency:undefined,
         metadata:{...(type==='bom'?{partNumber:part,archiveContribution:'0'}:{}),...(field==='tooling'?{assetKey}:{})}});
       if(row.valueKind==='money'&&qty.cmp(Decimal.from(row.value))!==0)invalid('Currency amount exceeds the configured money precision.');
       validateBusinessChange(s,row,normalized);
@@ -223,8 +228,11 @@ export function addBusinessRecord(s:FinanceSnapshot,raw:Record<string,unknown>,p
 
 export function businessValue(b:CalculationBuilder,row:BusinessInput):Value {
   const id='input:'+row.key;
-  if(b.values.has(id))return b.values.get(id)!;
+  const prior=b.values.get(id+':fx')??b.values.get(id+':converted')??b.values.get(id);
+  if(prior)return prior;
   const src=b.snapshot.sources.find(source=>source.key===row.sourceKey),q=Decimal.from(row.value);
+  if(row.currency&&!archived(b.snapshot))return b.money({id,sourceKey:row.sourceKey,inputKey:row.key,role:row.conversion.label,
+    unit:row.unit,currency:row.currency,periods:[row.periodKey],value:q.text(),status:'ok',sheet:src?.sheet,cell:src?.cell},q,b.snapshot.currency,row.periodKey);
   const fx=row.currency?businessFx(b.snapshot,row.currency,row.periodKey):null;
   const input=b.input({id,sourceKey:row.sourceKey,inputKey:row.key,role:row.conversion.label,unit:row.unit,currency:row.currency,
     periods:[row.periodKey],value:q.text(),status:'ok',sheet:src?.sheet,cell:src?.cell},q);
