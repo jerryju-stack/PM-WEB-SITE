@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {calculateFinance,compareCalculations} from '../lib/finance-calculation.ts';
 import {addBusinessRecord,businessInputs} from '../lib/finance-business.ts';
-import {commercialWorkspace} from '../lib/finance-commercial-workspace.ts';
+import {commercialWorkspace,factoryCostWorkspace} from '../lib/finance-commercial-workspace.ts';
 import {applyFinanceChanges} from '../lib/finance-preview.ts';
 import {openStore} from '../lib/database.ts';
 import {financeService} from '../lib/finance.ts';
@@ -19,6 +19,18 @@ const row=(snapshot:ReturnType<typeof p08Scenario>,field:string,year='year-1')=>
   .find(input=>input.metricKey==='p08.'+field&&input.periodKey===year)!;
 const change=(snapshot:ReturnType<typeof p08Scenario>,field:string,value:number,scale=0)=>({collection:'inputs',key:row(snapshot,field).key,value:fixedValue(value,scale)});
 const scenario=()=>p08Scenario();
+
+test('Factory view distinguishes a recorded zero from a category with no forecast input',()=>{
+  const snapshot=scenario();
+  snapshot.inputs=snapshot.inputs.filter(input=>input.metricKey!=='p08.warranty');
+  const report=calculateFinance(snapshot);
+  const costs=factoryCostWorkspace(snapshot,report,businessInputs(snapshot),'year-1',null);
+  assert.equal(report.products['product-a'].periodic[1].factory_warranty.displayValue,'0.00');
+  assert.equal(costs.find(row=>row.field==='warranty')?.total,null);
+  assert.equal(costs.find(row=>row.field==='warranty')?.unit,null);
+  assert.equal(costs.find(row=>row.field==='packaging')?.total,'0.00');
+  assert.equal(costs.find(row=>row.field==='packaging')?.unit,'0.0000');
+});
 
 test('Commercial schedule uses configured periods and preserves price evidence for a zero-volume market',()=>{
   const snapshot=scenario();

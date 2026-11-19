@@ -50,12 +50,11 @@ export function operationsWorkspace(s:FinanceSnapshot,report:CalculationReport,p
   };
   const format=(value:Decimal|null,places=2)=>value?.text(places)??null;
   const percent=(value:Decimal|null)=>format(value?.mul(Decimal.from(100))??null);
-  const laborOutputs=Object.fromEntries(Object.entries(report.products).map(([key,data])=>[key,
-    data.periodic.map((row,index)=>({period:report.periods[index],value:row.unit_labor?.displayValue??null}))]));
+  const exact=(output:CalculationReport['periodic'][number][string]|undefined)=>output?.exact?
+    new Decimal(BigInt(output.exact.numerator),BigInt(output.exact.denominator)):null;
   return s.products.filter(p=>p.metadata.active!==false&&(!productFilter||p.key===productFilter)).map(product=>{
     const scope=index.scope(product.key,period),output=report.products[product.key]?.periodic[periodIndex]??{};
-    const volume=output.volume?.exact;
-    const demand=volume?new Decimal(BigInt(volume.numerator),BigInt(volume.denominator)):null;
+    const demand=exact(output.volume);
     const currency=archived(s)?'CNY':s.currency;
     const rateCurrency=scope.rate?.currency??currency;
     const fx=scope.rate?caseFinanceRate(s,rateCurrency,currency,period):null;
@@ -66,7 +65,7 @@ export function operationsWorkspace(s:FinanceSnapshot,report:CalculationReport,p
       operations:[594,599].map(first=>{
         const link=/AME!\$?F\$?(\d+)/.exec(excel(sheet,'C'+(first+1))?.formula??'');
         const row=link?.[1];
-        return {line:row?'AME line '+row:'Financials operation '+first,financials:sheet+'!C'+first+':D'+(first+1),
+        return {line:row?'AME line '+row:'Financials operation '+first,lineKey:row?'ame-'+row:null,financials:sheet+'!C'+first+':D'+(first+1),
           shared:row==='35'||row==='36',repeats:row?String(product.metadata.cyclesPerUnit):'1',
           people:row?archivedValue('AME','E'+row):archivedValue(sheet,'C'+first),ct:row?archivedValue('AME','F'+row):archivedValue(sheet,'C'+(first+1)),
           oee:row?archivedValue('AME','G'+row):null,efficiency:archivedValue(sheet,'D'+first),allowance:archivedValue(sheet,'D'+(first+1))};
@@ -74,7 +73,10 @@ export function operationsWorkspace(s:FinanceSnapshot,report:CalculationReport,p
     }:null;
     return {productKey:product.key,label:product.label,period,demand:format(demand,0),currency,rateCurrency,currencies:s.policy.currencyScales,
       archive,currentUnitLabor:output.unit_labor?.displayValue??null,selectedKey:scope.selected?.key??null,
-      hourlyRate:format(rate,4),laborByPeriod:laborOutputs[product.key]??[],
+      hourlyRate:format(rate,4),laborTotal:format(exact(output.labor),10),
+      laborByPeriod:report.products[product.key]?.periodic.map((row,idx)=>({
+        period:report.periods[idx],volume:format(exact(row.volume),0),value:format(exact(row.unit_labor),4)
+      }))??[],
       selection:scope.selection?.conversion.operations as Extract<OperationsRecord,{type:'selection'}>|undefined,
       rate:scope.rate?.conversion.operations as Extract<OperationsRecord,{type:'rate'}>|undefined,
       records:scope.items.flatMap(row=>{

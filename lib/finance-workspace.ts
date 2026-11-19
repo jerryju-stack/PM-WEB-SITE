@@ -10,11 +10,11 @@ const labels=(items:FinanceSnapshot['periods'])=>items.map(({key,label})=>({key,
 const dashboardMetrics=['revenue','total_cost','cqa.mpbitri','full_cost_management_profit','operating_profit','operating_margin',
   'npv','irr','payback_period','peak_funding_requirement'];
 export type ScreenMetric=Pick<CalculationOutput,'id'|'metricKey'|'value'|'displayValue'|'status'|'unit'|'details'>&{hasSources:boolean};
+export function screenMetric({id,metricKey,value,displayValue,status,unit,details,upstreamInputs}:CalculationOutput):ScreenMetric {
+  return {id,metricKey,value,displayValue,status,unit,details,hasSources:upstreamInputs.length>0};
+}
 function screenRow(row:Record<string,CalculationOutput>,keys:string[]):Record<string,ScreenMetric> {
-  return Object.fromEntries(keys.filter(key=>row[key]).map(key=>{
-    const {id,metricKey,value,displayValue,status,unit,details,upstreamInputs}=row[key];
-    return [key,{id,metricKey,value,displayValue,status,unit,details,hasSources:upstreamInputs.length>0}];
-  }));
+  return Object.fromEntries(keys.filter(key=>row[key]).map(key=>[key,screenMetric(row[key])]));
 }
 
 export function screenReport(snapshot:FinanceSnapshot,report:CalculationReport,section:string) {

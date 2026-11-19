@@ -66,7 +66,7 @@ export function calculateBudgetExecution(b:CalculationBuilder){
   }));
 }
 
-export function budgetWorkspace(snapshot:FinanceSnapshot,report:CalculationReport,actorUid:string) {
+export function budgetWorkspace(snapshot:FinanceSnapshot,report:CalculationReport,actorUid:string,product?:string,period?:string) {
   const policy=readBudgetPolicy(snapshot),scopes=readBudgetScopes(snapshot),entries=readBudgetEntries(snapshot);
   const format=(amount:Decimal,code:string)=>amount.text(snapshot.policy.currencyScales[code]);
   const data=scopes.map(scope=>{
@@ -111,7 +111,23 @@ export function budgetWorkspace(snapshot:FinanceSnapshot,report:CalculationRepor
         .map(([period,values])=>({period,confirmed:values.confirmed?format(values.confirmed,policy!.currency):null,
           payments:values.payments?format(values.payments,policy!.currency):null}))};
   });
+  const scoped=data.filter(scope=>!product||scope.productKey===product);
+  const draftTotal=(rows:typeof data[number]['periodStatuses'])=>{
+    const drafts=rows.filter(row=>row.draft.keys.length);
+    const available=drafts.length&&drafts.every(row=>row.draft.amount!==null);
+    return {count:drafts.reduce((count,row)=>count+row.draft.keys.length,0),
+      amount:available?format(sum(drafts.map(row=>q(row.draft.amount!))),policy!.currency):null};
+  };
+  const selected=(scope:typeof data[number])=>scope.periodStatuses.filter(row=>!period||row.period===period);
+  const rollup=(key:'approved_budget'|'eac')=>{
+    const values=scoped.map(scope=>scope.metrics[key]);
+    if(!values.length||values.some(value=>value?.value==null))return null;
+    const currency=values[0]!.unit;
+    return {amount:format(sum(values.map(value=>q(value!.value!))),currency),currency};
+  };
   return {policy,scopes:data,currencyScale:policy?snapshot.policy.currencyScales[policy.currency]:snapshot.currencyScale,
+    allocationTotals:{project:draftTotal(scoped.flatMap(selected)),scopes:Object.fromEntries(scoped.map(scope=>[scope.key,draftTotal(selected(scope))]))},
+    approved:rollup('approved_budget'),eac:rollup('eac'),
     legacyEvents:snapshot.events.filter(event=>!isBudgetEvent(event)&&['budget','incurred','etc','payment'].includes(event.kind)).length};
 }
 

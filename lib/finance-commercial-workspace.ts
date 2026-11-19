@@ -3,6 +3,7 @@ import type {FinanceSnapshot} from './finance-contracts.ts';
 import {archived,businessFx,businessGroups} from './finance-business.ts';
 import type {BusinessField,BusinessInput} from './finance-business.ts';
 import {Decimal} from './finance-decimal.ts';
+import {screenMetric} from './finance-workspace.ts';
 
 const exact=(output:CalculationOutput|undefined)=>output?.exact?
   new Decimal(BigInt(output.exact.numerator),BigInt(output.exact.denominator)):null;
@@ -57,20 +58,20 @@ export function commercialWorkspace(snapshot:FinanceSnapshot,report:CalculationR
 }
 
 export function materialCostSchedule(report:CalculationReport,inputs:BusinessInput[]){
-  const quotedScopes=new Set(inputs.filter(input=>input.module==='bom'&&
-    ['part_quantity','part_price'].includes(input.conversion.businessField)).map(input=>input.productKey+':'+input.periodKey));
+  const quotedScopes=new Set(inputs.filter(input=>input.module==='bom'&&input.conversion.businessField==='part_price'&&
+    (!input.conversion.origin||input.periodKey===report.periods[1])).map(input=>input.productKey+':'+input.periodKey));
   return Object.entries(report.products).flatMap(([product,data])=>data.periodic.flatMap((row,index)=>{
     const volume=exact(row.volume),material=exact(row.material);
-    if(!volume||volume.n<=0n||!material)return [];
+    if(!volume||volume.n<=0n)return [];
     const period=report.periods[index];
-    return [{product,period,unitCost:material.div(volume).text(4),currency:row.material.currency??report.currency,
+    return [{product,period,unitCost:material?.div(volume).text(4)??null,material:material?.text(8)??null,currency:row.material?.currency??report.currency,
       hasItemQuotes:quotedScopes.has(product+':'+period)}];
   }));
 }
 
 const plantCosts=[
-  ['fixed','Fixed manufacturing overhead','Period total','foh'],
   ['variable','Variable manufacturing overhead','Per piece','voh'],
+  ['fixed','Fixed manufacturing overhead','Period total','foh'],
   ['scrap','Scrap','Percentage of sales','scrap'],
   ['warranty','Warranty','Percentage of sales',null],
   ['packaging','Packaging and freight','Per piece',null],
@@ -78,20 +79,28 @@ const plantCosts=[
   ['allocation','Corporate allocation','Period total','allocations']
 ] as const;
 
-export function factoryCostWorkspace(snapshot:FinanceSnapshot,report:CalculationReport,inputs:BusinessInput[],period:string) {
-  const index=report.periods.indexOf(period);
-  if(index<0)return [];
+export function factoryCostWorkspace(snapshot:FinanceSnapshot,report:CalculationReport,inputs:BusinessInput[],period:string,productFilter:string|null,includeHorizon=false) {
+  if(snapshot.policy.rules.model==='cash_series')return [];
+  const selected=productFilter&&Object.hasOwn(report.products,productFilter)?productFilter:null;
   const currency=archived(snapshot)?'CNY':snapshot.currency;
-  const scale=snapshot.policy.currencyScales[currency];
-  return Object.entries(report.products).flatMap(([product,value])=>{
-    const row=value.periodic[index],volume=exact(row?.volume);
-    return plantCosts.flatMap(([field,label,basis,fallback])=>{
-      const output=row?.['factory_'+field]??(fallback?row?.[fallback]:undefined);
-      if(!output)return [];
-      const amount=exact(output),source=inputs.find(item=>item.productKey===product&&item.periodKey===period&&item.conversion.businessField===field);
-      return [{product,field,label,basis,total:amount?.text(scale)??null,unit:amount&&volume&&volume.n>0n?amount.div(volume).text(4):null,
-        volume:volume?.text(0)??null,currency,inputKey:source?.key??null,
-        original:source?Decimal.from(source.value).text(Math.min(source.value.scale,8)):null,originalUnit:source?.unit??null}];
-    });
-  });
+  const moneyScale=snapshot.policy.currencyScales[currency];
+  const inputByScope=new Map(inputs.filter(input=>input.module==='factory').map(input=>
+    [JSON.stringify([input.productKey,input.periodKey,input.conversion.businessField]),input]));
+  const sources=new Map(snapshot.sources.map(source=>[source.key,source]));
+  return Object.entries(report.products).filter(([product])=>!selected||product===selected).flatMap(([product,value])=>
+    value.periodic.flatMap((row,index)=>{
+      const rowPeriod=report.periods[index],volume=exact(row.volume);
+      if(!selected&&!includeHorizon&&rowPeriod!==period)return [];
+      return plantCosts.map(([field,label,basis,fallback])=>{
+        const output=row['factory_'+field]??(fallback?row[fallback]:undefined);
+        const unrecorded=output?.formula==='No separate amount recorded for this category';
+        const amount=unrecorded?null:exact(output),input=inputByScope.get(JSON.stringify([product,rowPeriod,field]));
+        const source=input?sources.get(input.sourceKey):undefined;
+        return {product,period:rowPeriod,field,label,basis:field==='fixed'&&archived(snapshot)?'Per piece':basis,
+          total:amount?.text(moneyScale)??null,exactTotal:amount?.text(10)??null,unit:amount&&volume&&volume.n>0n?amount.div(volume).text(4):null,
+          volume:volume?.text(0)??null,currency,moneyScale,inputKey:input?.key??null,metric:output?screenMetric(output):null,
+          original:input?Decimal.from(input.value).text(input.value.scale):null,originalUnit:input?.unit??null,
+          reference:source?.sheet&&source.cell?source.sheet+'!'+source.cell:source?.externalKey??null};
+      });
+    }));
 }

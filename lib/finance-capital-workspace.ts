@@ -6,10 +6,12 @@ import {capitalAssets,capitalCurrency,capitalEstimates,capitalLines,capitalOrdin
 import type {CapitalRecord} from './finance-capital.ts';
 import type {CapitalCashEvent} from './finance-capital-calculation.ts';
 import {caseFinanceRate} from './finance-fx.ts';
+import {screenMetric} from './finance-workspace.ts';
 
 const q=Decimal.from;
 const exact=(output:CalculationOutput)=>output.exact?new Decimal(BigInt(output.exact.numerator),BigInt(output.exact.denominator)):null;
-export function capitalWorkspace(s:FinanceSnapshot,report:CalculationReport,product:string|null,source:string|null,showAssets:boolean){
+export function capitalWorkspace(s:FinanceSnapshot,report:CalculationReport,product:string|null,source:string|null,showAssets:boolean,
+  period:string|null=null,presentation=report){
   const currency=capitalCurrency(s),scale=s.policy.currencyScales[currency],assetRows=capitalAssets(s),rows=capitalRows(s),isArchive=archived(s);
   const quotes=showAssets?capitalQuoteRows(s):[],known=new Map(assetRows.map(row=>[row.key,row.conversion.capital]));
   const inProduct=(record:CapitalRecord)=>!product||record.kind==='valuation'||(record.kind==='terms'||record.kind==='estimate'?record.productKey===product:
@@ -27,6 +29,7 @@ export function capitalWorkspace(s:FinanceSnapshot,report:CalculationReport,prod
       originalAmount:original?.text(s.policy.currencyScales[quote?.currency??originalCurrency])??null,
       exchangeRate:(quote?caseFinanceRate(s,quote.currency??currency,currency,quote.periodKey):rate)?.text(8)??null,
       amount:amount?.text(scale)??null,allocated:amount?.mul(share).text(scale)??null,
+      selectedAllocation:product&&amount?amount.mul(q(record.allocations.find(item=>item.productKey===product)?.share??'0')).text(scale):null,
       incremental:record.mode==='new'?amount?.mul(share).text(scale)??null:q(0).text(scale),
       quote:quote?{key:quote.key,period:quote.periodKey,product:quote.productKey,market:quote.marketKey,reference:quote.conversion.label}:null,
       line:record.lineId?{key:linked?.key??null,period:linked?.periodKey??null,product:linked?.productKey??record.allocations[0].productKey}:null};
@@ -67,17 +70,18 @@ export function capitalWorkspace(s:FinanceSnapshot,report:CalculationReport,prod
   const standaloneQuotes=toolingQuotes.filter(row=>!row.estimate&&!row.asset&&!row.archived);
   const recordedAssets=scopedAssets.filter(row=>!product||row.record.allocations.some(a=>a.productKey===product));
   const coveredAssets=recordedAssets.filter(row=>!row.record.estimate);
-  const assetAmount=(row:typeof assets[number])=>product?row.amount&&q(row.amount).mul(
-    q(row.record.allocations.find(a=>a.productKey===product)!.share)).text(scale):row.amount;
-  const originalCompensation=showAssets?s.inputs.flatMap(row=>{
+  const assetAmount=(row:typeof assets[number],scope=product)=>scope?row.amount&&q(row.amount).mul(
+    q(row.record.allocations.find(a=>a.productKey===scope)!.share)).text(scale):row.amount;
+  const originalCash=showAssets?s.inputs.flatMap(row=>{
     if(row.metricKey!=='cash_adjustment'||product&&row.productKey!==product)return [];
     const source=sourceIndex.get(row.sourceKey);
     if(source?.system!=='template001'||!source.sheet)return [];
-    const cell=Object.keys(source.metadata).find(key=>/^(?:[E-Z]|[A-Z]{2,3})342$/.test(key));
+    const cell=Object.keys(source.metadata).find(key=>/^(?:[D-Z]|[A-Z]{2,3})342$/.test(key));
     const value=cell?source.metadata[cell]:null;
-    if(typeof value!=='string'||!/^\d+(?:\.\d+)?$/.test(value)||q(value).n<=0n)return [];
+    if(typeof value!=='string'||! /^-?\d+(?:\.\d+)?$/.test(value))return [];
     return [{product:row.productKey,period:row.periodKey,amount:q(value).mul(q(1000)).text(scale),reference:source.sheet+'!'+cell}];
   }):[];
+  const originalCompensation=originalCash.filter(row=>q(row.amount).n>0n);
   const archiveRows=isArchive?s.inputs.filter(row=>(!product||row.productKey===product||[row.key,'edit-'+row.key].includes(source??''))&&
     ['cqa.cqa_incremental.building','cqa.cqa_incremental.machining_forming','cqa.cqa_incremental.assembly','cqa.cqa_incremental.dunnage_packaging',
      'cqa.cqa_incremental.in_house_tooling','cqa.cqa_incremental.supplier_tooling','cqa.cqa_incremental.capex_300','cqa.cqa_incremental.investment_recovery'].includes(row.metricKey)&&q(row.value).n!==0n)
@@ -94,7 +98,7 @@ export function capitalWorkspace(s:FinanceSnapshot,report:CalculationReport,prod
   });
   const events=[...actualEvents,...archiveRows.map(row=>({...row,id:row.key,label:row.reference,actual:false}))].sort((a,b)=>
     capitalOrdinal(s,a.period)-capitalOrdinal(s,b.period)||a.key.localeCompare(b.key));
-  const result=product?report.products[product]:{periodic:report.periodic,metrics:report.metrics};
+  const result=product?presentation.products[product]:{periodic:presentation.periodic,metrics:presentation.metrics};
   const archiveAssumptions=isArchive?s.products.filter(p=>p.metadata.active!==false&&(!product||p.key===product)).map(p=>{
     const sheet=String(p.metadata.externalKey);
     const value=(cell:string)=>{
@@ -108,20 +112,97 @@ export function capitalWorkspace(s:FinanceSnapshot,report:CalculationReport,prod
   const cashOnly=s.policy.rules.model==='cash_series';
   let previousSign=0;
   const cashEvidence=report.periods.map((period,i)=>{
-    const output=result?.periodic[i]?.cash_flow,amount=output?exact(output):null;
+    const native=product?report.products[product]?.periodic[i]:report.periodic[i];
+    const output=native?.cash_flow,amount=output?exact(output):null;
     const sign=amount?(amount.n<0n?-1:amount.n>0n?1:0):null;
     const changed=!!sign&&previousSign!==0&&sign!==previousSign;
     if(sign)previousSign=sign;
     return {period,amount:amount?.text(18).replace(/\.?0+$/,'')??null,sign,changed};
   });
-  const irr=metrics.irr;
+  const irr=(product?report.products[product]?.metrics:report.metrics)?.irr;
   const irrValue=irr?exact(irr):null;
   const keys=['reported_profit','incremental_profit','depreciation','incremental_depreciation','capital_payments','capital_receipts','capital_net','capital_salvage',
     'capital_piece_cash','capital_piece_earned','capital_receivable','capital_agreed','capital_actual_receipts','receivables','inventory','payables','nwc','nwc_change','signed_tax','cash_flow','cumulative_cash','present_value'];
-  return {currency,currencies:s.policy.currencyScales,isArchive,cashOnly,rows:scopes.map(row=>({key:row.key,record:row.conversion.capital,originalCurrency:row.currency??currency})),assets,archiveRows,events,archiveAssumptions,
-    irrAudit:{rows:cashEvidence,status:irr?.status??'missing_input',message:typeof irr?.details.message==='string'?irr.details.message:null,
+  const workingPeriod=period??report.periods[1]??report.periods[0];
+  const workingIndex=report.periods.indexOf(workingPeriod);
+  const allTerms=scopes.filter(row=>row.conversion.capital.kind==='terms').sort((a,b)=>capitalOrdinal(s,b.periodKey)-capitalOrdinal(s,a.periodKey));
+  const workingProducts=Object.keys(presentation.products).filter(key=>!product||product===key);
+  const termAt=(key:string,index:number)=>allTerms.find(row=>row.productKey===key&&capitalOrdinal(s,row.periodKey)<=index);
+  const historicalTerms=new Map(archiveAssumptions.map(row=>[row.product,row]));
+  const hasArchiveTerms=(key:string)=>{
+    const row=historicalTerms.get(key);
+    return !!row&&[row.ar,row.inventory,row.ap].every(cell=>cell.value!==null);
+  };
+  const workingCapital=!showAssets&&!cashOnly?workingProducts.map(key=>{
+    const term=termAt(key,workingIndex);
+    const active=term?.conversion.capital.kind==='terms'?term.conversion.capital:null;
+    const historical=historicalTerms.get(key);
+    const recorded=active!==null||hasArchiveTerms(key);
+    const balances=presentation.products[key].periodic[workingIndex];
+    return {product:key,source:term?.key??null,reference:active?.reference??null,effectiveFrom:active?.period??null,
+      inventoryDays:active?.inventoryDays??historical?.inventory.value??null,
+      receivableDays:active?.receivableDays??historical?.ar.value??null,
+      payableDays:active?.payableDays??historical?.ap.value??null,days:active?.days??(recorded?360:null),
+      metrics:Object.fromEntries(['inventory','receivables','payables','nwc','nwc_change'].map(metric=>
+        [metric,recorded?compact(balances?.[metric]):null]))};
+  }):[];
+  const inventoryTotals={
+    quoted:totalAmounts([...estimateDetails.map(row=>row.amount),...coveredAssets.map(row=>assetAmount(row)),...standaloneQuotes.map(row=>row.amount)]),
+    booked:totalAmounts(recordedAssets.map(row=>assetAmount(row))),
+    pending:totalAmounts([...estimateDetails.map(row=>row.unbooked),...standaloneQuotes.map(row=>row.amount)]),
+    quotedCompensation:originalCompensation.length?totalAmounts(originalCompensation.map(row=>row.amount)):null
+  };
+  const hasArchiveCash=originalCash.length>0;
+  const originalPayments=originalCash.filter(row=>q(row.amount).n<0n);
+  const quoteGap=originalPayments.length&&inventoryTotals.quoted!==null?
+    sum(originalPayments.map(row=>q(row.amount).neg())).sub(q(inventoryTotals.quoted)):null;
+  const sumRecorded=(amounts:(string|null)[])=>amounts.length?totalAmounts(amounts):null;
+  const beneficiaries=showAssets?s.products.filter(row=>row.metadata.active!==false&&(!product||row.key===product)):[];
+  const allocations=beneficiaries.flatMap(({key})=>{
+    const registered=recordedAssets.filter(row=>row.record.allocations.some(item=>item.productKey===key));
+    const estimates=estimateDetails.filter(row=>row.record.productKey===key);
+    const standalone=standaloneQuotes.filter(row=>row.product===key);
+    const costs=[
+      ...registered.filter(row=>!row.record.estimate).map(row=>({category:row.record.category,amount:assetAmount(row,key)})),
+      ...estimates.map(row=>({category:row.record.category,amount:row.amount})),
+      ...standalone.map(row=>({category:'supplier_tooling' as const,amount:row.amount}))
+    ];
+    const gross=sumRecorded(costs.map(row=>row.amount));
+    const ref=originalCompensation.filter(row=>row.product===key);
+    const agreed=scopes.some(row=>row.conversion.capital.kind==='recovery'&&known.get(row.conversion.capital.assetKey)
+      ?.allocations.some(item=>item.productKey===key))?report.products[key]?.metrics.capital_agreed:null;
+    const recovery=ref.length?totalAmounts(ref.map(row=>row.amount)):agreed?.displayValue??null;
+    if(!costs.length&&recovery===null)return [];
+    return [{product:key,gross,recovery,net:gross!==null&&recovery!==null?q(gross).sub(q(recovery)).text(scale):null,
+      recoveryPeriod:ref.length===1?ref[0].period:null,
+      categories:Object.fromEntries((['line','in_house_tooling','supplier_tooling','equipment'] as const).map(category=>
+        [category,sumRecorded(costs.filter(row=>row.category===category).map(row=>row.amount))]))}];
+  }).sort((a,b)=>q(b.gross??'0').cmp(q(a.gross??'0'))||a.product.localeCompare(b.product));
+  const allocationOrder=new Map(allocations.map((row,index)=>[row.product,index]));
+  const cash=beneficiaries.flatMap(({key})=>{
+    const native=events.filter(row=>row.product===key&&(!period||row.period===period));
+    const quote=originalCash.filter(row=>row.product===key&&(!period||row.period===period));
+    const actual=native.filter(row=>row.actual&&row.kind!=='payment');
+    const payments=hasArchiveCash?quote.filter(row=>q(row.amount).n<0n):
+      native.filter(row=>row.kind==='payment').map(row=>({...row,amount:q(row.amount).neg().text(scale)}));
+    const receipts=hasArchiveCash?quote.filter(row=>q(row.amount).n>0n):
+      native.filter(row=>!row.actual&&row.kind!=='payment');
+    if(!quote.length&&!native.length)return [];
+    const entry=(items:{amount:string;period:string}[])=>({amount:sumRecorded(items.map(row=>row.amount)),periods:[...new Set(items.map(row=>row.period))]});
+    return [{product:key,payment:entry(payments),recovery:entry(receipts),received:entry(actual),quoteNet:entry(quote)}];
+  }).sort((a,b)=>(allocationOrder.get(a.product)??Infinity)-(allocationOrder.get(b.product)??Infinity)||
+    a.product.localeCompare(b.product));
+  return {currency,reportingCurrency:presentation.currency,currencies:s.policy.currencyScales,isArchive,cashOnly,
+    rows:scopes.map(row=>({key:row.key,record:row.conversion.capital,originalCurrency:row.currency??currency})),assets,archiveRows,events,archiveAssumptions,
+    irrAudit:{rows:cashEvidence,currency:report.currency,status:irr?.status??'missing_input',message:typeof irr?.details.message==='string'?irr.details.message:null,
       precisionRate:irrValue?.mul(q(100)).text(6)??null,changes:cashEvidence.filter(row=>row.changed).length},
-    accounting:report.periods.map((period,i)=>({period,metrics:Object.fromEntries(keys.map(key=>[key,compact(result?.periodic[i]?.[key])]))})),
+    accounting:report.periods.map((period,i)=>{
+      const workingBasis=showAssets||workingProducts.length>0&&workingProducts.every(key=>termAt(key,i)||hasArchiveTerms(key));
+      return {period,metrics:Object.fromEntries(keys.map(key=>[key,(!workingBasis&&(key==='nwc'||key==='nwc_change'))?
+        null:compact(result?.periodic[i]?.[key])]))};
+    }),
+    workingCapital,workingPeriod,
+    paybackPrecision:metrics.payback_period?.exact?exact(metrics.payback_period)?.text(6)??null:null,
     totals:Object.fromEntries(['operating_profit','full_cost_management_profit','cqa.mpbitri','incremental_profit','discount_rate','npv','irr','payback_period','peak_funding_requirement',
       'capital_gross','capital_allocated','capital_new','capital_payments','capital_receipts','capital_agreed','capital_actual_receipts','capital_net','capital_salvage'].map(key=>[key,compact(metrics[key])])),
     fundingPeriod:typeof metrics.peak_funding_requirement?.details.firstPeriod==='string'?metrics.peak_funding_requirement.details.firstPeriod:null,
@@ -129,16 +210,12 @@ export function capitalWorkspace(s:FinanceSnapshot,report:CalculationReport,prod
     quoteOptions:quotes.filter(row=>!row.conversion.archiveCapitalized).map(row=>({key:row.conversion.assetKey!,label:row.conversion.label})),
     archivedTools:quotes.filter(row=>row.conversion.archiveCapitalized).filter(row=>!product||row.productKey===product).map(row=>
       ({assetId:row.conversion.assetKey!,key:row.key,label:row.conversion.label,period:row.periodKey,market:row.marketKey,product:row.productKey})),
-    estimateDetails,toolingQuotes,originalCompensation,
-    inventoryTotals:{
-      quoted:totalAmounts([...estimateDetails.map(row=>row.amount),...coveredAssets.map(assetAmount),...standaloneQuotes.map(row=>row.amount)]),
-      booked:totalAmounts(recordedAssets.map(assetAmount)),
-      pending:totalAmounts([...estimateDetails.map(row=>row.unbooked),...standaloneQuotes.map(row=>row.amount)]),
-      quotedCompensation:originalCompensation.length?totalAmounts(originalCompensation.map(row=>row.amount)):null
-    },
+    estimateDetails,toolingQuotes,originalCompensation,inventoryTotals,
+    investment:{allocations,cash,originalCash:originalCash.filter(row=>!period||row.period===period),hasArchiveCash,
+      quoteGap:quoteGap&&quoteGap.abs().cmp(q('0.02'))>=0?quoteGap.text(scale):null},
     lines:capitalLines(s)
   };
 }
 function compact(output:CalculationOutput|undefined){
-  return output?{value:output.value,displayValue:output.displayValue,unit:output.unit,status:output.status}:null;
+  return output?screenMetric(output):null;
 }

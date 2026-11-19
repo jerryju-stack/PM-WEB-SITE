@@ -45,7 +45,16 @@ const source=page=>page.locator('#fin-capital-source');
 const events=page=>page.locator('#fin-funding-events');
 const payment=page=>events(page).getByRole('link',{name:'T5 Assembly Equipment · PO-T5-DEPOSIT',exact:true});
 const recovery=page=>events(page).getByRole('link',{name:'T5 Customer Compensation · Forecast balance',exact:true});
-const toReturn=page=>page.locator('#fin-capital-returns').click();
+const funding=page=>page.locator('#fin-returns-funding').click();
+async function toReturn(page){
+  await page.locator('#fin-capital-returns').click();
+  await funding(page);
+}
+async function selectReturnVersion(page,version){
+  const options=page.locator('#fin-more-settings');
+  if(!await options.evaluate(node=>node.open))await options.locator('summary').click();
+  await page.locator('#fin-filter-version').selectOption(version);
+}
 const level=(result,key)=>result.comparison.metrics[key];
 const money=(record)=>[record.before.displayValue,record.after.displayValue,record.delta.displayValue];
 function comparison(result){
@@ -68,6 +77,7 @@ try{
   await page.locator('#fin-filter-product').selectOption('product-a');
   await page.locator('#fin-filter-period').selectOption('year-1');
   await page.locator('#metric-npv').click();
+  await funding(page);
   await events(page).waitFor();
   const returns=page.url(),id=await payment(page).getAttribute('id');
   check('Homepage NPV reaches a Year 0 cash low and Year 1 recovery',
@@ -111,7 +121,7 @@ try{
   await events(page).scrollIntoViewIfNeeded();
   await page.screenshot({path:join(evidence,'desktop-returns-funding.png')});
 
-  await page.locator('#fin-filter-version').selectOption(run.amountDraft);
+  await selectReturnVersion(page,run.amountDraft);
   await payment(page).click();
   await page.locator('#fin-edit-asset').click();
   await form(page).locator('input[name=gross]').fill('12000');
@@ -128,13 +138,14 @@ try{
   await page.screenshot({path:join(evidence,'desktop-t5-investment.png')});
   await save(page,more);
   await toReturn(page);
+  await page.locator('#fin-returns-sources').click();
   await page.locator('#fin-basis-full').click();
   await page.getByRole('heading',{name:'Full-cost profitability',exact:true}).waitFor();
   check('Full-cost basis shows depreciation independently of incremental cash',
     (await page.locator('#finance-workspace').innerText()).includes('Full-cost depreciation')&&await events(page).count()===0);
   await page.locator('#fin-basis-incremental').click();
-  await events(page).waitFor();
-  await page.locator('#fin-filter-version').selectOption(run.termsDraft);
+  await selectReturnVersion(page,run.termsDraft);
+  await page.locator('#fin-returns-sources').click();
   await page.locator('#fin-new-terms').click();
   for(const [name,value] of Object.entries({'receivable-days':'36','payable-days':'36','inventory-days':'18',tax:'0.2',reference:'Synthetic signed working-capital terms'}))
     await form(page).locator('input[name="'+name+'"]').fill(value);
@@ -145,8 +156,10 @@ try{
   await page.getByRole('heading',{name:'Capital & cash by period'}).evaluate(node=>node.scrollIntoView({block:'start'}));
   await page.screenshot({path:join(evidence,'desktop-working-capital.png')});
   await save(page,terms);
-  await page.reload();await source(page).getByRole('heading',{name:'Synthetic signed working-capital terms',exact:true}).waitFor();
+  await page.reload();await source(page).getByText('Synthetic signed working-capital terms',{exact:true}).waitFor();
+  await page.locator('.fin-back').click();
   await page.locator('#fin-returns-investment').click();
+  await page.locator('#fin-investment-records').click();
   await page.locator('#fin-new-asset').click();
   await form(page).locator('[name=mode]').selectOption('existing_shared');
   for(const [name,value] of Object.entries({'asset-id':'SHARED-P11-REVIEW',title:'Shared Equipment Review',gross:'1000',me:'Shared ME scope',
@@ -165,6 +178,7 @@ try{
   await phone.locator('.finance-nav-entry').click();
   await phone.locator('#project-'+run.synthetic).click();
   await phone.locator('#metric-npv').click();
+  await funding(phone);
   await recovery(phone).click();
   await source(phone).getByText('2028',{exact:true}).waitFor();
   await source(phone).scrollIntoViewIfNeeded();
@@ -179,12 +193,14 @@ try{
   await arch.locator('.finance-project-entry[href="/projects/'+run.projectId+'/finance"]').click();
   await arch.locator('#metric-npv').click();
   await arch.locator('#fin-filter-product').selectOption('double_buckle');
+  await arch.locator('#fin-returns-sources').click();
   await arch.getByText('P05 working capital, tax and discount sources',{exact:true}).click();
   check('CQA returns shows original inventory, receivable, payable and tax sources',
     (await arch.locator('.fin-capital-archive').innerText()).includes('D446')&&
     (await arch.locator('.fin-capital-archive').innerText()).includes('D448')&&
     (await arch.locator('.fin-capital-archive').innerText()).includes('C329'));
   await arch.locator('#fin-returns-investment').click();
+  await arch.locator('#fin-investment-records').click();
   await arch.getByText('P05 asset payments and compensation',{exact:true}).click();
   check('CQA archive displays real investment sources and read-only action scope',
     (await arch.locator('.fin-capital-archive').innerText()).includes('Financials Dbl BK+SW')&&await arch.locator('#fin-new-asset').count()===0);

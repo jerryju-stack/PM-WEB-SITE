@@ -185,7 +185,7 @@ export function operationsIndex(s:FinanceSnapshot) {
       const factor=actual?actual.capacityFactors[line.line]:line.oee;
       const capacity=longest&&factor!==null&&!overbooked&&!scheduleConflict?usable.mul(q(factor)).div(longest):null;
       const balance=longest?sum(stations.map(s=>s.work!)).div(longest.mul(q(stations.length))):null;
-      return {line,stations,takt,longest,capacity,balance,bottlenecks,overbooked,scheduleConflict,factor,shared:other.length>0||q(line.allocation).cmp(ONE)<0};
+      return {line,stations,takt,longest,capacity,balance,bottlenecks,overbooked,scheduleConflict,factor,shared:other.length>0};
     });
     const issues=lines.flatMap(line=>[
       ...line.stations.filter(s=>s.work===null).map(s=>'Missing cycle time at '+s.row.station+'.'),

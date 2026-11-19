@@ -38,10 +38,11 @@ async function openFromHome(page,project=run.project){
   await page.locator('.finance-nav-entry').click();
   await page.waitForFunction(id=>location.pathname==='/projects/'+id+'/finance'||!!document.getElementById('project-'+id),project);
   if(new URL(page.url()).pathname==='/finance')await page.locator('#project-'+project).click();
-  await page.getByRole('link',{name:'Open budget',exact:true}).click();
-  await page.getByRole('heading',{name:'Budget Policy & Cost Scopes',exact:true}).waitFor();
+  await page.locator('#module-budget').click();
+  await page.getByRole('heading',{name:'Development budget allocations',exact:true}).waitFor();
 }
 async function openScope(page){
+  await page.locator('#fin-budget-view-policy').click();
   await page.getByRole('link',{name:'T6 Engineering Services',exact:true}).click();
   await budget(page).waitFor();
 }
@@ -77,9 +78,11 @@ const candidate=(result,expected)=>Object.entries(expected).every(([key,value])=
 const zeroOperations=result=>['operating_profit','npv'].every(key=>result.comparison.metrics[key].delta.displayValue==='0.00')&&
   result.comparison.periodic.every(row=>row.cash_flow.delta.displayValue==='0.00');
 async function chooseWorkflow(page){
+  await page.locator('#module-budget').click();
+  await page.locator('#fin-budget-view-versions').click();
   await page.locator('#fin-filter-version').selectOption(run.workflow);
   await page.waitForURL('**version='+run.workflow+'**');
-  await page.getByRole('heading',{name:'Budget Policy & Cost Scopes',exact:true}).waitFor();
+  await page.getByRole('heading',{name:'Versions & comparison',exact:true}).waitFor();
 }
 const approvalInput=(version,key=run.draft)=>({requestKey:'p12-browser-self-test',reason:'Synthetic self-review control',revision:version.revision,
   effectivePeriod:{from:'year-0',to:'year-2'},changeSet:[{collection:'budget_execution',action:'confirm',key,record:{reference:'Synthetic self approval'}}]});
@@ -161,6 +164,7 @@ try{
   await save(maker,await preview(maker));
   await posting(maker).getByRole('heading',{name:'T6 Credit in 2028',exact:true}).waitFor();
   const correctionURL=maker.url();
+  assert.equal(new URL(correctionURL).searchParams.get('period'),'year-2');
   await reviewer.goto(correctionURL);
   await reviewer.locator('#fin-budget-confirm').click();
   await formFill(reviewer,{reference:'Synthetic independent credit approval'});
@@ -168,8 +172,10 @@ try{
   check('Cross-period correction adjusts actual in 2028 and retains the original cutoff ETC',candidate(correction,corrected)&&zeroOperations(correction));
   await save(reviewer,correction);
   await reviewer.reload();
+  const original=posting(reviewer).getByRole('link',{name:'T6 Accepted Service',exact:true});
+  await original.waitFor();
+  assert.equal(new URL(await original.getAttribute('href'),base).searchParams.get('period'),'year-1');
   await values(reviewer,corrected);
-  await posting(reviewer).getByRole('link',{name:'T6 Accepted Service',exact:true}).waitFor();
   await posting(reviewer).scrollIntoViewIfNeeded();
   await reviewer.screenshot({path:join(evidence,'desktop-cross-period-adjustment.png')});
 
@@ -184,7 +190,7 @@ try{
   await maker.locator('.fin-budget-overrun').first().scrollIntoViewIfNeeded();
   await maker.screenshot({path:join(evidence,'desktop-overrun.png')});
   await maker.locator('#fin-budget-dashboard').click();
-  await maker.getByRole('link',{name:'Open budget',exact:true}).waitFor();
+  await maker.getByRole('heading',{name:'Project Finance Dashboard',exact:true}).waitFor();
   check('Overrun source returns to the dashboard with the same forecast',new URL(maker.url()).pathname===finance&&
     new URL(maker.url()).searchParams.get('version')===run.workflow);
 
@@ -205,6 +211,7 @@ try{
     check('Removed membership also blocks a fresh version read',(await reviewer.request.get(routeUrl)).status()===404);
   }finally {assert.equal((await grant(approvalGroup)).status(),200);}
   await admin.goto(base);await openFromHome(admin,run.setupProject);
+  await admin.locator('#fin-budget-view-policy').click();
   await admin.locator('#fin-budget-policy').click();
   await form(admin).locator('[name=currency]').selectOption('JPY');
   await form(admin).locator('[name=tax]').selectOption('inclusive');

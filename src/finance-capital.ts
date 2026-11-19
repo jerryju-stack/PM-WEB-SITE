@@ -12,8 +12,6 @@ type Rights={investment:boolean;returns:boolean};
 const assetLabels={equipment:'Equipment',line:'Production line',in_house_tooling:'In-house tooling',supplier_tooling:'Supplier tooling'};
 const eventLabels={payment:'Payment',receipt:'One-time recovery',salvage:'Residual receipt',piece_receipt:'Piece-price receipt'};
 const lifecycle=['capital_gross','capital_allocated','capital_new','capital_payments','capital_receipts','capital_net','capital_agreed','capital_salvage'];
-const incAccounting=['incremental_profit','receivables','inventory','payables','nwc','nwc_change','signed_tax','capital_payments','capital_receipts',
-  'capital_piece_cash','capital_salvage','cash_flow'];
 const opts=(labels:Record<string,string>):Option[]=>Object.entries(labels).map(([key,label])=>({key,label}));
 const optionLabel=(list:Option[],key:string)=>list.find(item=>item.key===key)?.label??key;
 const table=(head:string[],rows:string,wide=false)=>'<div class="fin-table-scroll fin-capital-table'+(wide?' fin-capital-accounting':'')+'"><table><thead><tr>'+head.map(title=>'<th scope="col">'+title+'</th>').join('')+
@@ -23,13 +21,113 @@ const term=(label:string,value:string)=>'<dt>'+html(label)+'</dt><dd>'+html(valu
 const money=(value:string|null,data:Workspace)=>value===null?'Unavailable':value+' '+data.currency;
 const evidenceLink=(link:Link,key:string,label:string,focus?:string)=>financeUrl(link('investment',key),label,focus);
 
+const formatted=(data:Workspace,value:string|null,code=data.currency)=>value===null?'—':new Intl.NumberFormat('en',{
+  minimumFractionDigits:data.currencies[code],maximumFractionDigits:data.currencies[code]
+}).format(Number(value));
+const overviewTable=(headers:string[],rows:string,label:string)=>
+  '<div class="fin-table-scroll fin-capital-table fin-annual-scroll fin-investment-table" tabindex="0" role="region" aria-label="'+html(label)+'"><table>'+
+  '<thead><tr>'+headers.map(title=>'<th scope="col">'+html(title)+'</th>').join('')+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+const investmentPanel=(heading:string,body:string)=>'<section class="fin-panel fin-business-overview"><h2>'+html(heading)+'</h2>'+body+'</section>';
+
 export function investmentPage(data:Workspace,source:string,link:Link,periods:Option[],products:Option[],rights:Rights,draft:boolean,dictionary:Dictionary,params:URLSearchParams){
-  const canEdit=rights.investment&&draft;
-  if(params.get('view')==='items')return equipmentDetails(data,source,link,periods,products,canEdit,params);
-  const assetSource=data.assets.find(row=>row.key===source||'edit-'+row.key===source);
+  const edit=rights.investment&&draft,view=params.get('view');
+  if(view==='items')return {summary:'',body:equipmentDetails(data,source,link,periods,products,edit,params)};
+  if(view==='records'||source){
+    const isAsset=data.assets.some(row=>row.key===source||'edit-'+row.key===source);
+    const isItem=data.estimateDetails.some(row=>row.key===source)||data.toolingQuotes.some(row=>row.key===source);
+    return {summary:'',body:isAsset||isItem?equipmentDetails(data,source,link,periods,products,edit,params):
+      investmentRecords(data,source,link,periods,products,edit,dictionary)};
+  }
+  if(view==='cash')return {summary:'',body:investmentCash(data,link,periods,products,params)};
+  const inventory=data.inventoryTotals,{allocations,quoteGap}=data.investment;
+  const recovery=inventory.quotedCompensation??(data.rows.some(row=>row.record.kind==='recovery')?data.totals.capital_agreed?.displayValue??null:null);
+  const summary='<div class="fin-metrics fin-overview-metrics" aria-label="Investment summary">'+[
+    ['Quoted investment',allocations.length?inventory.quoted:null,'Lifecycle quote'],
+    ['On the asset register',allocations.length?inventory.booked:null,'Registered cost'],
+    ['Pending asset registration',allocations.length?inventory.pending:null,'Quote balance'],
+    ['Expected customer compensation',recovery,inventory.quotedCompensation!==null?'Original quote forecast':'Contract amount']
+  ].map(([label,value,caption])=>'<section class="fin-metric"><div class="fin-metric-label">'+html(label)+
+    '</div><div class="fin-summary-value"><strong class="fin-value">'+html(formatted(data,value))+'</strong></div><small class="fin-state">'+
+    html(data.currency+' · '+caption)+'</small></section>').join('')+'</div>';
+  const categories=(['line','in_house_tooling','supplier_tooling','equipment'] as const)
+    .filter(category=>category!=='equipment'||allocations.some(row=>row.categories.equipment!==null));
+  const register=(product:string,category:string|null)=>link('investment','',{view:'items',product,assetCategory:category,
+    assetSearch:null,assetStatus:null,assetSupplier:null,period:null});
+  const rows=allocations.map(item=>'<tr><th scope="row">'+financeUrl(register(item.product,null),optionLabel(products,item.product),
+    'investment-product-'+item.product)+'</th>'+categories.map(category=>{
+      const value=item.categories[category];
+      return value===null?td(null):'<td>'+financeUrl(register(item.product,category),formatted(data,value),
+        'investment-class-'+item.product+'-'+category)+'</td>';
+    }).join('')+td(formatted(data,item.gross))+
+    (item.recovery===null?td(null):'<td>'+financeUrl(link('investment','',{view:'cash',product:item.product,period:item.recoveryPeriod,cashDetail:'recovery'}),
+      formatted(data,item.recovery),'investment-recovery-'+item.product)+'</td>')+td(formatted(data,item.net))+'</tr>').join('');
+  const gap=quoteGap===null?'':'<p class="fin-muted">Original quoted payments less recorded investment · '+html(formatted(data,quoteGap)+' '+data.currency)+
+    '. Check the estimate coverage in this version.</p>';
+  const note='<p class="fin-muted">Lifecycle amounts in '+html(data.currency)+
+    '. Shared equipment is allocated to its benefiting products. A dash indicates an unavailable amount or no record for that class.</p>';
+  return {summary,body:investmentPanel('Investment allocation by product',note+gap+(rows?
+    overviewTable(['Benefiting product',...categories.map(category=>assetLabels[category]),'Quoted investment','Expected compensation','Net after compensation'],
+      rows,'Investment allocation by product'):'<p>No investment or compensation records are available in this version. '+
+      financeUrl(link('investment','',{view:'records'}),'Open capital records')+'</p>'))};
+}
+
+function investmentCash(data:Workspace,link:Link,periods:Option[],products:Option[],params:URLSearchParams){
+  const selected=params.get('period')??'',detail=params.get('cashDetail'),product=params.get('product')??'';
+  const label=(key:string)=>optionLabel(periods,key);
+  const archive=data.investment.hasArchiveCash;
+  const scope=(selected?label(selected):'All forecast periods')+' · '+data.currency;
+  const original=data.investment.originalCash.filter(row=>!product||row.product===product);
+  const events=data.events.filter(row=>(!selected||row.period===selected)&&(!product||row.product===product));
+  if(detail&&product){
+    const isPayment=detail==='payment',isReceived=detail==='received',isNet=detail==='quote-net';
+    const heading=isNet?'Original net quote cash':isPayment?'Investment payment forecast':isReceived?'Actual customer receipts':'Expected compensation';
+    const quotes=isReceived?[]:original.filter(row=>isNet|| (isPayment?Number(row.amount)<0:Number(row.amount)>0));
+    const applicable=events.filter(row=>isNet?false:isReceived?row.actual&&row.kind!=='payment':
+      !row.actual&&(isPayment?row.kind==='payment':row.kind!=='payment'));
+    const quoteTable=quotes.length?overviewTable(['Period','Workbook cell','Original forecast ('+data.currency+')'],
+      quotes.map(row=>'<tr><th scope="row">'+html(label(row.period))+'</th>'+td(row.reference)+td(formatted(data,row.amount))+'</tr>').join(''),
+      'Original investment cash sources'):'';
+    const native=applicable.length?overviewTable(['Period','Cost or agreement source','Amount ('+data.currency+')','Evidence'],
+      applicable.map(row=>'<tr><th scope="row">'+html(label(row.period))+'</th><td>'+
+        financeUrl(link('investment',row.key,{view:row.kind==='payment'||row.kind==='salvage'?'items':'records',cashDetail:null}),row.label,
+          'investment-cash-event-'+row.id)+'</td>'+td((row.kind==='payment'&&Number(row.amount)>0?'-':'')+formatted(data,row.amount))+
+          td(row.reference)+'</tr>').join(''),'Investment cash record links'):'';
+    const note=isPayment?'Actual payment requires a dated payment voucher.':isReceived?'Actual receipts require a dated remittance reference.':
+      isNet?'The workbook records the signed net cash amount for each period.':'A dated remittance is required to confirm receipt.';
+    return investmentPanel(heading,'<p class="fin-muted">'+html(optionLabel(products,product)+' · '+scope)+'</p>'+quoteTable+
+      (quoteTable&&native?'<h3>Registered forecast records</h3>':'')+native+
+      (!quoteTable&&!native?'<p>No matching cash record is available for this scope.</p>':'')+
+      '<p class="fin-muted">'+html(note)+'</p>'+
+      '<div class="fin-actions">'+financeUrl(link('investment','',{view:isPayment?'items':'records',cashDetail:null}),
+        isPayment?'Open equipment and tooling':'Open customer agreements')+'</div>');
+  }
+  const flow=(row:typeof data.investment.cash[number],field:'payment'|'recovery'|'quote-net'|'received')=>{
+    const entry=field==='quote-net'?row.quoteNet:row[field];
+    const period=entry.periods.length===1?entry.periods[0]:selected;
+    if(entry.amount===null&&field!=='received')return td(null);
+    const href=link('investment','',{view:'cash',cashDetail:field,product:row.product,period:period||null});
+    return '<td>'+financeUrl(href,entry.amount===null?'To collect':formatted(data,entry.amount),'investment-flow-'+row.product+'-'+field)+
+      (entry.periods.length?'<small class="fin-state">'+html(entry.periods.length===1?label(entry.periods[0]):'Multiple periods')+'</small>':'')+'</td>';
+  };
+  const rows=data.investment.cash.map(row=>'<tr><th scope="row">'+html(optionLabel(products,row.product))+'</th>'+
+    flow(row,'payment')+flow(row,'recovery')+(archive?flow(row,'quote-net'):'')+td('To collect')+flow(row,'received')+'</tr>').join('');
+  return investmentPanel('Investment payments and recovery','<p class="fin-muted">'+html(scope)+
+    '. Outflows are shown as negative amounts. '+(archive?'The forecast columns use the original quote cash schedule.':'The forecast columns use registered schedules.')+
+    '</p>'+(rows?overviewTable(['Product','Forecast payment','Forecast recovery',...(archive?['Original net quote cash']:[]),
+      'Actual payment evidence','Actual customer receipt'],rows,'Investment payments by product'):
+      '<p>No investment cash records are available for the selected product and period.</p>'));
+}
+
+function investmentRecords(data:Workspace,source:string,link:Link,periods:Option[],products:Option[],canEdit:boolean,dictionary:Dictionary){
   const agreementSource=data.rows.find(row=>(row.key===source||'edit-'+row.key===source)&&row.record.kind==='recovery');
   const archiveSource=data.archiveRows.find(row=>row.key===source);
   const period=(key:string)=>optionLabel(periods,key);
+  const returnsLink=financeUrl(link('returns'),'Project Returns','fin-capital-returns');
+  if(agreementSource)return '<section class="fin-panel">'+recoveryDetail(agreementSource.key,agreementSource.record as RecoveryRecord,
+    agreementSource.originalCurrency,data,link,period,products,canEdit)+'<div class="fin-actions">'+returnsLink+'</div></section>';
+  if(archiveSource)return '<section class="fin-panel"><article class="fin-capital-source" id="fin-capital-source"><h3>'+
+    html(archiveSource.reference)+'</h3><dl>'+term('Period',period(archiveSource.period))+term('Archived settlement',money(archiveSource.amount,data))+
+    term('Class',eventLabels[archiveSource.kind])+'</dl></article><div class="fin-actions">'+returnsLink+'</div></section>';
   const assets=data.assets.filter(asset=>data.rows.some(row=>row.key===asset.key));
   const recoveries=data.rows.flatMap(row=>row.record.kind==='recovery'?[{key:row.key,record:row.record,originalCurrency:row.originalCurrency}]:[]);
   const totals=table(['Lifecycle investment','Amount'],lifecycle.map(key=>'<tr><th scope="row">'+metricLabel(dictionary,key)+'</th><td>'+amountCell(data.totals[key])+'</td></tr>').join(''));
@@ -47,28 +145,19 @@ export function investmentPage(data:Workspace,source:string,link:Link,periods:Op
       td(row.product?optionLabel(products,row.product):null)+td(period(row.period))+td(money(row.amount,data))+td(eventLabels[row.kind])+'</tr>').join(''))+
     (data.archivedTools.length?table(['Supplier tooling source','Asset ID'],data.archivedTools.map(row=>'<tr><th scope="row">'+
       financeUrl(link('bom',row.key,{period:row.period,market:row.market,product:row.product}),row.label)+'</th>'+td(row.assetId)+'</tr>').join('')):'')+'</details>':'';
-  return '<section class="fin-panel"><div class="fin-panel-head"><h2>Equipment, Tooling &amp; Compensation</h2>'+
-    '<div class="fin-actions">'+financeUrl(link('investment','',{view:'items'}),'Equipment & Tooling Details','fin-equipment-items')+
-    financeUrl(link('returns'),'Project Returns','fin-capital-returns')+'</div></div>'+
-    '<dl class="fin-op-metrics">'+[
-      ['Quoted investment',money(data.inventoryTotals.quoted,data)],['On the asset register',money(data.inventoryTotals.booked,data)],
-      ['Pending asset registration',money(data.inventoryTotals.pending,data)],
-      ['Original quoted compensation',data.inventoryTotals.quotedCompensation===null?amountCell(data.totals.capital_agreed):money(data.inventoryTotals.quotedCompensation,data)]
-    ].map(([label,value])=>'<div><dt>'+label+'</dt><dd>'+value+'</dd></div>').join('')+'</dl>'+totals+
+  return '<section class="fin-panel"><div class="fin-panel-head"><h2>Capital records and agreements</h2>'+
+    '<div class="fin-actions">'+returnsLink+'</div></div>'+
+    totals+
     (data.isArchive?'<p class="fin-muted">Archived payments and receipts are included in lifecycle cash. Allocated capital and incremental acquisition above are drawn from detailed asset records.</p>':'')+
     (canEdit?'<div class="fin-actions">'+financeUrl(link('investment','new-asset'),'Add asset','fin-new-asset')+
       (data.assets.length?financeUrl(link('investment','new-recovery'),'Add customer agreement','fin-new-recovery'):'')+'</div>':'')+
     '<h3>Assets</h3>'+assetTable+
-    (assetSource?assetDetail(assetSource,data,link,period,products,canEdit):'')+
     '<h3>Customer agreements</h3>'+recoveryTable+
     (data.originalCompensation.length?'<h3>Original quoted compensation</h3>'+
       table(['Source','Product','Period','Forecast amount'],data.originalCompensation.map(row=>
         '<tr><th scope="row">'+html(row.reference)+'</th>'+td(optionLabel(products,row.product??''))+td(period(row.period))+td(money(row.amount,data))+'</tr>').join('')):'')+
     '<p>Actual customer receipts · '+amountCell(data.totals.capital_actual_receipts)+'</p>'+
-    (agreementSource?recoveryDetail(agreementSource.key,agreementSource.record as RecoveryRecord,agreementSource.originalCurrency,data,link,period,products,canEdit):'')+
-    (archiveSource?'<article class="fin-capital-source"><h3>'+html(archiveSource.reference)+'</h3><dl>'+
-      term('Period',period(archiveSource.period))+term('Archived settlement',money(archiveSource.amount,data))+term('Class',eventLabels[archiveSource.kind])+
-      '</dl></article>':'')+archiveTable+'</section>';
+    archiveTable+'</section>';
 }
 
 function equipmentDetails(data:Workspace,source:string,link:Link,periods:Option[],products:Option[],edit:boolean,params:URLSearchParams){
@@ -77,7 +166,8 @@ function equipmentDetails(data:Workspace,source:string,link:Link,periods:Option[
   const estimate=data.estimateDetails.find(row=>row.key===source);
   const quote=data.toolingQuotes.find(row=>row.key===source);
   const itemLink=(key:string,label:string,focus?:string)=>financeUrl(link('investment',key,{view:'items'}),label,focus);
-  if(asset)return '<section class="fin-panel">'+assetDetail(asset,data,link,period,products,edit)+'</section>';
+  if(asset)return '<section class="fin-panel">'+assetDetail(asset,data,link,period,products,edit)+'<div class="fin-actions">'+
+    financeUrl(link('returns'),'Project Returns','fin-capital-returns')+'</div></section>';
   if(estimate){
     const r=estimate.record;
     const book=edit&&Number(estimate.unidentified)>0?
@@ -147,6 +237,7 @@ function assetDetail(row:Workspace['assets'][number],data:Workspace,link:Link,pe
     term('Asset quantity',a.quantity===undefined?'Not provided':String(a.quantity))+
     term('Original gross cost',row.originalAmount===null?'Unavailable':row.originalAmount+' '+row.sourceCurrency)+
     term('Reporting amount',money(row.amount,data))+term('Allocated amount',money(row.allocated,data))+
+    (row.selectedAllocation===null?'':term('Selected product allocation',money(row.selectedAllocation,data)))+
     term('Exchange rate',row.exchangeRate===null?'Unavailable':'1 '+row.sourceCurrency+' = '+row.exchangeRate+' '+data.currency)+
     term('Gross residual value',a.residual+' '+row.originalCurrency)+'</dl><div class="fin-actions">'+
     (row.quote?financeUrl(link('bom',row.quote.key,{period:row.quote.period,product:row.quote.product,market:row.quote.market}),'Supplier quote · '+row.quote.reference):'')+
@@ -155,8 +246,9 @@ function assetDetail(row:Workspace['assets'][number],data:Workspace,link:Link,pe
     data.rows.flatMap(item=>item.record.kind==='recovery'&&item.record.assetKey===row.key?
       [financeUrl(link('investment',item.key,{view:null}),item.record.title)]:[]).join('')+
     (edit?financeUrl(link('investment','edit-'+row.key),'Edit asset','fin-edit-asset')+
-      financeUrl(link('investment','recover-'+row.key),'Add linked agreement','fin-asset-agreement'):'')+'</div>'+
-    (a.payments.length?table(['Payment','Period','Share','Evidence'],a.payments.map(p=>'<tr><th scope="row">'+html(p.id)+'</th>'+td(period(p.period))+td(p.share)+td(p.reference)+'</tr>').join('')):'')+
+      financeUrl(link('investment','recover-'+row.key,{view:'records'}),'Add linked agreement','fin-asset-agreement'):'')+'</div>'+
+    (a.payments.length?'<h4>Scheduled payments</h4>'+table(['Payment','Period','Share','Schedule reference'],a.payments.map(p=>
+      '<tr><th scope="row">'+html(p.id)+'</th>'+td(period(p.period))+td(p.share)+td(p.reference)+'</tr>').join('')):'')+
     '</article>';
 }
 
@@ -173,64 +265,6 @@ function recoveryDetail(key:string,record:RecoveryRecord,currency:string,data:Wo
       td(r.amount+' '+currency)+td(period(r.period))+td(r.date)+td(r.reference)+'</tr>').join('')):'<p>No actual receipts recorded.</p>')+'</article>';
 }
 
-export function returnsPage(data:Workspace,source:string,link:Link,periods:Option[],products:Option[],selected:string,full:boolean,rights:Rights,draft:boolean,
-  dictionary:Dictionary,showIrr:boolean,reconciliation:Option[]){
-  const period=(key:string)=>optionLabel(periods,key);
-  const terms=data.rows.flatMap(row=>row.record.kind==='terms'?[{key:row.key,record:row.record}]:[]);
-  const valuation=data.rows.find(row=>row.record.kind==='valuation');
-  const keys=data.cashOnly?['cash_flow','cumulative_cash','present_value']:
-    full?['reported_profit','depreciation','incremental_profit','incremental_depreciation']:incAccounting;
-  const editor=rights.returns&&draft?'<div class="fin-actions">'+financeUrl(link('returns','new-terms'),'Add working-capital and tax terms','fin-new-terms')+
-    financeUrl(link('returns',valuation?'edit-'+valuation.key:'new-valuation'),'Set discount rate','fin-valuation')+'</div>':'';
-  const sourceRow=data.rows.find(row=>row.key===source||'edit-'+row.key===source);
-  const focus=data.fundingPeriod,peak=periods.findIndex(p=>p.key===focus);
-  const funding=data.events.filter(item=>peak>=0&&periods.findIndex(p=>p.key===item.period)<=peak);
-  const afterLow=data.events.filter(item=>peak>=0&&item.kind!=='payment'&&periods.findIndex(p=>p.key===item.period)>peak);
-  const accounting=table(['Period',...keys.map(key=>metricLabel(dictionary,key))],data.accounting.filter(row=>!selected||row.period===selected).map(row=>
-    '<tr><th scope="row">'+html(period(row.period))+'</th>'+keys.map(key=>'<td>'+amountCell(row.metrics[key])+'</td>').join('')+'</tr>').join(''),!full);
-  const keyMetrics=full?['cqa.mpbitri','full_cost_management_profit','operating_profit','incremental_profit']:
-    ['npv','irr','payback_period','peak_funding_requirement',...(data.cashOnly?[]:['capital_net','capital_agreed','discount_rate'])];
-  const totals=table(['Lifecycle metric','Amount'],keyMetrics.filter(key=>key!=='operating_profit'||!data.isArchive).filter(key=>key!=='cqa.mpbitri'||data.isArchive).map(key=>
-    '<tr><th scope="row">'+metricLabel(dictionary,key)+'</th><td>'+amountCell(data.totals[key])+'</td></tr>').join(''));
-  const assumptions=terms.length?table(['Source','Product','Effective from','AR / AP / inventory days','Tax rate'],terms.map(row=>
-    '<tr><th scope="row">'+financeUrl(link('returns',row.key),row.record.reference,'capital-terms-'+row.key)+'</th>'+td(optionLabel(products,row.record.productKey))+
-    td(period(row.record.period))+td([row.record.receivableDays,row.record.payableDays,row.record.inventoryDays].join(' / '))+td(row.record.tax)+'</tr>').join('')):'';
-  const archived=data.archiveAssumptions.length?'<details class="fin-capital-archive"><summary>P05 working capital, tax and discount sources</summary>'+
-    table(['Product','Inventory','Receivables','Payables','Tax','Discount'],data.archiveAssumptions.map(row=>'<tr><th scope="row">'+html(optionLabel(products,row.product))+'</th>'+
-      [row.inventory,row.ar,row.ap,row.tax,row.discount].map(cell=>td((cell.value??'Unavailable')+' · '+cell.reference)).join('')+'</tr>').join(''))+'</details>':'';
-  const eventTable=(events:Workspace['events'])=>table(['Period','Type','Product','Capital cash source','Amount','Evidence'],events.map(event=>
-    '<tr><th scope="row">'+html(period(event.period))+'</th>'+td(eventLabels[event.kind])+td(event.product?optionLabel(products,event.product):null)+
-    '<td>'+evidenceLink(link,event.key,event.label,'capital-event-'+event.id)+'</td>'+td((event.kind==='payment'?'−':'+')+money(event.amount,data))+
-    td(event.reference+(event.actual?' · Actual':' · Forecast'))+'</tr>').join(''));
-  const peakEvents=focus?'<section class="fin-panel" id="fin-funding-events"><h2>Funding sources through the low point</h2><p>First minimum · '+html(period(focus))+
-    (data.recoveryPeriod?' · First recovery '+html(period(data.recoveryPeriod)):'')+'</p>'+
-    (funding.length?eventTable(funding):
-      '<p>The selected scope has no identified capital event at or before the low point. Review the period cash bridge and its sources below.</p>')+
-    (afterLow.length?'<h3>Later capital receipts</h3>'+eventTable(afterLow):'')+
-    '</section>':'';
-  const audit=data.irrAudit;
-  const diagnostics='<details class="fin-panel" id="fin-irr-diagnostic"'+(showIrr?' open':'')+'><summary>IRR calculation details</summary>'+
-    '<p>'+amountCell(data.totals.irr)+(audit.precisionRate?' · '+html(audit.precisionRate)+'% at audit precision':'')+'</p>'+
-    (audit.message?'<p>'+html(audit.message)+'</p>':'')+
-    '<p>Sign changes across nonzero cash flows: '+html(audit.changes)+'.</p>'+
-    table(['Period','Cash input at audit precision','Sign','Change from previous nonzero cash'],audit.rows.map(row=>
-      '<tr><th scope="row">'+html(period(row.period))+'</th>'+td(row.amount===null?null:row.amount+' '+data.currency)+
-      td(row.sign===null?'Unavailable':row.sign<0?'Negative':row.sign>0?'Positive':'Zero')+td(row.changed?'Sign changed':'—')+'</tr>').join(''))+
-    (reconciliation.length?'<div class="fin-actions">'+reconciliation.map(item=>
-      financeUrl(link('returns','',{version:item.key,period:null,returnDetail:'irr'}),'Open cash-flow reconciliation · '+item.label)).join('')+'</div>':'')+
-    '</details>';
-  return '<section class="fin-panel"><div class="fin-panel-head"><h2>'+(full?'Full-cost profitability':'Incremental project returns')+'</h2>'+
-    (data.cashOnly?'':financeUrl(link('investment'),'Equipment & Investment','fin-returns-investment'))+'</div><div class="fin-actions">'+
-    (data.cashOnly?'':full?financeUrl(link('returns','',{basis:'incremental'}),'Incremental cash basis','fin-basis-incremental'):
-      financeUrl(link('returns','',{basis:'full'}),'Full-cost basis','fin-basis-full'))+'</div>'+
-    (data.cashOnly?'<p class="fin-muted">Cash-flow reconciliation version · Explicit cash inputs for each period.</p>':'')+
-    (full?'<p>Full-cost profit includes allocated depreciation and costs. NPV, IRR and funding requirements use the incremental cash basis.</p>':'')+
-    totals+accounting+editor+(assumptions?'<h3>Working-capital and cash-tax assumptions</h3>'+assumptions:'')+archived+
-    (sourceRow?.record.kind==='terms'?'<article class="fin-capital-source" id="fin-capital-source"><h3>'+html(sourceRow.record.reference)+'</h3><p>Day basis '+
-      html(sourceRow.record.days)+' · '+(sourceRow.record.release?'Release closing working capital in '+html(period(sourceRow.record.period)):'Carry closing working capital into the next period')+'</p>'+
-      (rights.returns&&draft?financeUrl(link('returns','edit-'+sourceRow.key),'Edit terms','fin-edit-terms'):'')+'</article>':'')+
-    (valuation?'<p>Discount source · '+html((valuation.record as ValuationRecord).reference)+'</p>':'')+'</section>'+(!full?diagnostics+peakEvents:'');
-}
 
 const input=(name:string,label:string,value='',extra='required')=>'<label>'+html(label)+'<input name="'+name+'" value="'+html(value)+'" '+extra+'></label>';
 const amount=(name:string,label:string,value='',required=true)=>input(name,label,value,'inputmode="decimal" '+(required?'required':''));

@@ -11,7 +11,8 @@ type Entry={module:'commercial'|'bom'|'factory';fields:Record<string,readonly [s
 export type OperationEditor={period:string;title:string;markup:string;submit:(data:FormData,form:HTMLFormElement)=>unknown;
   bind?:(form:HTMLFormElement,clear:()=>void)=>void;development?:boolean;capital?:boolean;budget?:boolean;saveLabel?:string;range?:{from:string;to:string}};
 type Options={root:HTMLElement;projectId:string;version:FinanceReport;driver?:FinanceDriver;entry?:Entry;dictionary:Dictionary;
-  operation?:OperationEditor;period:string;currencies:Record<string,number>;api:FinanceApi;labelPeriod:(key:string)=>string;labelProduct:(key:string)=>string;onSaved:(fieldKey?:string)=>void};
+  operation?:OperationEditor;period:string;currencies:Record<string,number>;api:FinanceApi;labelPeriod:(key:string)=>string;labelProduct:(key:string)=>string;
+  onSaved:(fieldKey?:string,accountingPeriod?:string)=>void};
 export const inputDecimal=(value:FixedDecimal)=>{
   const digits=value.coefficient.replace('-','').padStart(value.scale+1,'0');
   return ((value.coefficient.startsWith('-')?'-':'')+(value.scale?digits.slice(0,-value.scale)+'.'+digits.slice(-value.scale):digits)).replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,'');
@@ -220,7 +221,10 @@ export function mountImpactPanel({root,projectId,version,driver,entry,operation,
       const saved=await api(path,{requestKey:saveKey,revision:details.revision,reason:'Save reviewed finance input',
         candidateSha256:result.candidateSha256,previewCalculationVersion:result.calculationVersion,...change},'PUT');
       if(saved.calculationSha256!==result.calculationSha256)status.textContent='Saved. Reload to review the recalculated draft.';
-      else onSaved(result.fields[0]?.key);
+      else {
+        const field=result.fields[0];
+        onSaved(field?.key,operation?.budget&&field?.collection==='events'?field.period:undefined);
+      }
     } catch(error) {status.textContent=(error as Error).message;}
     finally {saving=false;lock();}
   };

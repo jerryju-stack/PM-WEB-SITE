@@ -10,13 +10,21 @@ export type FinanceAmount=Pick<CalculationOutput,'displayValue'|'value'|'unit'>&
 export type FinanceLink=(route?:string)=>string;
 
 export const escapeHtml=(value:unknown)=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]!));
-export const modules=[
-  ['commercial','Commercial & Volume','P08'],['bom','BOM & Purchasing','P08'],
-  ['operations','Manufacturing & Labor','P09'],['factory-costs','Factory Costs & Launch','P08'],
-  ['engineering','Engineering & PM Hours','P10'],['prototypes','Prototypes & Builds','P10'],
-  ['validation','Validation & Certification','P10'],['investment','Equipment & Investment','P11'],
-  ['returns','Working Capital & Returns','P11'],['budget','Budget & Versions','P12']
+export const moduleGroups=[
+  {title:'Operations & Costs',modules:[
+    ['commercial','Commercial & Volume','P08'],['bom','BOM & Purchasing','P08'],
+    ['operations','Manufacturing & Labor','P09'],['factory-costs','Factory Costs & Launch','P08']
+  ]},
+  {title:'Development & Validation',modules:[
+    ['engineering','Engineering & PM Hours','P10','Engineering & Project Management'],
+    ['prototypes','Prototypes & Builds','P10'],['validation','Validation & Certification','P10']
+  ]},
+  {title:'Investment & Control',modules:[
+    ['investment','Equipment & Investment','P11'],['returns','Working Capital & Returns','P11'],
+    ['budget','Budget & Versions','P12']
+  ]}
 ];
+export const modules=moduleGroups.flatMap(group=>group.modules);
 export const reports=[['','Dashboard'],['budget','Budget Execution'],['returns','Project Returns'],['compare','Version Comparison']];
 export const titleFor=(section:string)=>reports.find(([key])=>key===section)?.[1]??modules.find(([key])=>key===section)?.[1]??'Dashboard';
 export const groups=[

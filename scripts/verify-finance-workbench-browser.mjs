@@ -19,8 +19,8 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 const pages=[
   ['','Project Finance Dashboard'],['commercial','Volume and selling price by year'],['bom','BOM quotes and landed cost'],
   ['operations','Operations and direct labor'],['factory-costs','Factory cost and launch by period'],
-  ['engineering','Engineering work packages'],['prototypes','Sample quotes and delivery'],['validation','Validation by specification and stage'],
-  ['investment','Equipment, Tooling & Compensation'],['returns','Incremental project returns'],['budget','Budget status by period']
+  ['engineering','Engineering work packages'],['prototypes','Sample quotes and batches'],['validation','Validation by specification and stage'],
+  ['investment','Investment allocation by product'],['returns','Period Cash Flow'],['budget','Development budget allocations']
 ];
 const results=[];
 try{
@@ -46,10 +46,31 @@ try{
     await page.waitForFunction(path=>location.pathname===path||document.querySelector('.fin-projects'),project);
     if(new URL(page.url()).pathname!==project)await page.locator('#project-'+run.project).click();
     await waitHeading('Project Finance Dashboard');
+    const navigation=page.getByRole('navigation',{name:'Finance sections'});
+    assert.equal(await page.locator('#app > aside').isVisible(),false);
+    assert.equal(await page.locator('.fin-station-brand').isVisible(),true);
+    assert.equal(await navigation.getByRole('link',{name:'Project Finance Overview',exact:true}).count(),1);
+    const expectedGroups=[
+      ['Operations & Costs',['commercial','bom','operations','factory-costs']],
+      ['Development & Validation',['engineering','prototypes','validation']],
+      ['Investment & Control',['investment','returns','budget']]
+    ];
+    assert.deepEqual(await navigation.locator('.fin-group-title').allTextContents(),expectedGroups.map(([title])=>title));
+    for(const [title,sections] of expectedGroups){
+      const links=navigation.getByRole('group',{name:title,exact:true}).getByRole('link');
+      assert.deepEqual(await links.evaluateAll(nodes=>nodes.map(node=>node.id)),sections.map(id=>'module-'+id));
+    }
     for(const [section,heading] of pages){
       if(section)await page.locator('#module-'+section).click();
       await waitHeading(heading);
       assert.equal(await page.locator('.fin-sections [aria-current=page]').count(),1);
+      if(device==='mobile'){
+        const inView=await navigation.evaluate(nav=>{
+          const current=nav.querySelector('[aria-current=page]').getBoundingClientRect(),bounds=nav.getBoundingClientRect();
+          return current.left>=bounds.left-1&&current.right<=bounds.right+1;
+        });
+        assert(inView,'Active finance link is visible on mobile: '+section);
+      }
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width,device+' overflow in '+section);
       assert.equal(await page.locator('.fin-sections').evaluate(node=>getComputedStyle(node).backgroundColor),
         theme==='light'?'rgb(255, 255, 255)':'rgb(29, 30, 35)');
@@ -88,6 +109,12 @@ try{
     assert.equal(await page.locator('.fin-overview-metrics .fin-metric').count(),2);
     assert.deepEqual(errors,[]);
     results.push({device,section:'settings-fx-and-cash-only',verified:true});
+    await page.locator('#fin-switch').click();
+    await page.locator('.fin-projects').waitFor();
+    assert.equal(await page.locator('#app > aside').isVisible(),true);
+    await page.goBack();
+    await waitHeading('Project Finance Dashboard');
+    assert.equal(await page.locator('#app > aside').isVisible(),false);
     await context.close();
   }
   await writeFile(join(evidence,'browser-checks.json'),JSON.stringify({version:run.version,results},null,2)+'\n');

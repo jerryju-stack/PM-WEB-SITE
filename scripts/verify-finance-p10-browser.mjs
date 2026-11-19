@@ -33,17 +33,25 @@ async function preview(page){
   await page.getByText('Preview ready.',{exact:false}).waitFor();
   return result;
 }
-async function save(page,preview){
+async function save(page,preview,heading='Development by period'){
   const wait=page.waitForResponse(r=>r.request().method()==='PUT'&&r.url().includes('/finance/versions/'));
   await page.getByRole('button',{name:'Save Draft'}).click();
   const response=await wait;assert.equal(response.status(),200,await response.text());
   const saved=await response.json();
   check('Web save reproduces preview digest',saved.calculationSha256===preview.calculationSha256);
-  await page.getByRole('heading',{name:'Development by period',exact:true}).waitFor();
+  await page.getByRole('heading',{name:heading,exact:true}).waitFor();
   await page.waitForFunction(()=>!document.querySelector('#fin-impact-status')?.textContent);
   return saved;
 }
 const sourceLink=(page,name)=>page.getByRole('link',{name,exact:true}).first();
+async function openSampleBatch(page,name){
+  await sourceLink(page,name).click();
+  await page.getByRole('region',{name:'Prototype period cost records'}).getByRole('link',{name,exact:true}).click();
+}
+async function openTestPackage(page,name){
+  await sourceLink(page,name).click();
+  await page.getByRole('region',{name:'Validation period cost records'}).getByRole('link',{name,exact:true}).click();
+}
 async function discardBack(page){
   page.once('dialog',dialog=>dialog.accept());
   await page.locator('.fin-back').click();
@@ -78,7 +86,10 @@ try{
   await page.locator('#fin-filter-period').selectOption('year-1');
   const dashboard=page.url();
   await page.locator('#module-prototypes').click();
-  await sourceLink(page,'T4 Sample Batch').click();
+  const sampleQuote=page.getByRole('region',{name:'Prototype quote packages'}).getByRole('row',{name:/T4 Sample Batch/});
+  await sampleQuote.getByText('0.00',{exact:true}).waitFor();
+  check('A fully covered sample batch shows an explicit zero independent forecast',true);
+  await openSampleBatch(page,'T4 Sample Batch');
   const prototypeKey=new URL(page.url()).pathname.split('/').at(-1);
   const sample=page.locator('#fin-development-source');
   await sample.getByText('4 / 4',{exact:true}).waitFor();
@@ -93,12 +104,16 @@ try{
   check('Cross-link opens validation package source with its included batch',
     (await sample.innerText()).includes('Package includes T4 Sample Batch (4)'));
   await page.screenshot({path:join(evidence,'desktop-validation.png')});
-  await sourceLink(page,'T4 Retest').click();
+  await page.locator('#module-validation').click();
+  await openTestPackage(page,'T4 Retest');
   const retestKey=new URL(page.url()).pathname.split('/').at(-1);
   await page.locator('#fin-development-edit').click();
   await field(page,'quantity','1');
   t4('retestOnly',await preview(page),2000);
   await discardBack(page);
+  await page.locator('#module-validation').click();
+  await page.locator('#fin-validation-records').click();
+  await page.locator('#fin-filter-period').selectOption('year-1');
   await page.locator('#fin-development-combine').click();
   await field(page,'change:'+prototypeKey,'10');
   await field(page,'change:'+retestKey,'1');
@@ -110,12 +125,14 @@ try{
   await save(page,combined);
   await page.reload();
   const summary=page.getByRole('row',{name:/2027.*10,?000/}).first();
-  const net=page.locator('.fin-dev-table').first();
+  const net=page.getByRole('heading',{name:'Development by period',exact:true})
+    .locator('xpath=following-sibling::div[contains(@class,"fin-dev-table")][1]');
   await net.getByText('1200.00 CNY',{exact:true}).waitFor();
   check('Saved combined forecast displays the 10,000 ceiling and 1,200 remaining',
     (await net.innerText()).includes('10000.00 CNY')&&(await net.innerText()).includes('8800.00 CNY'));
   check('2027 row is visible after a direct reload',await summary.count()>0);
-  await page.goto(dashboard);await page.locator('#module-validation').click();await sourceLink(page,'DV Package').click();
+  await page.goto(dashboard);await page.locator('#module-validation').click();await openTestPackage(page,'DV Package');
+  await page.locator('.fin-back').click();await page.getByRole('region',{name:'Validation period cost records'}).waitFor();
   await page.locator('.fin-back').click();await sourceLink(page,'DV Package').waitFor();
   await page.locator('.fin-back').click();await page.locator('#module-validation').waitFor();
   check('Explicit source and module returns restore the dashboard URL',page.url()===dashboard);
@@ -125,16 +142,21 @@ try{
   await page.locator('.fin-back').click();await page.locator('#module-engineering').click();
   await page.locator('#fin-filter-period').selectOption('year-0');
   await sourceLink(page,'PM Planning Hours').click();
+  await page.getByRole('region',{name:'Work package period records'}).getByRole('link').first().click();
+  await sample.waitFor();
   check('Engineering source traces role, phase, hours, travel and amount',(await sample.innerText()).includes('Project Manager')&&
     (await sample.innerText()).includes('Additional travel total 25 CNY')&&(await sample.innerText()).includes('525.00 CNY'));
   await page.screenshot({path:join(evidence,'desktop-engineering.png')});
   await page.locator('#fin-filter-version').selectOption(run.executionDraft);
+  await page.locator('#module-engineering').click();
+  await page.locator('#fin-eng-records').click();
+  await page.locator('#fin-filter-period').selectOption('year-0');
   await page.locator('#fin-development-new').click();
   for(const [key,value] of Object.entries({costRef:'NEW-ROLE-PLAN',title:'New design review hours',group:'Concept review',role:'Design Engineer',quantity:'2',
     'component:rate':'100',reference:'Synthetic approved hour estimate',allocationBasis:'Dedicated product'}))await field(page,key,value);
   const engineering=await preview(page);
   check('Engineering entry accepts new role, phase, hours and rate',amounts(engineering,0,'development_gross')[2]==='200.00');
-  await save(page,engineering);
+  await save(page,engineering,'New design review hours');
   await page.locator('#fin-development-source').getByRole('heading',{name:'New design review hours'}).waitFor();
   await desktop.close();
 
@@ -145,7 +167,7 @@ try{
   if(new URL(phone.url()).pathname==='/finance'&&await phone.locator('#project-'+run.synthetic).count())await phone.locator('#project-'+run.synthetic).click();
   await phone.locator('#fin-filter-version').selectOption(run.executionDraft);
   await phone.locator('#module-validation').click();
-  await sourceLink(phone,'T4 Retest').click();
+  await openTestPackage(phone,'T4 Retest');
   check('Mobile source is within the viewport',await phone.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await phone.locator('#fin-development-actual').click();
   await field(phone,'incurred-amount','2000');
@@ -161,10 +183,10 @@ try{
     amounts(actual,2,'development_cash')[2]==='-2000.00'&&amounts(actual,1,'net_engineering')[2]==='0.00');
   await phone.getByRole('heading',{name:'Development period impact'}).evaluate(node=>node.scrollIntoView({block:'start'}));
   await phone.screenshot({path:join(evidence,'mobile-actual-timing.png')});
-  await save(phone,actual);
+  await save(phone,actual,'T4 Retest');
   await phone.reload();await phone.locator('#fin-development-source').getByText('Synthetic payment P-17',{exact:true}).waitFor();
   await phone.getByRole('link',{name:'Prototype Batches',exact:true}).click();
-  await sourceLink(phone,'T4 Sample Batch').click();
+  await openSampleBatch(phone,'T4 Sample Batch');
   check('Quality can read but cannot change the prototype source',await phone.locator('#fin-development-actual,#fin-development-edit').count()===0);
   await mobile.close();
 
@@ -172,6 +194,7 @@ try{
   await login(arch,accounts.reader);
   await arch.locator('.finance-project-entry[href="/projects/'+run.projectId+'/finance"]').click();
   await arch.locator('#module-validation').click();
+  await arch.locator('#fin-validation-records').click();
   const source=arch.locator('.fin-dev-archive');
   await source.getByText('Covered by DV',{exact:true}).first().waitFor();
   check('Real CQA shows archived DV/PV references and PV overlap with read-only access',

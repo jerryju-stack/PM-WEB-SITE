@@ -71,6 +71,7 @@ try {
         await page.locator('#fin-filter-market').selectOption('eu');
         await page.waitForURL('**market=eu**');
       }
+      if(item.section==='commercial')await page.locator('#fin-sales-inputs').click();
       await page.locator('.fin-panel table').waitFor();
       check(device,item.section+' table is reachable',await page.locator('.fin-panel table').isVisible());
       await page.screenshot({path:join(publicDir,device+'-'+item.section+'.png'),fullPage:true});
@@ -100,6 +101,7 @@ try {
       await page.getByRole('link',{name:'Dashboard',exact:true}).click();
     }
     await page.goto(base+route(run.projectId,'commercial')+'?version='+run.archiveDraft+'&period=year-2020&product=outboard');
+    await page.locator('#fin-sales-inputs').click();
     await page.getByRole('link',{name:'Annual price reduction',exact:true}).first().waitFor();
     check(device,'real CQA commercial rows have worksheet sources',(await page.locator('#finance-workspace').innerText()).includes('Vol_SBS_Updated'));
     const anchor=await findRow(page,'Annual price reduction');
@@ -144,6 +146,7 @@ try {
   await createContext.close();
   const reader=await browser.newContext(),page=await reader.newPage();await login(page,accounts.reader);
   await page.goto(base+route(run.projectId,'commercial')+'?period=year-2020&product=outboard');
+  await page.locator('#fin-sales-inputs').click();
   await page.getByRole('link',{name:'Selling price',exact:true}).first().click();
   await page.getByText('Read-only source.',{exact:false}).waitFor();
   check('reader','authorized read-only viewer has no preview or add controls',await page.locator('#fin-impact-form,#fin-add-business').count()===0);

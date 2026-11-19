@@ -1,4 +1,4 @@
-import {amountCell,budgetKeys,cashChart,definition,escapeHtml,evidenceRows,financeUrl,groups,help,metricLabel,modules,nameOf,rowFor,scopeFor,titleFor,trace,varianceCell} from '/finance-view.js';
+import {amountCell,budgetKeys,cashChart,definition,escapeHtml,evidenceRows,financeUrl,groups,help,metricLabel,moduleGroups,modules,nameOf,rowFor,scopeFor,titleFor,trace,varianceCell} from '/finance-view.js';
 import type {Dictionary,FinanceLink,FinanceReport,Workspace} from '/finance-view.js';
 import {inputDecimal,mountImpactPanel} from '/finance-impact.js';
 import type {FinanceApi} from '/finance-impact.js';
@@ -6,16 +6,24 @@ import type {CalculationOutput} from '../lib/finance-calculation-types.ts';
 import type {ScreenMetric} from '../lib/finance-workspace.ts';
 import type {financeService} from '../lib/finance.ts';
 import {operationsEditor,operationsPage} from '/finance-operations.js';
-import {developmentEditor,developmentPage} from '/finance-development.js';
+import type {OperationsView} from '/finance-operations.js';
+import {developmentEditor,developmentPage,engineeringPage,prototypePage,validationPage} from '/finance-development.js';
+import type {PrototypeView,ValidationView} from '/finance-development.js';
+import type {EngineeringView} from '/finance-development.js';
 import type {DevelopmentModule} from '../lib/finance-development.ts';
-import {capitalEditor,investmentPage,returnsPage} from '/finance-capital.js';
+import {capitalEditor,investmentPage} from '/finance-capital.js';
+import {returnsPage} from '/finance-returns.js';
+import type {ReturnView} from '/finance-returns.js';
 import {commercialOverview,factoryOverview,purchasingOverview} from '/finance-business-view.js';
-import {budgetEditor,budgetPage,isBudgetDetail} from '/finance-budget.js';
+import type {CommercialView,PurchasingView} from '/finance-business-view.js';
+import type {FactoryView} from '/finance-business-view.js';
+import {budgetEditor,budgetPage,budgetSummary,budgetVersions,budgetViews,isBudgetDetail} from '/finance-budget.js';
+import type {BudgetView} from '/finance-budget.js';
 import {comparisonFilters,comparisonPage,comparisonReturn,comparisonSource,mountComparisonChart} from '/finance-compare.js';
 import {displayCurrencySelect,downloadFinanceJson,mountVersionFx,versionFxPanel} from '/finance-fx.js';
 
 const html=escapeHtml;
-const equipmentParameters=['view','assetSearch','assetCategory','assetStatus','assetSupplier'];
+const equipmentParameters=['view','assetSearch','assetCategory','assetStatus','assetSupplier','cashDetail'];
 const sectionPanel=(title:string,body:string,extra='')=>'<section class="fin-panel"><div class="fin-panel-head"><h2>'+title+'</h2>'+extra+'</div>'+body+'</section>';
 const empty=(title:string,description:string)=>sectionPanel(html(title),'<p class="fin-muted">'+html(description)+'</p>');
 const options=(items:{key:string;label:string}[],selected:string,placeholder:string)=>
@@ -23,7 +31,7 @@ const options=(items:{key:string;label:string}[],selected:string,placeholder:str
 const table=(headers:string[],body:string)=>'<div class="fin-table-scroll"><table><thead><tr>'+headers.map(header=>'<th scope="col">'+header+'</th>').join('')+'</tr></thead><tbody>'+body+'</tbody></table></div>';
 const route=()=>/^\/projects\/([a-zA-Z0-9_-]+)\/finance(?:\/([^/]+))?(?:\/([^/]+))?$/.exec(location.pathname);
 const stateKey='projectFinance';
-type Position={index:number;parent?:string;focus?:string;scroll?:number};
+type Position={index:number;parent?:string;focus?:string;scroll?:number;annualScroll?:number};
 type HelpMode='hover'|'focus'|'pinned';
 const historyPosition=():Position|undefined=>history.state?.[stateKey];
 const updateHistory=(position:Position,url=location.href)=>history.replaceState({...history.state,[stateKey]:position},'',url);
@@ -32,10 +40,14 @@ function screenRequest(match:RegExpExecArray,params:URLSearchParams) {
   const section=match[2]??'';
   const keys=['baseline','version','displayCurrency','traceKind','traceKey','tracePeriod','traceRevision'];
   if(section==='compare')keys.push('from','to','cutoff','compareProduct','fxMode');
-  if(['commercial','bom','operations','factory-costs','engineering','prototypes','validation'].includes(section))keys.push('period');
-  if(['operations','engineering','prototypes','validation','investment','returns'].includes(section))keys.push('product');
+  if(['commercial','bom','operations','factory-costs','engineering','prototypes','validation','investment','returns','budget'].includes(section))keys.push('period');
+  if(section==='returns')keys.push('returnDetail');
+  if(['operations','factory-costs','engineering','prototypes','validation','investment','returns','budget'].includes(section))keys.push('product');
   const request=new URLSearchParams({shape:'screen'});
   for(const key of keys)if(params.has(key))request.set(key,params.get(key)!);
+  if(section==='factory-costs'&&(params.get('factoryView')==='annual'||params.has('factoryCost'))){
+    request.set('factoryHorizon','1');
+  }
   if(section)request.set('module',section);
   if(match[3])request.set('source',match[3]);
   return 'projects/'+encodeURIComponent(match[1])+'/finance/workspace?'+request;
@@ -45,14 +57,15 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
   let sequence=0,stopped=false,position=historyPosition()?.index??0,restoring=false,approvedBack=false;
   let cleanChart:()=>void=()=>{},impact:ReturnType<typeof mountImpactPanel>|undefined;
   let fxEditor:ReturnType<typeof mountVersionFx>;
-  let settingsOpen=false;
+  let settingsOpen=false,returnOptionsOpen=false;
   let dictionaryPromise:Promise<Dictionary>|undefined;
   let rendered:Workspace|null=null,renderedRequest='';
   const displayedOutputs=new Map<string,CalculationOutput|ScreenMetric>();
   let activeHelp:{button:HTMLButtonElement;box:HTMLElement;mode:HelpMode}|undefined;
   const oldScrollRestoration=history.scrollRestoration;history.scrollRestoration='manual';
   if(!historyPosition())updateHistory({index:position});
-  const savePosition=(focus?:string)=>updateHistory({...historyPosition(),index:position,scroll:scrollY,focus:focus||document.activeElement?.id});
+  const savePosition=(focus?:string)=>updateHistory({...historyPosition(),index:position,scroll:scrollY,
+    focus:focus||document.activeElement?.id,annualScroll:root.querySelector('.fin-annual-scroll')?.scrollLeft});
   const leave=()=>!impact?.saving()&&!fxEditor?.saving()&&(!(impact?.dirty()||fxEditor?.dirty())||confirm('Discard the unsaved finance change?'));
   function resetView() {cleanChart();impact?.dispose();impact=undefined;fxEditor=undefined;rendered=null;displayedOutputs.clear();closeHelp();root.innerHTML='';}
   function navigate(href:string,focus?:string) {
@@ -178,6 +191,7 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
 
   async function load(restore:boolean,reuseScreen=false) {
     const token=++sequence,params=new URLSearchParams(location.search),match=route();
+    document.body.classList.toggle('finance-project-workspace',Boolean(match));
     const request=match?screenRequest(match,params):'';
     const available=reuseScreen&&request===renderedRequest?rendered:null;
     resetView();
@@ -205,6 +219,8 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
       }
       if(restore){const target=historyPosition();requestAnimationFrame(()=>{if(!stopped&&token===sequence){const focus=document.getElementById(target?.focus??'');
         for(let parent=focus?.parentElement;parent;parent=parent.parentElement)if(parent instanceof HTMLDetailsElement)parent.open=true;
+        const annual=root.querySelector('.fin-annual-scroll');
+        if(annual)annual.scrollLeft=target?.annualScroll??0;
         focus?.focus({preventScroll:true});window.scrollTo(0,target?.scroll??0);}});}
       else window.scrollTo(0,0);
     } catch(error) {
@@ -221,8 +237,28 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     const active=current??baseline,periods=active?.periods??[],products=active?.productLabels??[];
     const period=periods.find(p=>p.key===params.get('period'))?.key??'',product=products.find(p=>p.key===params.get('product'))?.key??'';
     const markets=(workspace.markets??[]).filter(item=>!product||!item.productKey||item.productKey===product);
-    const market=markets.find(item=>item.key===params.get('market'))?.key??'';
+    const market=['operations','factory-costs','engineering','prototypes','validation','investment','returns','budget'].includes(section)?'':markets.find(item=>item.key===params.get('market'))?.key??'';
     const effectiveModule=supportedModule[section],businessSection=['commercial','bom','factory'].includes(effectiveModule);
+    const isOperations=section==='operations',requestedOpsView=params.get('opsView');
+    const opsView:OperationsView=requestedOpsView==='annual'||requestedOpsView==='routes'?requestedOpsView:'stations';
+    const isFactory=section==='factory-costs';
+    const isEngineering=section==='engineering',requestedEngineeringView=params.get('engineeringView');
+    const engineeringView:EngineeringView=requestedEngineeringView==='records'||requestedEngineeringView==='validation-hours'?
+      requestedEngineeringView:'packages';
+    const engineeringPackage=params.get('engineeringPackage')??'';
+    const validationSpec=params.get('validationSpec')??'';
+    const isPrototype=section==='prototypes',requestedPrototypeView=params.get('prototypeView');
+    const prototypeView:PrototypeView=requestedPrototypeView==='delivery'||requestedPrototypeView==='records'?requestedPrototypeView:'quotes';
+    const prototypeGroup=params.get('prototypeGroup')??'';
+    const isValidation=section==='validation',requestedValidationView=params.get('validationView');
+    const validationView:ValidationView=requestedValidationView==='coverage'||requestedValidationView==='records'?requestedValidationView:'packages';
+    const validationGroup=params.get('validationGroup')??'',requestedValidationPhase=params.get('validationPhase');
+    const validationPhase=requestedValidationPhase==='europe-dv'||requestedValidationPhase==='china-dv'||requestedValidationPhase==='china-pv'||
+      requestedValidationPhase==='other'?requestedValidationPhase:null;
+    const requestedFactoryView=params.get('factoryView');
+    const factoryView:FactoryView=requestedFactoryView==='annual'||requestedFactoryView==='inputs'||requestedFactoryView==='breakdown'?
+      requestedFactoryView:params.has('part')||sourceKey?'inputs':'breakdown';
+    const factoryField=workspace.factoryCosts.find(row=>row.field===params.get('factoryCost'))?.field??'';
     const businessType=businessSection?effectiveModule as 'commercial'|'bom'|'factory':null;
     for(const [key,value] of [['baseline',baseline?.details.id],['version',current?.details.id],['period',period],['product',product],['market',market]] as const) {
       if(value)params.set(key,value);else params.delete(key);
@@ -236,7 +272,16 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     }
     const link:FinanceLink=(route='')=>{
       const target=new URLSearchParams(params);
+      if(route.split('/')[0]!=='commercial')target.delete('salesView');
+      if(route.split('/')[0]!=='bom')target.delete('bomView');
+      if(route.split('/')[0]!=='operations')target.delete('opsView');
       if(route.split('/')[0]!=='investment')for(const name of equipmentParameters)target.delete(name);
+      if(route.split('/')[0]!=='factory-costs')for(const name of ['factoryCost','factoryView'])target.delete(name);
+      if(route.split('/')[0]!=='engineering')for(const name of ['engineeringView','engineeringPackage','validationSpec'])target.delete(name);
+      if(route.split('/')[0]!=='prototypes')for(const name of ['prototypeView','prototypeGroup'])target.delete(name);
+      if(route.split('/')[0]!=='validation')for(const name of ['validationView','validationGroup','validationPhase'])target.delete(name);
+      if(route.split('/')[0]!=='returns')for(const name of ['returnDetail','basis'])target.delete(name);
+      if(route.split('/')[0]!=='budget')target.delete('budgetView');
       if(route==='compare'&&!target.has('compareReturn')&&!target.has('from')&&!target.has('to')){
         if(period)target.set('cutoff',period);
         if(product)target.set('compareProduct',product);
@@ -245,24 +290,46 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     };
     const operations=section==='operations'?workspace.operations:null;
     const development=workspace.development;
-    const capital=workspace.capital,fullReturns=section==='returns'&&params.get('basis')==='full';
-    const equipmentView=section==='investment'&&params.get('view')==='items';
-    const budgetExecution=workspace.budget;
-    const budgetLink=(key='')=>link('budget'+(key?'/'+key:''));
+    const capital=workspace.capital,isReturns=section==='returns',requestedReturnView=params.get('returnDetail');
+    const returnView:ReturnView=params.get('basis')==='full'&&!capital?.cashOnly?'full':
+      requestedReturnView==='working-capital'||requestedReturnView==='irr'||requestedReturnView==='funding'||requestedReturnView==='period'||
+      requestedReturnView==='sources'?requestedReturnView:'cash';
+    const isInvestment=section==='investment',requestedInvestmentView=params.get('view');
+    const investmentView=requestedInvestmentView==='items'||requestedInvestmentView==='cash'||requestedInvestmentView==='records'?
+      requestedInvestmentView:'allocation';
+    const equipmentView=isInvestment&&investmentView==='items';
+    const investmentCashDetail=isInvestment&&investmentView==='cash'&&params.has('cashDetail')&&!!product;
+    const isBudget=section==='budget',budgetExecution=workspace.budget;
+    const requestedBudgetView=params.get('budgetView')??'';
+    const budgetView:BudgetView=Object.hasOwn(budgetViews,requestedBudgetView)?requestedBudgetView as BudgetView:'allocations';
     const capitalLink=(module:string,key='',changes:Record<string,string|null>={})=>{
       const next=new URLSearchParams(params);
+      if(module!=='commercial')next.delete('salesView');
+      if(module!=='bom')next.delete('bomView');
+      if(module!=='operations')next.delete('opsView');
       if(module!=='investment')for(const name of equipmentParameters)next.delete(name);
+      if(module!=='factory-costs')for(const name of ['factoryCost','factoryView'])next.delete(name);
+      if(module!=='engineering')for(const name of ['engineeringView','engineeringPackage','validationSpec'])next.delete(name);
+      if(module!=='prototypes')for(const name of ['prototypeView','prototypeGroup'])next.delete(name);
+      if(module!=='validation')for(const name of ['validationView','validationGroup','validationPhase'])next.delete(name);
+      if(module!=='returns')for(const name of ['returnDetail','basis'])next.delete(name);
+      if(module!=='budget')next.delete('budgetView');
       for(const [name,value] of Object.entries(changes))if(value)next.set(name,value);else next.delete(name);
       return base+'/'+module+(key?'/'+key:'')+(next.size?'?'+next:'');
     };
+    const budgetViewLink=(view:BudgetView,id?:string)=>capitalLink('budget','',{
+      budgetView:view==='allocations'?null:view,...(id?{version:id}:{})
+    });
+    const budgetLink=(key='',periodKey=period,productKey=product)=>capitalLink('budget',key,{
+      budgetView:budgetView==='allocations'?null:budgetView,period:periodKey,product:productKey
+    });
     const developmentModule=section as DevelopmentModule;
-    const developmentLink=(module:DevelopmentModule,key?:string)=>link(module+(key?'/'+key:''));
-    const operationScope=operations?.find(scope=>scope.productKey===product)??(operations?.length===1?operations[0]:null);
-    const operationsLink=(scope:{productKey:string;period:string},source='')=>{
-      const next=new URLSearchParams(params);
-      next.set('product',scope.productKey);next.set('period',scope.period);
-      return base+'/operations'+(source?'/'+source:'')+'?'+next;
-    };
+    const developmentLink=(module:DevelopmentModule,key?:string,changes?:Record<string,string|null>)=>
+      isEngineering||isPrototype||isValidation||changes?capitalLink(module,key,changes):link(module+(key?'/'+key:''));
+    const operationScope=operations?.find(scope=>scope.productKey===product||scope.records.some(record=>record.key===sourceKey))??
+      (operations?.length===1?operations[0]:null);
+    const operationsLink=(scope:{productKey:string;period:string},source='',view:OperationsView='routes')=>
+      capitalLink('operations',source,{product:scope.productKey,period:scope.period,opsView:view,market:null});
     const isDraft=active?.details.status==='draft';
     const developmentForm=development?developmentEditor(development,developmentModule,sourceKey,periods,products,period,product,workspace.developmentRights,isDraft):undefined;
     const capitalForm=capital?capitalEditor(capital,section,sourceKey,periods,products,period,product,workspace.capitalRights,isDraft):undefined;
@@ -270,9 +337,27 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
       active!.currency,workspace.budgetRights,isDraft):undefined;
     const operation=budgetForm??capitalForm??developmentForm??(operationScope?operationsEditor(operationScope,sourceKey,workspace.canOperate,workspace.canCalibrate,isDraft):undefined);
     const routeSource=operationScope?.records.some(row=>row.key===sourceKey);
-    const developmentSource=development?.rows.some(row=>row.key===sourceKey);
-    const capitalSource=capital?.rows.some(row=>row.key===sourceKey)||capital?.archiveRows.some(row=>row.key===sourceKey)||
-      capital?.toolingQuotes.some(row=>row.key===sourceKey);
+    const manufacturing=operations?operationsPage(operations,operationsLink,{
+      source:sourceKey,view:opsView,periodLabel:periods.find(item=>item.key===workspace.operationPeriod)?.label??'',
+      periods,canOperate:workspace.canOperate,canCalibrate:workspace.canCalibrate,draft:isDraft,dictionary:glossary,
+      linkedAssets:(scope,line)=>workspace.operationAssets.filter(row=>row.line===line&&row.products.includes(scope.productKey)).map(asset=>({
+        title:asset.title,href:capitalLink('investment',asset.key,{view:'items',product:scope.productKey,period:null})
+      }))
+    }):null;
+    const developmentSource=development?.rows.some(row=>row.key===sourceKey||
+      (isEngineering||isPrototype||isValidation)&&['edit-'+row.key,'actual-'+row.key].includes(sourceKey));
+    const engineering=isEngineering&&development?engineeringPage(development,{
+      source:sourceKey,view:engineeringView,workPackage:engineeringPackage,specification:validationSpec,period,product
+    },developmentLink,periods,products,workspace.developmentRights,isDraft,glossary):null;
+    const prototype=isPrototype&&development?prototypePage(development,{
+      source:sourceKey,view:prototypeView,group:prototypeGroup,period,product
+    },developmentLink,periods,products,workspace.developmentRights,isDraft,glossary):null;
+    const validation=isValidation&&development?validationPage(development,{
+      source:sourceKey,view:validationView,group:validationGroup,phase:validationPhase,period,product
+    },developmentLink,periods,products,workspace.developmentRights,isDraft,glossary):null;
+    const capitalSource=capital?.rows.some(row=>row.key===sourceKey||isReturns&&'edit-'+row.key===sourceKey)||capital?.archiveRows.some(row=>row.key===sourceKey)||
+      capital?.toolingQuotes.some(row=>row.key===sourceKey)||isInvestment&&capital?.assets.some(row=>'edit-'+row.key===sourceKey);
+    const investment=isInvestment&&capital?investmentPage(capital,sourceKey,capitalLink,periods,products,workspace.capitalRights,isDraft,glossary,params):null;
     updateHistory({...historyPosition(),index:position},link([section,sourceKey].filter(Boolean).join('/')));
     const labelPeriod=(key:string)=>periods.find(item=>item.key===key)?.label??key;
     const labelProduct=(key:string)=>products.find(item=>item.key===key)?.label??key;
@@ -293,7 +378,30 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     const metricDelta=(key:string)=>period&&['revenue','cqa.mpbitri'].includes(key)?
       scopedDifference?.periodic[rowIndex]?.[key==='revenue'?'reported_revenue':'reported_profit']:scopedDifference?.metrics[key];
     const dashboardVersion=current?'current':'baseline';
+    const returns=isReturns&&capital&&active?returnsPage(capital,{view:returnView,source:sourceKey,period,version:active.details.name},
+      capitalLink,periods,products,workspace.capitalRights.returns&&isDraft,glossary,metric=>{
+        if(metric)displayedOutputs.set(dashboardVersion+':'+metric.id,metric);
+        return trace(metric??undefined,dashboardVersion);
+      },workspace.returnChecks,workspace.returnControls):null;
     const cashOnly=active?.model==='cash_series';
+    const isCommercial=section==='commercial';
+    const isPurchasing=section==='bom';
+    const requestedBomView=params.get('bomView');
+    const bomView:PurchasingView=requestedBomView==='markets'||requestedBomView==='annual'||requestedBomView==='inputs'||requestedBomView==='parts'?
+      requestedBomView:sourceKey==='new'?'inputs':market||sourceKey||params.has('part')?'parts':'markets';
+    const requestedView=params.get('salesView');
+    const salesView:CommercialView=requestedView==='inputs'||requestedView==='markets'||requestedView==='quotes'||requestedView==='products'?
+      requestedView:params.has('part')||params.has('rows')?'inputs':period?'quotes':'products';
+    const salesNavigation=isCommercial&&!sourceKey&&active?'<nav class="fin-tabs fin-sales-nav" aria-label="Commercial views">'+
+      ([['products','By product'],['markets','By market / variant'],['quotes','Market quotes & price preview'],['inputs','Source inputs']] as const).map(([view,label])=>{
+        const href=capitalLink('commercial','',{salesView:view,part:null,rows:null,...(view==='products'?{market:null}:{})});
+        return '<a data-finance-nav id="fin-sales-'+view+'" href="'+html(href)+'"'+(salesView===view?' aria-current="page"':'')+'>'+html(label)+'</a>';
+      }).join('')+'</nav>':'';
+    const bomNavigation=isPurchasing&&!sourceKey&&active?'<nav class="fin-tabs fin-sales-nav" aria-label="Purchasing views">'+
+      ([['markets','Market BOMs'],['parts','Parts & suppliers'],['annual','Annual material cost'],['inputs','Source inputs']] as const).map(([view,label])=>{
+        const href=capitalLink('bom','',{bomView:view,part:null,rows:null,...(view==='markets'||view==='annual'?{market:null}:{})});
+        return '<a data-finance-nav id="fin-bom-'+view+'" href="'+html(href)+'"'+(bomView===view?' aria-current="page"':'')+'>'+html(label)+'</a>';
+      }).join('')+'</nav>':'';
     const managementKey=['cqa.mpbitri','full_cost_management_profit','operating_profit']
       .find(key=>scopeFor(active,product)?.metrics[key])??'operating_profit';
     const profitTitle=managementKey==='operating_profit'?'Operating profit':'Full-cost management profit';
@@ -350,11 +458,6 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
       (!section?' · Payback: '+amountCell(focusReturns?.payback_period)+
         (focusReturns?.irr?.status==='ok'?' · IRR: '+amountCell(focusReturns.irr):''):'')+'</p>':
       '<p class="fin-muted">No cumulative cash flow is available for this scope.</p>',section?'':financeUrl(link('returns'),'Open returns'));
-    const cashRows=()=>sectionPanel('Period Cash Flow',table(['Period','Version',metricLabel(glossary,'cash_flow'),metricLabel(glossary,'cumulative_cash'),metricLabel(glossary,'present_value')],
-      periods.filter(p=>!period||p.key===period).flatMap(p=>([{report:baseline,key:'baseline'},{report:current,key:'current'}] as const).filter(x=>x.report).map(({report,key})=>{
-        const row=rowFor(report,product,p.key);return '<tr><th scope="row">'+html(p.label)+'</th><td>'+html(report!.details.name)+'</td>'+
-          ['cash_flow','cumulative_cash','present_value'].map(metric=>'<td>'+side(row?.[metric],key)+'</td>').join('')+'</tr>';
-      })).join('')));
     const productContribution=()=>{
       const rows=products.filter(item=>!product||item.key===product);
       if(cashOnly||!rows.length)return '';
@@ -362,7 +465,7 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
         const values=scopeFor(active,item.key)?.metrics,revenue=values?.revenue,profit=values?.[managementKey];
         const margin=revenue?.value&&profit?.value!==null&&profit?.value!==undefined&&Number(revenue.value)>0?
           new Intl.NumberFormat('en',{style:'percent',maximumFractionDigits:2}).format(Number(profit.value)/Number(revenue.value)):'—';
-        return '<tr><th scope="row">'+financeUrl(capitalLink('commercial','',{product:item.key,period:null,market:null}),item.label)+'</th>'+
+        return '<tr><th scope="row">'+financeUrl(capitalLink('commercial','',{product:item.key,period:null,market:null}),item.label,'dashboard-product-'+item.key)+'</th>'+
           [revenue,values?.total_cost,profit].map(value=>'<td>'+side(value,dashboardVersion)+'</td>').join('')+
           '<td>'+html(margin)+'</td></tr>';
       }).join(''))+'</div>');
@@ -384,23 +487,113 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
             financeUrl(item.id==='metric-irr'?capitalLink('returns','',{returnDetail:'irr'}):link(item.route),item.text,item.id)+
              ' '+amountCell(item.metric,false,undefined,false,thousandsCurrency)+'</li>').join('')+'</ul>'):'')+'</div>'+productContribution();
     };
-    const sectionLink=(key:string,title:string,id:string)=>
-      '<a id="'+id+'" data-finance-nav href="'+html(key==='investment'?capitalLink(key,'',{view:null}):link(key))+'"'+
-      (section===key?' aria-current="page"':'')+'>'+html(title)+'</a>';
+    const sectionLink=(key:string,title:string,id:string,number?:number)=>
+      '<a id="'+id+'" data-finance-nav href="'+html(key==='investment'?capitalLink(key,'',{
+        view:null,assetSearch:null,assetCategory:null,assetStatus:null,assetSupplier:null,cashDetail:null,period:null,market:null
+      }):key==='commercial'?
+        capitalLink(key,'',{salesView:'products',period:null,market:null,part:null,rows:null}):key==='bom'?
+        capitalLink(key,'',{bomView:'markets',period:null,market:null,part:null,rows:null}):key==='factory-costs'?
+        capitalLink(key,'',{factoryView:'breakdown',factoryCost:null,market:null,part:null,rows:null}):key==='engineering'?
+        capitalLink(key,'',{engineeringView:'packages',engineeringPackage:null,validationSpec:null,period:null,market:null}):key==='prototypes'?
+        capitalLink(key,'',{prototypeView:null,prototypeGroup:null,period:null,market:null}):key==='validation'?
+        capitalLink(key,'',{validationView:null,validationGroup:null,validationPhase:null,period:null,market:null}):key==='returns'?
+        capitalLink(key,'',{returnDetail:null,basis:null,period:null,market:null}):key==='budget'?
+        capitalLink(key,'',{budgetView:null,period:null,market:null}):link(key))+'"'+
+      (section===key?' aria-current="page"':'')+'>'+
+      (number?'<span class="fin-section-number" aria-hidden="true">'+String(number).padStart(2,'0')+'</span>':'')+html(title)+'</a>';
     const navigation='<nav class="fin-sections" aria-label="Finance sections">'+
-      sectionLink('','Dashboard','fin-dashboard')+
-      modules.map(([key,title])=>sectionLink(key,title,'module-'+key)).join('')+
+      sectionLink('','Project Finance Overview','fin-dashboard')+
+      moduleGroups.map((group,index)=>'<div class="fin-section-group" role="group" aria-labelledby="fin-group-'+index+'">'+
+        '<div class="fin-group-title" id="fin-group-'+index+'">'+html(group.title)+'</div>'+
+        group.modules.map(module=>sectionLink(module[0],module[3]??module[1],'module-'+module[0],modules.indexOf(module)+1)).join('')+'</div>').join('')+
       '</nav>';
     const context='<div class="fin-context"><span>Approved baseline · <strong>'+html(workspace.versions.find(v=>v.id===workspace.approvedBaselineId)?.name??'None')+
       '</strong></span><span>Current forecast · <strong>'+html(workspace.versions.find(v=>v.id===workspace.currentVersionId)?.name??'None')+
       '</strong></span><span>Viewed as of · <strong>'+html(active?.asOf??'—')+'</strong></span><span>Currency · <strong>'+html(active?.currency??'—')+'</strong></span></div>';
     const baselineSelect='<label>Baseline<select id="fin-filter-baseline" data-filter-key="baseline">'+
       options(workspace.versions.filter(v=>v.status==='frozen').map(v=>({key:v.id,label:v.name})),baseline?.details.id??'','Use approved baseline')+'</select></label>';
-    const filters='<div class="fin-filters">'+
-      '<label>Forecast version<select id="fin-filter-version" data-filter-key="version">'+options(workspace.versions.map(v=>({key:v.id,label:v.name+(v.status==='draft'?' · Draft':'')})),current?.details.id??'','Use current forecast')+'</select></label>'+
-      '<label>Period<select id="fin-filter-period" data-filter-key="period">'+options(periods,period,'All periods')+'</select></label>'+
-      '<label>Product<select id="fin-filter-product" data-filter-key="product">'+options(products,product,'All products')+'</select></label>'+
-      (businessSection&&effectiveModule!=='factory'?'<label>Market<select id="fin-filter-market" data-filter-key="market">'+options(markets,market,'All markets')+'</select></label>':'')+'</div>';
+    const versionFilter='<label>Forecast version<select id="fin-filter-version" data-filter-key="version">'+options(workspace.versions.map(v=>({key:v.id,label:v.name+(v.status==='draft'?' · Draft':'')})),current?.details.id??'','Use current forecast')+'</select></label>';
+    const periodFilter='<label>Period<select id="fin-filter-period" data-filter-key="period">'+options(periods,period,
+      isOperations||isFactory?'Default period':'All periods')+'</select></label>';
+    const productFilter='<label>Product<select id="fin-filter-product" data-filter-key="product">'+options(products,product,'All products')+'</select></label>';
+    const marketFilter=businessSection&&effectiveModule!=='factory'?'<label>Market<select id="fin-filter-market" data-filter-key="market">'+options(markets,market,'All markets')+'</select></label>':'';
+    const salesForecast=isCommercial&&!sourceKey&&(salesView==='products'||salesView==='markets');
+    const bomForecast=isPurchasing&&!sourceKey&&(bomView==='markets'||bomView==='annual');
+    const opsOverview=isOperations&&!sourceKey&&opsView!=='routes';
+    const factoryLanding=isFactory&&!sourceKey&&factoryView!=='inputs'&&!factoryField;
+    const engineeringLanding=isEngineering&&!sourceKey&&engineeringView!=='records';
+    const engineeringNavigation=isEngineering&&!sourceKey&&!engineeringPackage&&!validationSpec&&active?
+      '<nav class="fin-tabs fin-sales-nav fin-engineering-nav" aria-label="Engineering views">'+
+      ([['packages','Work packages'],['validation-hours','Validation hours'],['records','Cost records']] as const).map(([view,label])=>
+        '<a data-finance-nav id="fin-eng-'+view+'"'+(engineeringView===view?' aria-current="page"':'')+
+        ' href="'+html(capitalLink('engineering','',{engineeringView:view,engineeringPackage:null,validationSpec:null}))+'">'+html(label)+'</a>').join('')+'</nav>':'';
+    const prototypeNavigation=isPrototype&&!sourceKey&&!prototypeGroup&&active&&!cashOnly?
+      '<nav class="fin-tabs fin-sales-nav fin-prototype-nav" aria-label="Prototype views">'+
+      ([['quotes','Quote packages'],['delivery','Delivery & evidence'],['records','Cost records']] as const).map(([view,label])=>
+        '<a data-finance-nav id="fin-prototype-'+view+'"'+(prototypeView===view?' aria-current="page"':'')+
+        ' href="'+html(capitalLink('prototypes','',{prototypeView:view}))+'">'+html(label)+'</a>').join('')+'</nav>':'';
+    const validationNavigation=isValidation&&!sourceKey&&!validationGroup&&active&&!cashOnly?
+      '<nav class="fin-tabs fin-sales-nav fin-validation-nav" aria-label="Validation views">'+
+      ([['packages','Test packages'],['coverage','Certification & coverage'],['records','Cost records']] as const).map(([view,label])=>
+        '<a data-finance-nav id="fin-validation-'+view+'"'+(validationView===view?' aria-current="page"':'')+
+        ' href="'+html(capitalLink('validation','',{validationView:view,validationPhase:null}))+'">'+html(label)+'</a>').join('')+'</nav>':'';
+    const investmentNavigation=isInvestment&&!sourceKey&&!investmentCashDetail&&capital?
+      '<nav class="fin-tabs fin-sales-nav" aria-label="Investment views">'+
+      ([['allocation','Investment allocation','fin-investment-allocation'],['cash','Payments & recovery','fin-investment-cash'],
+        ['items','Equipment & tooling','fin-equipment-items'],['records','Capital records','fin-investment-records']] as const).map(([view,label,id])=>
+        '<a data-finance-nav id="'+id+'"'+(investmentView===view?' aria-current="page"':'')+' href="'+html(capitalLink('investment','',{
+          view:view==='allocation'?null:view,cashDetail:null,period:view==='cash'?period:null,
+          ...(view==='items'?{}:{assetSearch:null,assetCategory:null,assetStatus:null,assetSupplier:null})
+        }))+'">'+html(label)+'</a>').join('')+'</nav>':'';
+    const returnsNavigation=isReturns&&!sourceKey&&returnView!=='period'&&capital?
+      '<nav class="fin-tabs fin-sales-nav" aria-label="Returns views">'+
+      ([['cash','Cash flow','fin-returns-cash'],['working-capital','Working capital','fin-returns-working-capital'],
+        ['irr','IRR review','fin-returns-review'],['sources','Sources & settings','fin-returns-sources']] as const)
+        .filter(([view])=>view!=='working-capital'||!capital.cashOnly).map(([view,label,id])=>
+          '<a data-finance-nav id="'+id+'"'+(returnView===view||view==='sources'&&returnView==='full'?' aria-current="page"':'')+
+          ' href="'+html(capitalLink('returns','',{returnDetail:view==='cash'?null:view,basis:null}))+'">'+html(label)+'</a>').join('')+'</nav>':'';
+    const budgetNavigation=isBudget&&!sourceKey&&active?'<nav class="fin-tabs fin-sales-nav" aria-label="Budget views">'+
+      (Object.entries(budgetViews) as [BudgetView,string][]).map(([view,label])=>
+        '<a data-finance-nav id="fin-budget-view-'+view+'"'+(budgetView===view?' aria-current="page"':'')+
+        ' href="'+html(budgetViewLink(view))+'">'+html(label)+'</a>').join('')+'</nav>':'';
+    const factoryNavigation=isFactory&&!sourceKey&&!factoryField&&active?'<nav class="fin-tabs fin-sales-nav fin-factory-nav" aria-label="Factory cost views">'+
+      ([['breakdown','Cost breakdown'],['annual','Annual trends'],['inputs','Source inputs']] as const).map(([view,label])=>{
+        const href=capitalLink('factory-costs','',{factoryView:view,factoryCost:null,part:null,rows:null});
+        return '<a data-finance-nav id="fin-factory-'+view+'" href="'+html(href)+'"'+(factoryView===view?' aria-current="page"':'')+'>'+html(label)+'</a>';
+      }).join('')+'</nav>':'';
+    const opsNavigation=isOperations&&!sourceKey&&active?'<nav class="fin-tabs fin-sales-nav" aria-label="Manufacturing views">'+
+      ([['stations','Operations & cycle times'],['annual','Unit labor by year'],['routes','Routes & batch records']] as const).map(([view,label])=>{
+        const href=capitalLink('operations','',{opsView:view,market:null});
+        return '<a data-finance-nav id="fin-ops-'+view+'" href="'+html(href)+'"'+(opsView===view?' aria-current="page"':'')+'>'+html(label)+'</a>';
+      }).join('')+'</nav>':'';
+    const projectActions='<div class="fin-actions">'+financeUrl('/finance?choose=1','Switch Project','fin-switch')+'<a class="small-btn" href="/#projects">Project Overview</a>'+
+      '<a class="small-btn" href="/projects/'+encodeURIComponent(projectId)+'/timing">Timing</a></div>';
+    const filters=isBudget?(sourceKey?'':
+      budgetView==='versions'?'<div class="fin-filters fin-op-scope">'+versionFilter+'</div>'+projectActions:
+        '<div class="fin-filters fin-op-scope">'+productFilter+(budgetView==='policy'?'':periodFilter)+'</div>'):
+      isReturns?'<div class="fin-filters fin-op-scope">'+productFilter+
+      (['cash','working-capital','period','full'].includes(returnView)&&!sourceKey?periodFilter:'')+'</div>'+
+      '<details class="fin-settings fin-sales-options"'+(returnOptionsOpen?' open':'')+' id="fin-more-settings"><summary>Returns options</summary><div class="fin-filters">'+
+      versionFilter+(active?displayCurrencySelect(workspace):'')+'</div>'+projectActions+
+      '<div class="fin-actions">'+sectionLink('compare','Version Comparison','fin-version-comparison')+'</div></details>':
+      isInvestment?'<div class="fin-filters fin-op-scope">'+productFilter+(investmentView==='cash'?periodFilter:'')+'</div>'+
+      '<details class="fin-settings fin-sales-options"><summary>Investment options</summary><div class="fin-filters">'+versionFilter+
+      '</div>'+projectActions+'</details>':isValidation?'<div class="fin-filters fin-op-scope">'+productFilter+(validationView==='coverage'?'':periodFilter)+'</div>'+
+      '<details class="fin-settings fin-sales-options"><summary>Validation options</summary><div class="fin-filters">'+versionFilter+
+      '</div>'+projectActions+'</details>':isPrototype?'<div class="fin-filters fin-op-scope">'+productFilter+periodFilter+'</div>'+
+      '<details class="fin-settings fin-sales-options"><summary>Prototype options</summary><div class="fin-filters">'+versionFilter+
+      '</div>'+projectActions+'</details>':engineeringLanding?'<div class="fin-filters fin-op-scope">'+productFilter+(engineeringView==='validation-hours'?'':periodFilter)+'</div>'+
+      '<details class="fin-settings fin-sales-options"><summary>Engineering options</summary><div class="fin-filters">'+versionFilter+
+      '</div>'+projectActions+'</details>':factoryLanding?'<div class="fin-filters fin-op-scope">'+productFilter+(factoryView==='annual'?'':periodFilter)+'</div>'+
+      '<details class="fin-settings fin-sales-options"><summary>Factory options</summary><div class="fin-filters">'+versionFilter+
+      '</div>'+projectActions+'</details>':opsOverview?'<div class="fin-filters fin-op-scope">'+productFilter+(opsView==='annual'?'':periodFilter)+'</div>'+
+      '<details class="fin-settings fin-sales-options"><summary>Manufacturing options</summary><div class="fin-filters">'+versionFilter+
+      '</div>'+projectActions+'</details>':bomForecast?'<div class="fin-filters fin-sales-scope">'+productFilter+'</div>'+
+      '<details class="fin-settings fin-sales-options"><summary>BOM options</summary><div class="fin-filters">'+versionFilter+(bomView==='annual'?'':periodFilter)+
+      '</div>'+projectActions+'</details>':salesForecast?'<div class="fin-filters fin-sales-scope">'+productFilter+
+      (salesView==='markets'?marketFilter:'')+'</div><details class="fin-settings fin-sales-options"><summary>Forecast options</summary><div class="fin-filters">'+
+      versionFilter+periodFilter+(salesView==='products'?marketFilter:'')+'</div>'+projectActions+'</details>':
+      '<div class="fin-filters">'+versionFilter+periodFilter+productFilter+marketFilter+'</div>';
     const unavailable=!active?empty('No finance version selected','Select an available version or return to Project Overview.'):'';
     const settings=()=>'<details class="fin-settings" id="fin-more-settings"'+(settingsOpen?' open':'')+'><summary>More settings</summary>'+
       '<div class="fin-settings-body"><div class="fin-filters">'+baselineSelect+(active?displayCurrencySelect(workspace):'')+'</div>'+
@@ -408,9 +601,10 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
       '<div class="fin-tabs">'+sectionLink('compare','Version Comparison','fin-version-comparison')+'</div>'+
       (active?versionFxPanel(workspace,active)+comparison():'')+'</div></details>';
     const module=modules.find(item=>item[0]===section);
-    const driverScope=workspace.inputs.filter(input=>input.module===effectiveModule&&(!product||!input.productKey||input.productKey===product)&&
+    const driverScope=workspace.inputs.filter(input=>input.module===effectiveModule&&(!product||input.productKey===product||(!input.productKey&&effectiveModule!=='bom'))&&
       (!market||!input.marketKey||input.marketKey===market)&&(!period||input.acrossPeriods||input.periodKey===period||input.business?.assetKey));
-    const picked=sourceKey?workspace.inputs.find(input=>input.key===sourceKey&&input.module===effectiveModule):undefined;
+    const picked=sourceKey?(effectiveModule==='bom'||effectiveModule==='factory'?driverScope:workspace.inputs)
+      .find(input=>input.key===sourceKey&&input.module===effectiveModule):undefined;
     const creating=!!(active&&workspace.canAdd&&sourceKey==='new'&&businessType);
     const entries=driverScope.filter(input=>input.business);
     const drivers=entries.length?entries:[...driverScope.filter(input=>!input.business)];
@@ -442,79 +636,204 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     };
     const anchors=businessSection||operations||development||capital||budgetExecution?'<div class="fin-actions">'+(workspace.canAdd&&!creating?financeUrl(link(section+'/new'),'Add record','fin-add-business'):'')+
       (workspace.canClone?'<button class="small-btn" type="button" id="fin-copy-draft">Create Draft</button>':'')+'</div>':'';
-    const lookup=businessSection?'<form id="fin-business-search" class="fin-actions"><label>Find input or part<input name="part" maxlength="100" value="'+html(term)+'"></label>'+
+    const lookup=businessSection?'<form id="fin-business-search" class="fin-actions"><label>'+
+      (isCommercial?'Find a commercial input':isFactory?'Find a factory cost input':isPurchasing&&bomView==='parts'?'Find a part, supplier or source':'Find input or part')+
+      '<input id="fin-business-search-text" type="search" name="part" maxlength="100" value="'+html(term)+'"></label>'+
       '<button class="small-btn" type="submit">Find</button></form>':'';
     const bizIntro=effectiveModule==='bom'?'Recurring material uses quantity × (converted quote + landed adjustment per part). Supplier tooling is listed separately for Equipment & Investment.':
       effectiveModule==='commercial'?'Volume uses vehicle demand, configuration rate and units per vehicle. Annual reductions apply to the previous effective selling price.':
       'Scrap and warranty use percentage rates. Packaging and freight, launch and division allocation have separate inputs.';
-    const businessOverview=effectiveModule==='commercial'&&workspace.commercial?
-      commercialOverview(workspace.commercial,product,market,period,labelProduct,labelMarket,(key,filters)=>capitalLink(section,key,filters)):
-      effectiveModule==='bom'?purchasingOverview(entries,term,labelPeriod(workspace.businessPeriod??''),labelMarket,
-        workspace.archived?'CNY':active?.currency??'',key=>link('bom/'+key),key=>capitalLink('investment',key,{view:'items'}),
-        workspace.materialSchedule.filter(row=>!product||row.product===product),labelPeriod,labelProduct):
-      effectiveModule==='factory'?factoryOverview(workspace.factoryCosts.filter(row=>!product||row.product===product),
-        labelPeriod(workspace.businessPeriod??''),labelProduct,key=>link(section+'/'+key)):'';
-    const details=(module&&!businessSection&&!operations&&!development&&!capital&&!budgetExecution?'<p class="fin-muted">Full '+html(module[1])+' workflow is scheduled for '+module[2]+'.</p>':'')+
+    const commercial=isCommercial&&!sourceKey&&salesView!=='inputs'&&workspace.commercial?
+      commercialOverview(workspace.commercial,product,market,period,salesView,labelProduct,labelMarket,(key,filters)=>capitalLink(section,key,filters)):null;
+    const purchasing=isPurchasing&&!sourceKey&&bomView!=='inputs'&&!cashOnly?purchasingOverview(
+      workspace.inputs.filter(input=>input.module==='bom'&&input.business),
+      {product,market,term,period:workspace.businessPeriod??'',view:bomView,archived:workspace.archived,periods,
+        markets:workspace.markets.map(row=>({...row,productKey:typeof row.productKey==='string'?row.productKey:null})),
+        components:workspace.bomComponents??[],references:workspace.bomSourceReferences??{}},
+      labelMarket,workspace.archived?'CNY':active?.details.currency??'',(key,filters)=>capitalLink('bom',key,filters),
+      (key,filters)=>capitalLink('investment',key,{...filters,view:'items'}),workspace.materialSchedule,labelPeriod,labelProduct):null;
+    const factory=isFactory&&!cashOnly&&(factoryField||!sourceKey&&factoryView!=='inputs')?factoryOverview(workspace.factoryCosts,
+        {product,period:workspace.businessPeriod??'',field:factoryField,view:factoryView,source:sourceKey,periods},labelProduct,labelPeriod,
+        (key,filters)=>capitalLink(section,key,filters),metric=>{
+          displayedOutputs.set(dashboardVersion+':'+metric.id,metric);
+          return trace(metric,dashboardVersion);
+        }):null;
+    const businessOverview=commercial?(cashOnly?empty('Commercial forecast unavailable','This version contains cash flows only. Select an operating forecast to view volume and selling prices.'):commercial.body):
+      isPurchasing?(cashOnly?empty('Purchasing forecast unavailable','This version contains cash flows only. Select an operating forecast to view material costs.'):purchasing?.body??''):
+      isFactory?(cashOnly?empty('Factory cost forecast unavailable','This version contains cash flows only. Select an operating forecast to view factory costs.'):factory?.body??''):'';
+    const details=(module&&!isEngineering&&!isPrototype&&!isValidation&&!isInvestment&&!isReturns&&!businessSection&&!operations&&!development&&!capital&&!budgetExecution?'<p class="fin-muted">Full '+html(module[1])+' workflow is scheduled for '+module[2]+'.</p>':'')+
       (sourceKey&&!picked&&!creating&&!operation&&!routeSource&&!developmentSource&&!capitalSource&&!(budgetExecution&&isBudgetDetail(budgetExecution,sourceKey))?
         empty('Source unavailable','This input is not available for the selected version and period.'):'')+
-      (budgetExecution?budgetPage(budgetExecution,sourceKey,budgetLink,link(),periods,products,product,workspace.budgetRights,isDraft,workspace.budgetActors,glossary,period)+
-        '<details class="fin-panel"><summary>Versions and comparison</summary>'+
-          table(['Version','Status','Basis'],workspace.versions.map(version=>
-            '<tr><th scope="row">'+financeUrl(capitalLink('budget','',{version:version.id}),version.name)+'</th>'+
-            '<td>'+html(version.id===workspace.approvedBaselineId?'Approved baseline':version.status)+'</td>'+
-            '<td>'+html(version.model==='cash_series'?'Cash-flow reconciliation':version.basis)+'</td></tr>').join(''))+
-          '<p>'+financeUrl(link('compare'),'Compare selected versions','fin-budget-compare')+'</p></details>'+
-        (workspace.canClone?'<p id="fin-business-status" role="status"></p>'+anchors:''):'')+
-      (capital?(section==='investment'?investmentPage(capital,sourceKey,capitalLink,periods,products,workspace.capitalRights,isDraft,glossary,params):
-        returnsPage(capital,sourceKey,capitalLink,periods,products,period,fullReturns&&!capital.cashOnly,workspace.capitalRights,isDraft,glossary,
-          params.get('returnDetail')==='irr',workspace.versions.filter(row=>row.model==='cash_series'&&row.id!==active?.details.id)
-            .map(row=>({key:row.id,label:row.name}))))+
-        (workspace.canClone?'<p id="fin-business-status" role="status"></p>'+anchors:''):'')+
-      (development?developmentPage(development,developmentModule,sourceKey,developmentLink,periods,products,workspace.developmentRights,isDraft,glossary)+
-        (workspace.canClone?'<p id="fin-business-status" role="status"></p>'+anchors:''):operations?operationsPage(operations,sourceKey,operationsLink,labelPeriod(workspace.operationPeriod??''),workspace.canOperate,workspace.canCalibrate,
-        active?.details.status==='draft',glossary,labelPeriod,(scope,line)=>{
-          const asset=workspace.operationAssets.find(row=>row.line===line&&row.products.includes(scope.productKey));
-          return asset?capitalLink('investment',asset.key,{view:'items',product:scope.productKey,period:null}):null;
-        })+(workspace.canClone?'<p id="fin-business-status" role="status"></p>'+anchors:''):'')+
-      (businessSection?businessOverview+sectionPanel(html(module?.[1]??'Business inputs'),
-        '<p class="fin-muted">'+html(bizIntro)+' · '+html(labelPeriod(workspace.businessPeriod??''))+'</p><p id="fin-business-status" role="status"></p>'+
-        (effectiveModule==='bom'&&picked?.business?.assetKey?
+      (budgetExecution?(budgetView==='versions'&&!sourceKey?budgetVersions(workspace.versions,active!.details.id,workspace.currentVersionId,
+        workspace.approvedBaselineId,id=>budgetViewLink('allocations',id),link('compare'),
+        workspace.canClone?'<p id="fin-business-status" role="status"></p>'+anchors:''):
+        budgetPage(budgetExecution,budgetView,sourceKey,budgetLink,link(),periods,products,product,workspace.budgetRights,isDraft,
+          workspace.budgetActors,glossary,period,budgetView==='execution'&&!sourceKey?budget():'',
+          budgetForm?'<div id="fin-impact-mount"></div>':'')):'')+
+      (investment?investment.body+(workspace.canClone&&!sourceKey&&investmentView==='records'?'<p id="fin-business-status" role="status"></p>'+anchors:''):
+        isInvestment?empty('Investment forecast unavailable',cashOnly?'This version contains cash flows only. Select an operating forecast to review investment and equipment.':
+          'Select an operating forecast with investment records.'):
+        returns?returns.body+(!sourceKey&&returnView==='funding'?chart():'')+
+          (returnView==='sources'&&workspace.canClone&&!sourceKey?'<p id="fin-business-status" role="status"></p>'+anchors:''):
+        isReturns?empty('Return forecast unavailable','Select a version with operating forecasts or period cash records.'):'')+
+      (engineering?engineering.body+(!sourceKey&&engineeringView==='records'&&workspace.canClone?'<p id="fin-business-status" role="status"></p>'+anchors:''):
+        isEngineering&&cashOnly?empty('Engineering forecast unavailable','This version contains cash flows only. Select an operating forecast to review work packages.'):
+        prototype?prototype.body+(!sourceKey&&prototypeView==='records'&&workspace.canClone?'<p id="fin-business-status" role="status"></p>'+anchors:''):
+        isPrototype?empty('Prototype forecast unavailable',cashOnly?'This version contains cash flows only. Select an operating forecast to review sample packages.':
+          'Select an operating forecast with development cost records.'):
+        validation?validation.body+(!sourceKey&&validationView==='records'&&workspace.canClone?'<p id="fin-business-status" role="status"></p>'+anchors:''):
+        isValidation?empty('Validation forecast unavailable',cashOnly?'This version contains cash flows only. Select an operating forecast to review test packages.':
+          'Select an operating forecast with development cost records.'):
+        development?developmentPage(development,developmentModule,sourceKey,developmentLink,periods,products,workspace.developmentRights,isDraft,glossary)+
+        (workspace.canClone?'<p id="fin-business-status" role="status"></p>'+anchors:''):
+        manufacturing?manufacturing.body+(!sourceKey&&opsView==='routes'&&workspace.canClone?'<p id="fin-business-status" role="status"></p>'+anchors:''):
+        isOperations?empty('Manufacturing forecast unavailable',cashOnly?'This version contains cash flows only. Select an operating forecast to view routes and direct labor.':
+          'This version has no manufacturing cost model. Select a manufacturing forecast to review its operations and labor.'):'')+
+      (businessSection?(isPurchasing&&bomView==='parts'&&!sourceKey&&!cashOnly?lookup:'')+businessOverview+
+        (isPurchasing&&picked?.business?.assetKey?
           '<p>'+financeUrl(capitalLink('investment',picked.key,{view:'items'}),'Open equipment and tooling record','fin-open-quoted-tooling')+'</p>':'')+
+        (!sourceKey&&(isCommercial&&salesView==='inputs'||isPurchasing&&bomView==='inputs'||isFactory&&factoryView==='inputs'&&!factoryField)&&!cashOnly?
+        sectionPanel(isPurchasing?'Purchasing source inputs':isCommercial?'Commercial source inputs':'Factory cost inputs',
+        '<p class="fin-muted">'+html(bizIntro)+' · '+html(labelPeriod(workspace.businessPeriod??''))+'</p><p id="fin-business-status" role="status"></p>'+
         lookup+(matching.length?table(['Input','Product / market','Effective period','Value','Source'],driverRows):'<p class="fin-muted">No matching inputs in this scope.</p>')+
         (pageCount>1?'<div class="fin-actions fin-pagination">'+(page>1?controlLink(page-1,'Previous'):'')+'<span>Page '+page+' / '+pageCount+'</span>'+
-          (page<pageCount?controlLink(page+1,'Next'):'')+'</div>':''),anchors):
-        drivers.length?sectionPanel('Connected Calculation Inputs',table(['Input','Product / line','Source period','Source'],driverRows)):
-        module&&!development&&!capital&&section!=='budget'&&section!=='returns'?empty('Business entry pending','Connected values are available in the finance dashboard where the selected version provides them.'):'');
+          (page<pageCount?controlLink(page+1,'Next'):'')+'</div>':''),anchors):''):
+        drivers.length&&(!isOperations||!sourceKey&&opsView==='routes')&&(!isReturns||!sourceKey&&returnView==='sources')?
+        sectionPanel('Connected Calculation Inputs',table(['Input','Product / line','Source period','Source'],driverRows)):
+        module&&!isOperations&&!development&&!capital&&section!=='budget'&&section!=='returns'?empty('Business entry pending','Connected values are available in the finance dashboard where the selected version provides them.'):'');
     const origin=historyPosition()?.parent,originPath=origin?.split('?')[0];
     const safeOrigin=originPath===base||originPath?.startsWith(base+'/');
     const comparisonOrigin=!isComparison&&params.get('compareReturn')==='1';
+    const annualParent=isCommercial&&!sourceKey&&salesView==='quotes'&&product&&period;
+    const factoryParent=isFactory&&!sourceKey&&(factoryField||factoryView!=='breakdown');
+    const engineeringParent=isEngineering&&(!!sourceKey||!!engineeringPackage||!!validationSpec||engineeringView!=='packages');
+    const prototypeParent=isPrototype&&(!!sourceKey||!!prototypeGroup||prototypeView!=='quotes');
+    const validationParent=isValidation&&(!!sourceKey||!!validationGroup||validationView!=='packages');
+    const investmentParent=isInvestment&&(!!sourceKey||investmentView!=='allocation');
+    const returnsParent=isReturns&&(!!sourceKey||returnView!=='cash');
+    const budgetParent=isBudget&&(!!sourceKey||budgetView!=='allocations');
+    const returnsSourceView=sourceKey&&capital?.rows.some(row=>(row.key===sourceKey||'edit-'+row.key===sourceKey)&&row.record.kind==='terms')?
+      'working-capital':'sources';
+    const investmentSourceView=investmentView==='allocation'&&sourceKey?
+      (capital?.assets.some(row=>row.key===sourceKey||'edit-'+row.key===sourceKey)||
+        capital?.toolingQuotes.some(row=>row.key===sourceKey)||capital?.estimateDetails.some(row=>row.key===sourceKey)?'items':'records'):
+      investmentView;
+    const salesParent=requestedView==='inputs'||picked?.business?.businessField!=='sales_price'?'inputs':'quotes';
     const backHref=safeOrigin?origin!:comparisonOrigin?comparisonReturn(base,params):
-      equipmentView?capitalLink('investment','',sourceKey?{}:{view:null}):sourceKey?link(section):link();
+      investmentParent?capitalLink('investment','',{
+        view:sourceKey?investmentSourceView:investmentCashDetail?'cash':null,cashDetail:null,
+        ...(!sourceKey&&!investmentCashDetail?{period:null,assetSearch:null,assetSupplier:null,assetCategory:null,assetStatus:null}:{})
+      }):
+      returnsParent?capitalLink('returns','',{returnDetail:sourceKey?returnsSourceView:null,basis:null}):
+      budgetParent?budgetViewLink(sourceKey?budgetView:'allocations'):
+      isOperations&&(sourceKey||opsView!=='stations')?capitalLink('operations','',{opsView:sourceKey?'routes':'stations'}):
+      isPurchasing&&sourceKey?capitalLink('bom','',{bomView}):
+      isPurchasing&&bomView!=='markets'?capitalLink('bom','',{bomView:'markets',market:null,part:null,rows:null}):
+      isCommercial&&sourceKey?capitalLink('commercial','',{salesView:salesParent}):
+      isFactory&&sourceKey?capitalLink('factory-costs','',{factoryView:factoryField?null:'inputs'}):
+      engineeringParent?capitalLink('engineering','',{
+        engineeringView:sourceKey&&!engineeringPackage?'records':validationSpec?'validation-hours':'packages',
+        ...(!sourceKey?{engineeringPackage:null,validationSpec:null}:{})
+      }):
+      prototypeParent?capitalLink('prototypes','',{
+        prototypeView:sourceKey&&!prototypeGroup?'records':prototypeGroup?prototypeView:null,
+        prototypeGroup:sourceKey?prototypeGroup:null
+      }):
+      validationParent?capitalLink('validation','',{
+        validationView:sourceKey&&!validationGroup?'records':validationGroup?validationView:null,
+        validationGroup:sourceKey?validationGroup:null,validationPhase:sourceKey?validationPhase:null
+      }):
+      factoryParent?capitalLink('factory-costs','',{factoryView:'breakdown',factoryCost:null}):
+      annualParent?capitalLink('commercial','',{period:null,salesView:'products'}):sourceKey?link(section):link();
     const backLabel=safeOrigin?titleFor(originPath!.slice(base.length+1).split('/')[0]):comparisonOrigin?'Version Comparison':
-      equipmentView?(sourceKey?'Equipment & Tooling Details':titleFor(section)):sourceKey?titleFor(section):'Finance Dashboard';
-    const pageTitle=equipmentView?'Equipment & Tooling Details':section?titleFor(section):'Project Finance Dashboard';
-    const scope=active&&!isComparison?'<p class="fin-scope">'+html(product?labelProduct(product):'All products')+' · '+html(period?labelPeriod(period):'All periods')+
-      ' · '+html(active.currency)+(!section?' · As of '+html(active.asOf):'')+'</p>':'';
+      sourceKey||annualParent||factoryParent||engineeringParent||prototypeParent||validationParent||investmentParent||returnsParent||budgetParent?titleFor(section):'Finance Dashboard';
+    const originParams=new URLSearchParams(origin?.split('?')[1]);
+    const previousSalesView=safeOrigin?originParams.get('salesView')??(originParams.has('period')?'quotes':'products'):
+      sourceKey?salesParent:'products';
+    const salesPageNames:Record<string,string>={products:'Annual Forecast',markets:'Market Forecast',quotes:'Market Quotes',inputs:'Source Inputs'};
+    const previousBomView=safeOrigin?originParams.get('bomView')??(originParams.has('market')?'parts':'markets'):sourceKey?bomView:'markets';
+    const bomPageNames:Record<string,string>={markets:'Market BOMs',parts:'Parts & Suppliers',annual:'Annual Material Cost',inputs:'Source Inputs'};
+    const previousOpsView=safeOrigin?originParams.get('opsView'):sourceKey?'routes':'stations';
+    const opsPageNames:Record<string,string>={stations:'Operations & Cycle Times',annual:'Annual Unit Labor',routes:'Routes & Batch Records'};
+    const factoryPageNames:Record<string,string>={breakdown:'Cost Breakdown',annual:'Annual Trends',inputs:'Factory Cost Inputs'};
+    const previousFactoryView=safeOrigin?originParams.get('factoryView')??'breakdown':sourceKey&&!factoryField?'inputs':'breakdown';
+    const previousEngineeringView=safeOrigin?originParams.get('engineeringView'):sourceKey&&!engineeringPackage?'records':validationSpec?'validation-hours':'packages';
+    const engineeringPageNames:Record<string,string>={packages:'Work Packages','validation-hours':'Validation Hours',records:'Cost Records'};
+    const previousPrototypeView=safeOrigin?originParams.get('prototypeView'):sourceKey&&!prototypeGroup?'records':prototypeGroup?prototypeView:'quotes';
+    const prototypePageNames:Record<string,string>={quotes:'Quote Packages',delivery:'Delivery & Evidence',records:'Cost Records'};
+    const previousValidationView=safeOrigin?originParams.get('validationView'):sourceKey&&!validationGroup?'records':validationGroup?validationView:'packages';
+    const validationPageNames:Record<string,string>={packages:'Test Packages',coverage:'Certification & Coverage',records:'Cost Records'};
+    const previousInvestmentView=safeOrigin?originParams.get('view'):sourceKey?investmentSourceView:
+      investmentCashDetail?'cash':'allocation';
+    const investmentPageNames:Record<string,string>={allocation:'Investment Allocation',cash:'Payments & Recovery',items:'Equipment & Tooling Details',records:'Capital Records'};
+    const previousReturnView=safeOrigin?originParams.get('returnDetail'):sourceKey?returnsSourceView:'cash';
+    const returnPageNames:Record<string,string>={cash:'Cash Flow','working-capital':'Working Capital',irr:'IRR Review',sources:'Sources & Settings',
+      period:'Period Cash and Sources',funding:'Funding Sources'};
+    const previousBudgetView=safeOrigin?originParams.get('budgetView')??'allocations':sourceKey?budgetView:'allocations';
+    const backTitle=isBudget&&backLabel===titleFor(section)?
+      budgetViews[previousBudgetView as BudgetView]??backLabel:
+      isReturns&&backLabel===titleFor(section)?
+      returnPageNames[previousReturnView??'cash']??backLabel:
+      isInvestment&&backLabel===titleFor(section)?
+      investmentPageNames[previousInvestmentView??'allocation']??backLabel:
+      isValidation&&backLabel===titleFor(section)?
+      (safeOrigin&&originParams.has('validationGroup')||!safeOrigin&&sourceKey&&validationGroup?'Test Package':
+        validationPageNames[previousValidationView??'packages']??backLabel):
+      isPrototype&&backLabel===titleFor(section)?
+      (safeOrigin&&originParams.has('prototypeGroup')||!safeOrigin&&sourceKey&&prototypeGroup?'Quote Package':
+        prototypePageNames[previousPrototypeView??'quotes']??backLabel):
+      isEngineering&&backLabel===titleFor(section)?
+      (safeOrigin&&originParams.has('engineeringPackage')||!safeOrigin&&sourceKey&&engineeringPackage?'Work Package':
+        engineeringPageNames[previousEngineeringView??'packages']??backLabel):
+      isFactory&&backLabel===titleFor(section)?
+      (safeOrigin&&originParams.has('factoryCost')||!safeOrigin&&sourceKey&&factoryField?'Cost Detail':factoryPageNames[previousFactoryView]??backLabel):
+      isOperations&&(backLabel===titleFor(section)||!safeOrigin&&opsView!=='stations')?
+      opsPageNames[previousOpsView??'stations']??backLabel:
+      isCommercial&&backLabel===titleFor(section)?salesPageNames[previousSalesView]??backLabel:
+      isPurchasing&&(!safeOrigin&&!!sourceKey||!safeOrigin&&bomView!=='markets'||backLabel===titleFor(section))?bomPageNames[previousBomView]??backLabel:backLabel;
+    const pageTitle=isPurchasing&&sourceKey?(creating?'New purchasing input':picked?.business?.label??'Purchasing input'):
+      isCommercial&&sourceKey?(creating?'New commercial input':picked?.label??'Commercial input'):
+      isFactory&&sourceKey?(creating?'New factory cost input':picked?.label??'Factory cost input'):
+      isEngineering?'Engineering & Project Management':
+      isBudget?'Budget & Versions':
+      equipmentView?'Equipment & Tooling Details':isReturns?'Working Capital & Returns':section?titleFor(section):'Project Finance Dashboard';
+    const scopePeriod=isReturns&&returnView==='working-capital'?capital?.workingPeriod:isOperations?(opsOverview&&opsView==='annual'?'':workspace.operationPeriod):
+      isFactory?(factoryLanding&&factoryView==='annual'?'':workspace.businessPeriod):
+      isEngineering&&engineeringView==='validation-hours'?'':isPurchasing&&bomView!=='annual'?workspace.businessPeriod:period;
+    const scope=active&&!isComparison?'<p class="fin-scope">'+html(product?labelProduct(product):'All products')+' · '+
+      html(isValidation&&validationView==='coverage'?'Full workbook quote':isInvestment&&investmentView==='allocation'&&!sourceKey?'Lifecycle quote':
+        isInvestment&&investmentView!=='cash'&&!sourceKey?'All periods':isReturns&&['irr','funding'].includes(returnView)?'Full horizon':
+          scopePeriod?labelPeriod(scopePeriod):'All periods')+
+      ((isCommercial||isPurchasing)&&market?' · '+html(labelMarket(market)):'')+' · '+
+      html(isBudget?budgetExecution?.policy?.currency??active.details.currency:
+        isPurchasing||isOperations||isFactory||isEngineering||isPrototype||isValidation||isInvestment?(workspace.archived?'CNY':active.details.currency):isCommercial?workspace.commercial?.currency??active.currency:active.currency)+
+      (isBudget?' · '+html(active.details.name)+' · '+(isDraft?'Draft':'Frozen · read-only')+' · Revision '+active.details.revision:
+        isFactory||isEngineering||isPrototype||isValidation||isInvestment||isReturns?(isDraft?' · Draft forecast':' · Frozen version'):'')+
+      (!section?' · As of '+html(active.asOf):'')+'</p>':'';
     const heading='<div class="fin-heading fin-project-heading"><div><p class="fin-project-name">'+html(workspace.title)+'</p><h1>'+html(pageTitle)+'</h1>'+scope+'</div>'+
-      '<div class="fin-actions">'+financeUrl('/finance?choose=1','Switch Project','fin-switch')+'<a class="small-btn" href="/#projects">Project Overview</a>'+
-      '<a class="small-btn" href="/projects/'+encodeURIComponent(projectId)+'/timing">Timing</a></div></div>';
+      (salesForecast||bomForecast||opsOverview||factoryLanding||engineeringLanding||isPrototype||isValidation||isInvestment||isReturns||isBudget?'':projectActions)+'</div>';
     root.innerHTML='<div class="fin-workbench">'+navigation+'<div class="fin-workbench-content">'+heading+(isComparison?context:'')+
-      (section?'<a class="fin-link fin-back" data-finance-nav data-finance-back href="'+html(backHref)+'">← Back to '+html(backLabel==='Dashboard'?'Finance Dashboard':backLabel)+'</a>':'')+
+      (section?'<a class="fin-link fin-back" data-finance-nav data-finance-back href="'+html(backHref)+'">← Back to '+html(backTitle==='Dashboard'?'Finance Dashboard':backTitle)+'</a>':'')+
+      (commercial&&!cashOnly?commercial.summary:purchasing?.summary??manufacturing?.summary??factory?.summary??engineering?.summary??prototype?.summary??validation?.summary??investment?.summary??returns?.summary??'')+
+      (budgetExecution&&budgetView==='allocations'&&!sourceKey?budgetSummary(budgetExecution,product,period):'')+
       (isComparison?comparisonFilters(workspace,params):'<div class="fin-toolbar">'+filters+(!section?settings():'')+'</div>')+
+      salesNavigation+bomNavigation+opsNavigation+factoryNavigation+engineeringNavigation+prototypeNavigation+validationNavigation+investmentNavigation+returnsNavigation+budgetNavigation+
       (workspace.selectionAdjusted?'<p role="status">An unavailable version selection was reset.</p>':'')+
       (isComparison?comparisonPage(compareReport,base,params,glossary,fxComparison):unavailable+comparisonSource(workspace,params.has('traceKey'))+
         (active?
         (!section?dashboard():
-          (section==='returns'?details+(fullReturns&&capital?'':chart()+cashRows()):section==='budget'?budget():details)+
-          (section==='budget'?details:'')+
-          (picked||creating||operation?'<div id="fin-impact-mount"></div>':'')):''))+'</div></div>';
+          details+
+          (!budgetForm&&(picked||creating||operation)?'<div id="fin-impact-mount"></div>':'')):''))+'</div></div>';
     const activeSection=root.querySelector<HTMLElement>('.fin-sections [aria-current="page"]');
     if(activeSection&&matchMedia('(max-width: 1180px)').matches) {
-      const menu=activeSection.parentElement!;
+      const menu=activeSection.closest<HTMLElement>('.fin-sections')!;
       menu.scrollLeft=activeSection.offsetLeft-(menu.clientWidth-activeSection.offsetWidth)/2;
     }
     const settingsElement=root.querySelector<HTMLDetailsElement>('#fin-more-settings');
-    if(settingsElement)settingsElement.ontoggle=()=>{settingsOpen=settingsElement.open;};
+    if(settingsElement)settingsElement.ontoggle=()=>{
+      if(isReturns)returnOptionsOpen=settingsElement.open;
+      else settingsOpen=settingsElement.open;
+    };
     const assetSearch=root.querySelector<HTMLFormElement>('#fin-asset-search');
     if(assetSearch)assetSearch.onsubmit=event=>{
       event.preventDefault();
@@ -538,7 +857,9 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
       event.preventDefault();
       const next=new URLSearchParams(params),input=String(new FormData(search).get('part')??'').trim();
       if(input)next.set('part',input);else next.delete('part');next.delete('rows');
-      navigate(base+'/'+section+(next.size?'?'+next:''),'fin-business-search');
+      if(isPurchasing)next.set('bomView',bomView);
+      if(isFactory)next.set('factoryView','inputs');
+      navigate(base+'/'+section+(next.size?'?'+next:''),'fin-business-search-text');
     };
     const clone=root.querySelector<HTMLButtonElement>('#fin-copy-draft');
     if(clone&&active)clone.onclick=async()=>{
@@ -556,6 +877,20 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     };
     for(const filter of root.querySelectorAll<HTMLSelectElement>('[data-filter-key]'))filter.onchange=()=>{
       const next=new URLSearchParams(params);if(filter.value)next.set(filter.dataset.filterKey!,filter.value);else next.delete(filter.dataset.filterKey!);
+      if(salesForecast)next.set('salesView',salesView);
+      if(isPurchasing)next.set('bomView',bomView);
+      if(isEngineering&&filter.dataset.filterKey==='product'){
+        next.delete('engineeringPackage');next.delete('validationSpec');
+      }
+      if(isPrototype&&filter.dataset.filterKey==='product'&&!sourceKey)next.delete('prototypeGroup');
+      if(isInvestment&&investmentView==='cash'&&filter.dataset.filterKey==='product')next.delete('cashDetail');
+      if(isValidation&&filter.dataset.filterKey==='product'&&!sourceKey){
+        next.delete('validationGroup');next.delete('validationPhase');
+      }
+      if((effectiveModule==='bom'||isCommercial)&&filter.dataset.filterKey==='product'&&filter.value){
+        const marketProduct=workspace.markets.find(item=>item.key===next.get('market'))?.productKey;
+        if(marketProduct&&marketProduct!==filter.value)next.delete('market');
+      }
       next.delete('rows');
       if(!leave()){filter.value=params.get(filter.dataset.filterKey!)??'';return;}
       savePosition(filter.id);
@@ -569,11 +904,11 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     if((picked||creating||operation)&&active)impact=mountImpactPanel({root:root.querySelector('#fin-impact-mount')!,projectId,version:active,driver:picked,operation,
       entry:creating&&businessType?{module:businessType,fields:workspace.businessFields,products,markets,product,market,archived:workspace.archived}:undefined,
       dictionary:glossary,period,currencies:workspace.currencies,api,labelPeriod,labelProduct,
-      onSaved:(fieldKey)=>{
+      onSaved:(fieldKey,accountingPeriod)=>{
         savePosition();
         if(budgetForm){
           const target=sourceKey==='policy'?'':sourceKey.startsWith('forecast-')?sourceKey.slice('forecast-'.length):fieldKey;
-          updateHistory({...historyPosition(),index:position},budgetLink(target));
+          updateHistory({...historyPosition(),index:position},budgetLink(target,accountingPeriod));
         }
         else if(capitalForm)updateHistory({...historyPosition(),index:position},capitalLink(section,fieldKey));
         else if(developmentForm)updateHistory({...historyPosition(),index:position},sourceKey==='combine'?link(section):developmentLink(developmentModule,fieldKey?.replace(/:actual$/,'')));

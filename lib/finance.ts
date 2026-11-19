@@ -15,13 +15,17 @@ import {applyFinanceChanges,previewImpact,replacedFinanceDriver,supportsFinanceD
 import {screenReport,workspaceComparison,workspaceReport} from './finance-workspace.ts';
 import {archived,businessFields,businessFx,businessInputs,hasBusinessModel,isBusiness,isBusinessSource} from './finance-business.ts';
 import {commercialWorkspace,factoryCostWorkspace,materialCostSchedule} from './finance-commercial-workspace.ts';
+import {bomReferences,sourceBomComponents} from './finance-bom-components.ts';
 import {Decimal} from './finance-decimal.ts';
 import {isOperationsInput,isOperationsSource} from './finance-operations.ts';
 import {operationsWorkspace} from './finance-operations-calculation.ts';
 import {isDevelopmentInput,isDevelopmentModule,isDevelopmentSource,supportsDevelopment} from './finance-development.ts';
 import {developmentWorkspace} from './finance-development-calculation.ts';
+import {reviewedDevelopmentEvidence} from './finance-development-evidence.ts';
+import {hasReviewedTemplate} from './finance-cqa-attachments.ts';
 import {capitalAssets,isCapitalInput,isCapitalSource,supportsCapital} from './finance-capital.ts';
 import {capitalWorkspace} from './finance-capital-workspace.ts';
+import {reviewedReturnControls} from './finance-return-controls.ts';
 import {budgetAction,isBudgetEvent,isBudgetInput,isBudgetSource} from './finance-budget.ts';
 import {budgetWorkspace} from './finance-budget-calculation.ts';
 import {FinanceBridgeInputs} from './finance-bridge-inputs.ts';
@@ -392,7 +396,7 @@ export function financeService(store:Store) {
       if(requestedDisplay!==null&&!Object.hasOwn(currencyOptions,requestedDisplay))invalid('Unsupported finance display currency.');
       const displayCurrency=requestedDisplay??(isComparison?zz?.source.currency:active?.source.currency)??null;
       const shown=(item:typeof active)=>{
-        if(!item||!isDashboard||!displayCurrency)return item;
+        if(!item||!displayCurrency||!isDashboard&&module!=='returns'||module==='returns'&&displayCurrency===item.calculation.currency)return item;
         const calculation=displayFinance(item.calculation,item.source,displayCurrency,item.source,currencyOptions);
         return {...item,calculation,view:{details:item.view.details,fxBasis:item.view.fxBasis,...projectReport(item.source,calculation)}};
       };
@@ -422,25 +426,46 @@ export function financeService(store:Store) {
       const commercial=active&&module==='commercial'?commercialWorkspace(active.source,active.calculation,businessRows):null;
       const materialSchedule=active&&module==='bom'?materialCostSchedule(active.calculation,businessRows):[];
       const effectivePeriod=active?.view.periods.find(item=>item.key===query.get('period'))?.key??active?.view.periods[1]?.key;
+      const bomComponents=active&&module==='bom'&&access.read(live,p,'timing')?sourceBomComponents(store,p,active.source,effectivePeriod):[];
+      const bomSourceReferences=active&&module==='bom'?bomReferences(active.source,effectivePeriod):{};
       const factoryCosts=active&&module==='factory-costs'&&effectivePeriod?
-        factoryCostWorkspace(active.source,active.calculation,businessRows,effectivePeriod):[];
-      const operationPeriod=effectivePeriod===active?.view.periods[0]?.key?active?.view.periods[1]?.key:effectivePeriod;
+        factoryCostWorkspace(active.source,active.calculation,businessRows,effectivePeriod,query.get('product'),query.get('factoryHorizon')==='1'):[];
+      const operationPeriod=effectivePeriod;
       const operations=active&&module==='operations'&&operationPeriod?operationsWorkspace(active.source,active.calculation,operationPeriod,query.get('product')):null;
       const operationAssets=active&&operations?capitalAssets(active.source).flatMap(row=>{
         const asset=row.conversion.capital;
-        return asset.lineId?[{line:asset.lineId,key:row.key,products:asset.allocations.map(item=>item.productKey)}]:[];
+        return asset.lineId?[{line:asset.lineId,key:row.key,title:asset.title,products:asset.allocations.map(item=>item.productKey)}]:[];
       }):[];
-      const canOperate=!!operations&&access.can(live,'financePreview',p)&&access.can(live,'financeOperationsEdit',p);
+      const productionPeriod=active?.source.periods.some(row=>row.key===operationPeriod&&Number(row.metadata.ordinal)>0);
+      const canOperate=!!operations&&!!productionPeriod&&access.can(live,'financePreview',p)&&access.can(live,'financeOperationsEdit',p);
+      const quoteEvidence=active&&isDevelopmentModule(module)&&supportsDevelopment(active.source)&&hasReviewedTemplate(active.source)&&
+        access.read(live,p,'timing')?reviewedDevelopmentEvidence(store,p):null;
       const development=active&&isDevelopmentModule(module)&&supportsDevelopment(active.source)?
-        developmentWorkspace(active.source,active.calculation,module,query.get('period'),query.get('product'),query.get('source')):null;
+        developmentWorkspace(active.source,active.calculation,module,query.get('period'),query.get('product'),query.get('source'),quoteEvidence):null;
       const developmentRights=Object.fromEntries((['engineering','prototypes','validation'] as const).map(key=>
         [key,!!development&&access.can(live,'financePreview',p)&&access.can(live,financeEditCapabilities[key],p)]));
+      const returnsProduct=query.get('product');
       const capital=active&&(module==='investment'&&supportsCapital(active.source)||
         module==='returns'&&(supportsCapital(active.source)||active.source.policy.rules.model==='cash_series'))?
-        capitalWorkspace(active.source,active.calculation,query.get('product'),query.get('source'),module==='investment'):null;
+        capitalWorkspace(active.source,active.calculation,returnsProduct,query.get('source'),module==='investment',
+          module==='investment'?query.get('period'):effectivePeriod??null,
+          module==='returns'?(displayedCurrent??displayedBaseline)?.calculation:undefined):null;
+      const reviewIrr=!!capital&&module==='returns'&&query.get('returnDetail')==='irr';
+      const returnControls=reviewIrr&&active&&!returnsProduct&&hasReviewedTemplate(active.source)&&access.read(live,p,'timing')?
+        reviewedReturnControls(store,p):null;
+      const returnChecks=reviewIrr?projectInfo.versions.filter(row=>row.model==='cash_series'&&row.id!==active?.view.details.id).map(row=>{
+        const version=selected(row.id)!;
+        const report=version.calculation,focus=returnsProduct?report.products[returnsProduct]:report;
+        const irr=focus?.metrics.irr,terminal=focus?.periodic.at(-1)?.cash_flow;
+        return {id:row.id,name:row.name,currency:report.currency,period:version.view.periods.at(-1)?.label??'',
+          irr:irr?.value!=null?Decimal.from(irr.value).mul(Decimal.from(100)).text(6):null,status:irr?.status??'missing_input',
+          terminal:terminal?.value??null};
+      }):[];
       const capitalRights={investment:!!capital&&access.can(live,'financePreview',p)&&access.can(live,'financeInvestmentEdit',p),
         returns:!!capital&&!!active&&supportsCapital(active.source)&&access.can(live,'financePreview',p)&&access.can(live,'financeReturnsEdit',p)};
-      const budget=active&&module==='budget'?budgetWorkspace(active.source,active.calculation,live.uid):null;
+      const budget=active&&module==='budget'?budgetWorkspace(active.source,active.calculation,live.uid,
+        active.view.productLabels.find(item=>item.key===query.get('product'))?.key,
+        active.view.periods.find(item=>item.key===query.get('period'))?.key):null;
       const budgetEdit=!!budget&&access.can(live,'financePreview',p)&&access.can(live,'financeBudgetEdit',p);
       const budgetRights={edit:budgetEdit,setup:budgetEdit&&access.can(live,'financeVersionEdit',p),
         confirm:!!budget&&access.can(live,'financeApprove',p)};
@@ -474,7 +499,7 @@ export function financeService(store:Store) {
         const costFx=business?.businessField==='part_price'?fx:null;
         const adjustmentFx=adjustment?.currency?businessFx(active!.source,adjustment.currency,adjustment.periodKey):null;
         const landed=quote&&quantity&&adjustment&&costFx&&adjustmentFx?Decimal.from(quantity.value)
-          .mul(Decimal.from(quote.value).mul(costFx.rate).add(Decimal.from(adjustment.value).mul(adjustmentFx.rate))).text(4):null;
+          .mul(Decimal.from(quote.value).mul(costFx.rate).add(Decimal.from(adjustment.value).mul(adjustmentFx.rate))).text(10):null;
         return {key:input.key,metricKey:input.metricKey,module:input.module,unit:input.unit,value:input.value,
           productKey:input.productKey,marketKey:input.marketKey,periodKey:input.periodKey,lineKey:input.lineKey,currency:input.currency,
           valueKind:input.valueKind,business,applicable,landed,label:business?businessFields[business.businessField][1]:null,
@@ -490,14 +515,14 @@ export function financeService(store:Store) {
       const canClone=active?.view.details.status==='frozen'&&access.can(live,'financeVersionEdit',p)&&
         [...new Set([...active.source.inputs,...active.source.events].map(row=>row.module))].every(module=>access.can(live,financeEditCapabilities[module],p));
       return {...projectInfo,title:store.get('projects',p).title,baseline:displayedBaseline?.view??null,current:displayedCurrent?.view??null,inputs,
-        businessPeriod:effectivePeriod??null,archived:active?archived(active.source):false,canAdd:!!canAdd,canClone:!!canClone,businessFields,commercial,materialSchedule,factoryCosts,
-        operations,operationPeriod,operationAssets,canOperate,canCalibrate:canOperate&&access.can(live,'financeApprove',p),development,developmentRights,capital,capitalRights,
+        businessPeriod:effectivePeriod??null,archived:active?archived(active.source):false,canAdd:!!canAdd,canClone:!!canClone,businessFields,commercial,materialSchedule,factoryCosts,bomComponents,bomSourceReferences,
+        operations,operationPeriod,operationAssets,canOperate,canCalibrate:canOperate&&access.can(live,'financeApprove',p),development,developmentRights,capital,capitalRights,returnControls,returnChecks,
         budget,budgetRights,budgetActors,comparisonReport,fxComparison,sourceTrace,sourceRevisionChanged,displayCurrency,currencyOptions,
         fxCurrencyOptions:{...financeCurrencyScales,...active?.source.policy.currencyScales},
         fxBasis:active?financeFxBasis(active.source):null,
         canEditFx:!!active&&active.view.details.status==='draft'&&!archived(active.source)&&access.can(live,'financeVersionEdit',p),
         canCloneFx:!!canClone&&!!active&&!archived(active.source),
-        displayFxMissing:isDashboard&&[displayedBaseline,displayedCurrent].some(item=>item?.calculation.issues.some(issue=>issue.code==='missing_fx')),
+        displayFxMissing:(isDashboard||module==='returns')&&[displayedBaseline,displayedCurrent].some(item=>item?.calculation.issues.some(issue=>issue.code==='missing_fx')),
         markets:active?.source.markets.map(({key,label,metadata})=>({key,label,productKey:metadata.productKey??null}))??[],
         currencies:active?.source.policy.currencyScales??{},
         comparison:!isComparison&&(!screen||isDashboard||module==='budget')&&displayedBaseline&&displayedCurrent?workspaceComparison(displayedBaseline.calculation,displayedCurrent.calculation):null,

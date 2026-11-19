@@ -1,21 +1,25 @@
-import {amountCell,escapeHtml as html,financeUrl,metricLabel} from '/finance-view.js';
+import {amountCell,amountText,escapeHtml as html,financeUrl,metricLabel} from '/finance-view.js';
 import type {Dictionary} from '/finance-view.js';
 import {candidateValue,inputDecimal} from '/finance-impact.js';
 import type {OperationEditor} from '/finance-impact.js';
 import {currencyOptions} from '/finance-fx.js';
 import type {budgetWorkspace} from '../lib/finance-budget-calculation.ts';
+import type {FinanceVersionSummary} from '../lib/finance-contracts.ts';
 
 type Workspace=ReturnType<typeof budgetWorkspace>;
 type Scope=Workspace['scopes'][number];
 type Posting=Scope['postings'][number];
 type Option={key:string;label:string};
 type Rights={edit:boolean;setup:boolean;confirm:boolean};
-type Link=(key?:string)=>string;
+type Link=(key?:string,period?:string,product?:string)=>string;
+export const budgetViews={allocations:'Scope & allocations',execution:'Execution & evidence',versions:'Versions & comparison',policy:'Policy & cost scopes'};
+export type BudgetView=keyof typeof budgetViews;
 const metrics=['approved_budget','confirmed_actual','draft_cost','etc','eac','budget_balance','completion_variance'];
 const recognitions={service_acceptance:'Service acceptance',goods_receipt:'Goods receipt',invoice_review:'Invoice review'};
 const taxes={exclusive:'Tax-exclusive',inclusive:'Tax-inclusive'};
 const labels=(list:Option[],key:string)=>list.find(item=>item.key===key)?.label??key;
-const table=(head:string[],rows:string)=>'<div class="fin-table-scroll fin-budget-table"><table><thead><tr>'+
+const table=(head:string[],rows:string,id='')=>'<div class="fin-table-scroll fin-annual-scroll fin-budget-table"'+
+  (id?' id="'+id+'" role="region" aria-label="'+(id==='fin-budget-allocation-table'?'Budget allocations':'Execution evidence')+'" tabindex="0"':'')+'><table><thead><tr>'+
   head.map(value=>'<th scope="col">'+value+'</th>').join('')+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
 const td=(value:string)=>'<td>'+html(value)+'</td>';
 const term=(key:string,value:string)=>'<dt>'+html(key)+'</dt><dd>'+html(value)+'</dd>';
@@ -37,67 +41,140 @@ function selectedSource(data:Workspace,source:string){
 export const isBudgetDetail=(data:Workspace,source:string)=>['policy','new-scope'].includes(source)||!!selectedSource(data,source).scope;
 
 function ledgerRow(row:Posting,link:Link,periods:Option[]){
-  return '<tr><th scope="row">'+itemLink(link,row.event.key,row.entry.title)+'<small class="fin-state">'+html(row.entry.documentId)+'</small></th>'+
-    td(recordLabel(row))+td(labels(periods,row.event.periodKey))+td(row.event.eventDate??'—')+td(row.amount+' '+row.event.currency)+'</tr>';
+  return '<tr><th scope="row">'+financeUrl(link(row.event.key,row.event.periodKey),row.entry.title,'budget-link-'+row.event.key)+
+    '<small class="fin-state">'+html(row.entry.documentId)+'</small></th>'+
+    td(recordLabel(row))+td(periodName(periods,row.event.periodKey))+td(row.event.eventDate??'—')+td(row.amount+' '+row.event.currency)+'</tr>';
 }
 
-export function budgetPage(data:Workspace,source:string,link:Link,home:string,periods:Option[],products:Option[],product:string,rights:Rights,
-  draft:boolean,actors:Record<string,string>,dictionary:Dictionary,period:string){
+const money=(value:string,currency:string)=>amountText({value,displayValue:value,unit:currency,status:'ok'});
+const periodName=(periods:Option[],key:string)=>key==='year-0'&&labels(periods,key)==='Year 0'?'Pre-SOP (Year 0)':labels(periods,key);
+const panel=(name:string,content:string)=>'<section class="fin-panel fin-business-overview"><h2>'+html(name)+'</h2>'+content+'</section>';
+
+export function budgetSummary(data:Workspace,product:string,period:string){
+  const {count,amount}=data.allocationTotals.project,currency=data.policy?.currency;
+  const scopes=data.scopes.filter(scope=>!product||scope.productKey===product);
+  const empty=scopes.length?'':data.policy?'No cost scopes in selection':'Budget policy missing';
+  const card=(name:string,value:string,context:string,id:string)=>'<section class="fin-metric" id="fin-budget-'+id+'"><div class="fin-metric-label">'+
+    html(name)+'</div><div class="fin-summary-value"><span class="fin-value">'+html(value)+'</span></div><small class="fin-state">'+html(context)+'</small></section>';
+  const forecast=(value:Workspace['approved'])=>value?money(value.amount,value.currency):'Pending';
+  return '<div class="fin-metrics fin-overview-metrics fin-budget-summary" aria-label="Budget summary">'+
+    card('Draft budget allocations',amount!==null?money(amount,currency!):count?'FX required':'—',
+      period?'Selected period':'All allocation periods','draft-total')+
+    card('Awaiting approval',String(count),count===1?'Draft allocation':'Draft allocations','draft-count')+
+    card('Approved budget',forecast(data.approved),data.approved?'Scope total · all periods':empty||
+      (scopes.some(scope=>scope.metrics.approved_budget?.status==='missing_input')?'Needs approval evidence':'Needs approved allocation FX'),'approved-total')+
+    card('Estimate at completion (EAC)',forecast(data.eac),data.eac?'Scope total · all periods':empty||
+      (scopes.some(scope=>!scope.remainingInput)?'Needs remaining ETC':'Needs cost or ETC FX'),'eac-total')+'</div>';
+}
+
+export function budgetVersions(versions:FinanceVersionSummary[],selected:string,current:string|null,baseline:string|null,versionLink:(id:string)=>string,
+  compare:string,actions:string){
+  return panel('Versions & comparison',table(['Version','Role','Status','Revision','Currency'],versions.map(version=>{
+    const role=version.id===baseline?'Approved baseline':version.id===current?'Current forecast':
+      version.model==='cash_series'?'Cash-flow reconciliation':
+        version.model==='manufacturing'||version.basis==='cqa_full'?'Operating and development forecast':'Forecast version';
+    return '<tr data-budget-version="'+html(version.id)+'"'+(version.id===selected?' aria-current="true"':'')+'><th scope="row">'+
+      financeUrl(versionLink(version.id),version.name)+(version.id===selected?'<small class="fin-state">Selected</small>':'')+'</th>'+
+      td(role)+td(version.status==='frozen'?'Frozen · read-only':'Draft')+td(String(version.revision))+td(version.currency)+'</tr>';
+  }).join(''))+(baseline?'':'<p class="fin-muted">An approved baseline has yet to be designated.</p>')+
+    controls([financeUrl(compare,'Compare selected versions','fin-budget-compare')])+actions);
+}
+
+export function budgetPage(data:Workspace,view:BudgetView,source:string,link:Link,home:string,periods:Option[],products:Option[],product:string,rights:Rights,
+  draft:boolean,actors:Record<string,string>,dictionary:Dictionary,period:string,legacy:string,editor:string){
   const editing=rights.edit&&draft,{scope,row}=selectedSource(data,source),policy=data.policy;
-  const scopeRows=data.scopes.filter(item=>!product||item.productKey===product||item.key===scope?.key).map(item=>{
-    const variance=item.metrics.completion_variance?.value;
-    return '<tr'+(variance!=null&&Number(variance)<0?' class="fin-budget-overrun"':'')+'><th scope="row">'+itemLink(link,item.key,item.title)+
-      '<small class="fin-state">'+html(item.scopeId)+'</small></th>'+td(item.productKey?labels(products,item.productKey):'Shared project scope')+
-      metrics.map(key=>'<td data-budget-metric="'+key+'">'+amountCell(item.metrics[key])+'</td>').join('')+'</tr>';
-  });
+  if(scope&&policy)return '<section class="fin-panel">'+scopeDetails(scope,row,link,home,periods,period,
+    editing,rights.confirm&&draft,actors,policy.currency,dictionary,editor)+'</section>';
+  const scopes=data.scopes.filter(item=>!product||item.productKey===product)
+    .sort((a,b)=>products.findIndex(item=>item.key===a.productKey)-products.findIndex(item=>item.key===b.productKey)||
+      a.title.localeCompare(b.title));
+  const inPeriod=(key:string)=>!period||key===period;
+  if(view==='allocations'&&!source){
+    const keys=new Set(scopes.flatMap(item=>item.periodStatuses.filter(row=>inPeriod(row.period)&&(row.draft.keys.length||row.approved.keys.length)).map(row=>row.period)));
+    const columns=periods.filter(item=>keys.has(item.key)||item.key===period);
+    const draftAmount=(item:Scope)=>Number(data.allocationTotals.scopes[item.key].amount??'-Infinity');
+    const rows=scopes.sort((a,b)=>draftAmount(b)-draftAmount(a)).map(item=>{
+      const allocated=item.periodStatuses.filter(record=>inPeriod(record.period));
+      const total=data.allocationTotals.scopes[item.key],approved=allocated.some(record=>record.approved.keys.length);
+      const status=total.count?(approved?'Approved and pending':'Awaiting approval'):approved?'Approved':'No allocation recorded';
+      const scopedLink=(key:string,periodKey?:string)=>link(key,periodKey,item.productKey??undefined);
+      return '<tr data-budget-scope="'+html(item.scopeId)+'"><th scope="row">'+financeUrl(scopedLink(item.key),
+        item.productKey?labels(products,item.productKey):item.title,'budget-scope-'+item.key)+'<small class="fin-state">'+html(item.scopeId)+'</small></th>'+
+        columns.map(column=>{
+          const record=allocated.find(record=>record.period===column.key)?.draft;
+          const label=record?.keys.length?record.amount===null?'FX required':money(record.amount,policy!.currency):'No draft';
+          return '<td data-budget-period="'+html(column.key)+'">'+financeUrl(scopedLink(record?.keys.length===1?record.keys[0]:item.key,column.key),
+            label,'budget-allocation-'+item.key+'-'+column.key)+'</td>';
+        }).join('')+'<td data-budget-draft-total>'+html(total.amount===null?(total.count?'FX required':'—'):money(total.amount,policy!.currency))+'</td>'+
+        '<td data-budget-approval>'+html(status)+'</td></tr>';
+    }).join('');
+    return panel('Development budget allocations',policy&&rows?
+      '<p class="fin-muted">Draft amounts in '+html(policy.currency)+' · '+data.currencyScale+' decimals per period · Largest draft totals first.</p>'+
+      table(['Product / cost scope',...columns.map(item=>html(periodName(periods,item.key))),'Draft total','Approval status'],rows,'fin-budget-allocation-table'):
+      '<p class="fin-muted">'+(policy?'No cost scopes match the selected product.':'This version has no scoped budget policy or allocation records.')+'</p>');
+  }
+  if(view==='execution'){
+    const rows=policy?scopes.flatMap(item=>item.periodStatuses.filter(row=>inPeriod(row.period)).map(row=>{
+      const detail=link(item.key,row.period,item.productKey??undefined);
+      const status=(record:typeof row.draft,empty:string)=>{
+        if(!record.keys.length)return td(empty);
+        const value=record.amount===null?'Exchange rate required':money(record.amount,policy.currency);
+        const target=record.keys.length===1?link(record.keys[0],row.period,item.productKey??undefined):detail;
+        return '<td>'+financeUrl(target,value)+'</td>';
+      };
+      return '<tr><th scope="row">'+financeUrl(detail,item.title)+'</th>'+td(periodName(periods,row.period))+
+        status(row.approved,'Approval not recorded')+status(row.confirmed,'No cost posting')+status(row.payments,'No payment posting')+
+        (row.remaining.keys.length?'<td>'+financeUrl(detail,item.metrics.etc?.value!=null?amountText(item.metrics.etc):'ETC calculation pending')+
+          '</td>':td('ETC not recorded'))+'</tr>';
+    })).join(''):'';
+    const scopeRows=scopes.map(item=>'<tr><th scope="row">'+financeUrl(link(item.key,'',item.productKey??undefined),item.title)+'</th>'+
+      [...metrics,'recorded_payments'].map(key=>{
+        const missing=key==='confirmed_actual'&&!item.periodStatuses.some(row=>row.confirmed.keys.length)?'No cost posting':
+          key==='recorded_payments'&&!item.periodStatuses.some(row=>row.payments.keys.length)?'No payment posting':'';
+        return '<td data-budget-metric="'+key+'">'+amountCell(item.metrics[key])+(missing?'<small class="fin-state">'+missing+'</small>':'')+'</td>';
+      }).join('')+'</tr>').join('');
+    return panel('Execution evidence','<p class="fin-muted">Approval requires an independent decision. Confirmed cost and payment each require a posting with evidence. Record remaining ETC to calculate EAC.</p>'+
+      (rows?table(['Cost scope','Period','Approved budget','Confirmed cost','Recorded payments','Current ETC'],rows,'fin-budget-evidence-table'):
+        '<p>No execution postings in this selection.</p>')+
+      (scopeRows?'<details class="fin-settings"><summary>Scope execution totals · all periods</summary>'+
+        table(['Cost scope',...metrics.map(key=>metricLabel(dictionary,key)),'Recorded payments'],scopeRows)+'</details>':'')+
+      '<details class="fin-settings"><summary>Project totals and baseline</summary>'+legacy+'</details>');
+  }
   const actions: string[]=[];
   if(draft&&rights.setup&&!policy)actions.push(financeUrl(link('policy'),'Set budget policy','fin-budget-policy'));
   if(editing&&policy)actions.push(financeUrl(link('new-scope'),'Add cost scope','fin-budget-new-scope'));
-  const periodStatus=policy?data.scopes.filter(item=>!product||item.productKey===product).flatMap(item=>
-    item.periodStatuses.filter(row=>!period||row.period===period).map(row=>{
-      const status=(record:typeof row.draft,empty:string,detail:string)=>{
-        if(!record.keys.length)return td(empty);
-        const value=record.amount===null?'Exchange rate required':record.amount+' '+policy.currency;
-        return '<td>'+financeUrl(link(record.keys.length===1?record.keys[0]:detail),value)+'</td>';
-      };
-      return '<tr><th scope="row">'+itemLink(link,item.key,item.title)+'</th>'+
-        td(labels(periods,row.period))+status(row.draft,'No draft allocation',item.key)+
-        status(row.approved,'Approval not recorded',item.key)+status(row.confirmed,'No cost posting',item.key)+
-        status(row.payments,'No payment posting',item.key)+
-        status({...row.remaining,amount:item.metrics.etc?.displayValue??null},'ETC not recorded',item.key)+'</tr>';
-    })): [];
-  const execution='<section class="fin-panel fin-business-overview"><h2>Budget status by period</h2>'+
-    (periodStatus.length?table(['Cost scope / product','Period','Draft allocation','Approved budget','Confirmed cost','Payment','Current ETC'],
-      periodStatus.join('')):'<p class="fin-muted">No budget postings in this scope. An explicit zero appears when a record supplies it.</p>')+'</section>';
-  return execution+'<section class="fin-panel"><div class="fin-panel-head"><h2>Budget Policy &amp; Cost Scopes</h2></div>'+
+  return panel('Budget Policy & Cost Scopes',
     (policy?'<p id="fin-budget-policy-summary">'+html(policy.currency+' · '+data.currencyScale+' decimal places · '+taxes[policy.taxBasis]+' · '+recognitions[policy.recognition])+'</p>'+
       '<p>Policy source · '+html(policy.reference)+'</p>':'<p>Set a project budget policy to record independent approvals and remaining forecasts.</p>')+
     (data.legacyEvents?'<p class="fin-muted">This version contains '+data.legacyEvents+' legacy budget or cost events.'+
-      (policy?' Scoped execution totals use postings under this policy.':' The legacy totals above follow the archived version policy.')+'</p>':'')+
-    controls(actions)+
-    (scopeRows.length?table(['Cost scope','Product',...metrics.map(key=>metricLabel(dictionary,key))],scopeRows.join('')):policy?'<p>No cost scopes in this filter.</p>':'')+
-    (scope&&policy?scopeDetails(scope,row,link,home,periods,editing,rights.confirm&&draft,actors,policy.currency,dictionary):'')+'</section>';
+      ' View project totals under Execution &amp; evidence.</p>':'')+controls(actions)+editor+
+    (scopes.length?table(['Cost scope','Product','Policy evidence'],scopes.map(item=>'<tr><th scope="row">'+itemLink(link,item.key,item.title)+
+      '</th>'+td(item.productKey?labels(products,item.productKey):'Shared project scope')+td(item.reference)+'</tr>').join('')):''));
 }
 
-function scopeDetails(scope:Scope,row:Posting|undefined,link:Link,home:string,periods:Option[],edit:boolean,confirm:boolean,actors:Record<string,string>,
-  currency:string,dictionary:Dictionary){
+function scopeDetails(scope:Scope,row:Posting|undefined,link:Link,home:string,periods:Option[],period:string,edit:boolean,confirm:boolean,actors:Record<string,string>,
+  currency:string,dictionary:Dictionary,editor:string){
   const amount=scope.metrics.completion_variance;
   const etc=scope.remainingInput;
-  const label=(key:string)=>labels(periods,key);
+  const label=(key:string)=>periodName(periods,key);
+  const postings=scope.postings.filter(item=>!period||item.event.periodKey===period||item===row);
   const actions=edit?[financeUrl(link('allocation-'+scope.key),'Add budget allocation','fin-budget-allocation'),
     financeUrl(link('cost-'+scope.key),'Add cost draft','fin-budget-cost'),
     financeUrl(link('forecast-'+scope.key),'Record remaining ETC','fin-budget-etc')]:[];
+  const missingActual=scope.periodStatuses.some(record=>record.confirmed.keys.length)?'':'<small class="fin-state">No cost posting</small>';
   const metricsHTML='<dl>'+metrics.map(key=>'<dt>'+metricLabel(dictionary,key)+'</dt><dd data-budget-metric="'+key+'">'+
-    amountCell(scope.metrics[key])+'</dd>').join('')+'</dl>';
-  return '<article id="fin-budget-source" class="fin-budget-source"><h3>'+html(scope.title)+'</h3><p>'+html(scope.scopeId+' · '+scope.reference)+'</p>'+
+    amountCell(scope.metrics[key])+(key==='confirmed_actual'?missingActual:'')+'</dd>').join('')+'</dl>';
+  return '<article id="fin-budget-source" class="fin-budget-source"><h2>'+html(scope.title)+'</h2><p>'+html(scope.scopeId+' · '+scope.reference)+'</p>'+
+    (row?postingDetail(row,scope,link,periods,edit,confirm,actors):'')+
+    editor+
+    '<h3>Scope execution totals · all periods</h3>'+
     (amount?.value&&Number(amount.value)<0?'<p class="fin-budget-overrun">Forecast exceeds the approved scope budget.</p>':'')+
     metricsHTML+controls(actions)+
     (etc?'<h4>Remaining forecast source</h4><dl>'+term('Forecast cutoff',label(etc.periodKey))+term('Entered remaining forecast',inputDecimal(etc.amount)+' '+etc.currency)+
       '<dt>Consumed by confirmed work</dt><dd>'+amountCell(etc.consumed)+'</dd>'+term('Evidence',etc.reference)+'</dl>':
       '<p>Enter remaining ETC with a cutoff, including zero for completed work.</p>')+
-    '<h4>Postings</h4>'+(scope.postings.length?table(['Document','Stage','Accounting period','Posting date','Amount'],
-      scope.postings.map(item=>ledgerRow(item,link,periods)).join('')):'<p>No postings recorded.</p>')+
-    (row?postingDetail(row,scope,link,periods,edit,confirm,actors):'')+
+    '<h4>Postings'+(period?' · '+html(label(period)):'')+'</h4>'+(postings.length?table(['Document','Stage','Accounting period','Posting date','Amount'],
+      postings.map(item=>ledgerRow(item,link,periods)).join('')):'<p>No postings recorded in this period.</p>')+
     (scope.timeline.length?'<h4>Occurrence and payment by period</h4>'+table(['Period','Confirmed cost','Recorded payments'],scope.timeline.map(item=>
       '<tr><th scope="row">'+html(label(item.period))+'</th>'+td(item.confirmed===null?'Exchange rate required':item.confirmed+' '+currency)+
       td(item.payments===null?'Exchange rate required':item.payments+' '+currency)+'</tr>').join('')):'')+
@@ -117,14 +194,14 @@ function postingDetail(row:Posting,scope:Scope,link:Link,periods:Option[],edit:b
   const linked=scope.postings.filter(item=>item.event.relatedKey===event.key);
   return '<section id="fin-budget-posting" class="fin-budget-posting">'+title(entry.title)+'<dl>'+
     term('Document ID',entry.documentId)+term('Stage',recordLabel(row))+term('Evidence',entry.reference)+
-    term('Accounting period',labels(periods,event.periodKey))+term('Posting date',event.eventDate??'—')+term('Amount',row.amount+' '+event.currency)+
+    term('Accounting period',periodName(periods,event.periodKey))+term('Posting date',event.eventDate??'—')+term('Amount',money(row.amount,event.currency))+
     (posting?term('Prepared by',entry.makers.map(uid=>actors[uid]??uid).join(', '))+
       (entry.confirmedBy?term('Confirmed by',actors[entry.confirmedBy]??entry.confirmedBy):'')+
       (entry.decisionReference?term('Decision evidence',entry.decisionReference):''):'')+'</dl>'+
-    (original?'<p>Original cost · '+financeUrl(link(original.event.key),original.entry.title)+'</p>':'')+
+    (original?'<p>Original cost · '+financeUrl(link(original.event.key,original.event.periodKey),original.entry.title)+'</p>':'')+
     (draft&&row.ownDraft?'<p>An independent approver must confirm this draft.</p>':'')+controls(actions)+
     (linked.length?'<h4>Linked adjustments and payments</h4>'+table(['Document','Stage','Accounting period','Posting date','Amount'],
-      linked.map(item=>'<tr><th scope="row">'+financeUrl(link(item.event.key),item.entry.title)+'</th>'+td(recordLabel(item))+
+      linked.map(item=>'<tr><th scope="row">'+financeUrl(link(item.event.key,item.event.periodKey),item.entry.title)+'</th>'+td(recordLabel(item))+
         td(labels(periods,item.event.periodKey))+td(item.event.eventDate??'—')+td(item.amount+' '+item.event.currency)+'</tr>').join('')):'')+'</section>';
 }
 

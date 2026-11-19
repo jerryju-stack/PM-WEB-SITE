@@ -315,6 +315,7 @@ const server=http.createServer(async(req,res)=>{
     }
     const scripts:Record<string,string>={'/app.js':'src/app.ts','/theme-bootstrap.js':'src/theme-bootstrap.js','/theme-control.js':'src/theme-control.ts','/timing.js':'src/timing.ts','/timing-layout.js':'src/timing-layout.ts','/timing-history.js':'src/timing-history.ts','/timing-io.js':'src/timing-io.ts','/task-index.ts':'lib/task-index.ts','/task-index.js':'lib/task-index.ts','/schedule.js':'lib/schedule.ts','/drafts.js':'src/drafts.ts','/access-ui.js':'src/access-ui.ts','/finance.js':'src/finance.ts','/finance-view.js':'src/finance-view.ts','/finance-impact.js':'src/finance-impact.ts','/finance-operations.js':'src/finance-operations.ts','/finance-development.js':'src/finance-development.ts','/finance-capital.js':'src/finance-capital.ts','/finance-preview-state.js':'src/finance-preview-state.ts'};
     scripts['/finance-budget.js']='src/finance-budget.ts';
+    scripts['/finance-returns.js']='src/finance-returns.ts';
     scripts['/finance-compare.js']='src/finance-compare.ts';
     scripts['/finance-fx.js']='src/finance-fx.ts';
     scripts['/finance-business-view.js']='src/finance-business-view.ts';

@@ -25,6 +25,7 @@
       "/finance-operations.js": ["./src/finance-operations.ts"],
       "/finance-development.js": ["./src/finance-development.ts"],
       "/finance-capital.js": ["./src/finance-capital.ts"],
+      "/finance-returns.js": ["./src/finance-returns.ts"],
       "/finance-budget.js": ["./src/finance-budget.ts"],
       "/finance-compare.js": ["./src/finance-compare.ts"],
       "/finance-fx.js": ["./src/finance-fx.ts"],

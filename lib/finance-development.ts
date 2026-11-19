@@ -14,6 +14,8 @@ export const isDevelopmentSource=(row:{key:string})=>row.key.startsWith('p10:');
 export const hasDevelopmentModel=(s:FinanceSnapshot)=>s.inputs.some(isDevelopmentInput);
 export const supportsDevelopment=(s:FinanceSnapshot)=>archived(s)||s.policy.rules.model==='manufacturing';
 export const developmentCurrency=(s:FinanceSnapshot)=>archived(s)?'CNY':s.currency;
+export const isPrototypeQuoteBundle=(cost:DevelopmentCost)=>cost.module==='prototypes'&&
+  (/费用包|cost package/i.test(cost.title)||/^DV cost!(?:U\d+；报价系数 \/0\.89|Y(\d+) \+ AD\1)$/.test(cost.reference));
 
 export const developmentCategories={
   engineering:['labor','travel'],
