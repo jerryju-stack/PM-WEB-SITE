@@ -277,9 +277,10 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     const labelPeriod=(key:string)=>periods.find(item=>item.key===key)?.label??key;
     const labelProduct=(key:string)=>products.find(item=>item.key===key)?.label??key;
     const labelMarket=(key:string|null)=>key?workspace.markets.find(item=>item.key===key)?.label??key:'All markets';
+    const thousandsCurrency=section?undefined:active?.currency;
     const side=(value:CalculationOutput|ScreenMetric|undefined,version:'baseline'|'current',stackUnit=false)=>{
       if(value)displayedOutputs.set(version+':'+value.id,value);
-      return amountCell(value,false,version==='baseline'?'No baseline':'No forecast',stackUnit)+trace(value,version);
+      return amountCell(value,false,version==='baseline'?'No baseline':'No forecast',stackUnit,thousandsCurrency)+trace(value,version);
     };
     const scopedDifference=product?workspace.comparison?.products[product]:workspace.comparison;
     const rowIndex=periods.findIndex(item=>item.key===period);
@@ -316,8 +317,9 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
       if(!workspace.comparison?.compatible)return empty('Version Comparison','The selected versions have incompatible calculation scopes.');
       const keys=['revenue','total_cost','operating_profit','operating_margin','cqa.mpbitri','npv','irr','payback_period','peak_funding_requirement'];
       return sectionPanel('Version Comparison',table(['Metric','Baseline','Forecast','Change'],keys.filter(key=>reportMetric(baseline,key)||reportMetric(current,key)).map(key=>
-        '<tr><th scope="row">'+metricLabel(glossary,key)+'</th><td>'+amountCell(reportMetric(baseline,key))+'</td><td>'+amountCell(reportMetric(current,key))+
-        '</td><td>'+varianceCell(metricDelta(key),key)+'</td></tr>').join('')),section?'':financeUrl(link('compare'),'Open comparison','dashboard-compare'));
+        '<tr><th scope="row">'+metricLabel(glossary,key)+'</th><td>'+amountCell(reportMetric(baseline,key),false,undefined,false,baseline.currency)+
+        '</td><td>'+amountCell(reportMetric(current,key),false,undefined,false,current.currency)+
+        '</td><td>'+varianceCell(metricDelta(key),key,undefined,thousandsCurrency)+'</td></tr>').join('')),section?'':financeUrl(link('compare'),'Open comparison','dashboard-compare'));
     };
     const budget=()=>{
       const keys=[...budgetKeys,...['draft_cost','recorded_payments','unpaid_confirmed'].filter(key=>baseline?.budget[key]||current?.budget[key])];
@@ -380,7 +382,7 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
         '<div class="fin-analysis'+(items.length?'':' fin-analysis-single')+'">'+chart()+(items.length?
           sectionPanel('Needs review','<ul class="fin-review-list">'+items.map(item=>'<li>'+
             financeUrl(item.id==='metric-irr'?capitalLink('returns','',{returnDetail:'irr'}):link(item.route),item.text,item.id)+
-            ' '+amountCell(item.metric)+'</li>').join('')+'</ul>'):'')+'</div>'+productContribution();
+             ' '+amountCell(item.metric,false,undefined,false,thousandsCurrency)+'</li>').join('')+'</ul>'):'')+'</div>'+productContribution();
     };
     const sectionLink=(key:string,title:string,id:string)=>
       '<a id="'+id+'" data-finance-nav href="'+html(key==='investment'?capitalLink(key,'',{view:null}):link(key))+'"'+
@@ -563,7 +565,7 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     };
     const chartNode=root.querySelector<HTMLElement>('.fin-chart');
     if(isComparison)cleanChart=mountComparisonChart(root,compareReport,fxComparison);
-    else if(chartNode)cleanChart=cashChart(chartNode,series,chartPeriods.map(p=>p.label),active!.currency);
+    else if(chartNode)cleanChart=cashChart(chartNode,series,chartPeriods.map(p=>p.label),active!.currency,!section);
     if((picked||creating||operation)&&active)impact=mountImpactPanel({root:root.querySelector('#fin-impact-mount')!,projectId,version:active,driver:picked,operation,
       entry:creating&&businessType?{module:businessType,fields:workspace.businessFields,products,markets,product,market,archived:workspace.archived}:undefined,
       dictionary:glossary,period,currencies:workspace.currencies,api,labelPeriod,labelProduct,

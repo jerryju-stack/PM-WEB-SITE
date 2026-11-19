@@ -218,28 +218,34 @@ const statusText:Record<string,string>={missing_input:'Data missing',pending_fin
   ambiguous_irr:'IRR is not unique',solver_failed:'IRR could not be resolved',recrossed:'Funding gap recurs',
   invalid_rate:'Invalid discount rate',missing_fx:'Exchange rate required',incompatible_scope:'Incompatible scope',unavailable:'Unavailable'};
 const amountUnit=(unit:string)=>unit==='fraction'?'%':unit==='percentage_point'?' pp':unit==='year'?' yr':unit?' '+unit:'';
-export function amountText(amount?:FinanceAmount|null,delta=false) {
+const dashboardNumber=new Intl.NumberFormat('en',{maximumFractionDigits:2});
+function thousandsText(value:number) {
+  return Number.isFinite(value)&&Math.abs(value)>=1000?dashboardNumber.format(value/1000)+'K':undefined;
+}
+export function amountText(amount?:FinanceAmount|null,delta=false,thousandsCurrency?:string) {
   if(!amount?.displayValue)return '—';
+  const value=Number(amount.value),unit=amountUnit(amount.unit),sign=delta&&value>0?'+':'';
+  const compact=amount.unit===thousandsCurrency?thousandsText(value):undefined;
+  if(compact)return sign+compact+unit;
   const [whole,fraction]=amount.displayValue.split('.');
   const number=whole.replace(/\B(?=(\d{3})+(?!\d))/g,',')+(fraction?'.'+fraction:'');
-  const unit=amountUnit(amount.unit);
-  if(delta&&!Number(amount.displayValue)&&Number(amount.value))return (Number(amount.value)>0?'+':'−')+
+  if(delta&&!Number(amount.displayValue)&&value)return (value>0?'+':'−')+
     (fraction?'<0.'+'1'.padStart(fraction.length,'0'):'<1')+unit;
-  return (delta&&Number(amount.value)>0?'+':'')+number+unit;
+  return sign+number+unit;
 }
-export function amountCell(amount?:FinanceAmount|null,delta=false,missing='Unavailable',stackUnit=false) {
+export function amountCell(amount?:FinanceAmount|null,delta=false,missing='Unavailable',stackUnit=false,thousandsCurrency?:string) {
   const status=amount&&statusText[amount.status];
-  const text=amountText(amount,delta);
+  const text=amountText(amount,delta,thousandsCurrency);
   const unit=stackUnit&&amount?.displayValue?amountUnit(amount.unit):'';
   return '<span class="fin-value">'+escapeHtml(unit?text.slice(0,-unit.length):text)+'</span>'+
     (unit?'<small class="fin-value-unit">'+escapeHtml(unit.trim())+'</small>':'')+
     (status||!amount?'<small class="fin-state">'+escapeHtml(status||missing)+'</small>':'');
 }
-export function varianceCell(amount:FinanceAmount|undefined,key:string,missing='No comparison') {
+export function varianceCell(amount:FinanceAmount|undefined,key:string,missing='No comparison',thousandsCurrency?:string) {
   const value=Number(amount?.value);
-  if(!value||!Number.isFinite(value))return amountCell(amount,true,missing);
+  if(!value||!Number.isFinite(value))return amountCell(amount,true,missing,false,thousandsCurrency);
   const favorable=value>0!==['total_cost','payback_period','peak_funding_requirement','eac','etc'].includes(key);
-  return '<span class="'+(favorable?'fin-favorable':'fin-unfavorable')+'">'+escapeHtml(amountText(amount,true))+
+  return '<span class="'+(favorable?'fin-favorable':'fin-unfavorable')+'">'+escapeHtml(amountText(amount,true,thousandsCurrency))+
     '<small class="fin-state">'+(favorable?'Favorable':'Unfavorable')+'</small></span>';
 }
 export const help=(dictionary:Dictionary,key:string)=>definition(dictionary,key)?
@@ -257,7 +263,7 @@ export const financeUrl=(href:string,label:string,id='')=>'<a class="fin-link" d
 export const scopeFor=(report:FinanceReport|null,product:string)=>!report?null:product?Object.hasOwn(report.products,product)?report.products[product]:null:report;
 export const rowFor=(data:FinanceReport|null,product:string,period:string)=>data?scopeFor(data,product)?.periodic[data.periods.findIndex(option=>option.key===period)]:undefined;
 
-export function cashChart(container:HTMLElement,series:{name:string;values:(number|null)[];bars?:boolean}[],labels:string[],currency:string) {
+export function cashChart(container:HTMLElement,series:{name:string;values:(number|null)[];bars?:boolean}[],labels:string[],currency:string,useThousands=false) {
   const canvas=container.querySelector('canvas')!;
   const surface=canvas.getContext('2d');
   if(!surface)return ()=>{};
@@ -269,16 +275,19 @@ export function cashChart(container:HTMLElement,series:{name:string;values:(numb
     const style=getComputedStyle(container),colors=['--ds-secondary','--ds-accent'].map(key=>style.getPropertyValue(key).trim());
     const values=[0,...series.flatMap(item=>item.values.filter((value):value is number=>value!==null&&Number.isFinite(value)))];
     const max=Math.max(...values),min=Math.min(...values),range=max-min||1;
-    const left=63,top=20,bottom=height-34,right=width-18;
+    const compact=new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1});
+    const tickLabels=[...new Set([min,(min+max)/2,max,0])].map(value=>({value,label:useThousands?
+      thousandsText(value)??dashboardNumber.format(value):compact.format(value)}));
+    surface.font=style.getPropertyValue('--ds-meta').trim()+' '+style.fontFamily;
+    const left=useThousands?Math.max(63,...tickLabels.map(({label})=>Math.ceil(surface.measureText(label).width)+12)):63;
+    const top=20,bottom=height-34,right=width-18;
     const x=(index:number)=>left+(right-left)*(labels.length===1?0.5:index/(labels.length-1));
     const y=(value:number)=>bottom-(value-min)/range*(bottom-top);
-    const compact=new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1});
-    surface.font=style.getPropertyValue('--ds-meta').trim()+' '+style.fontFamily;
     surface.textAlign='right';surface.textBaseline='middle';
-    for(const value of new Set([min,(min+max)/2,max,0])) {
+    for(const {value,label} of tickLabels) {
       surface.strokeStyle=style.getPropertyValue(value===0?'--ds-muted':'--ds-divider').trim();
       surface.beginPath();surface.moveTo(left,y(value));surface.lineTo(right,y(value));surface.stroke();
-      surface.fillStyle=colors[0];surface.fillText(compact.format(value),left-8,y(value));
+      surface.fillStyle=colors[0];surface.fillText(label,left-8,y(value));
     }
     surface.textAlign='center';
     const step=Math.ceil(labels.length/(width<500?4:8));
