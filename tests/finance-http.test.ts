@@ -29,6 +29,23 @@ test('P04 HTTP authorizes reads, candidate previews and writes; public cards omi
     assert.equal((await f.call(base,undefined,f.cookie)).data.state,'empty');
     const created=await f.call(base+'/versions',command('create'),f.cookie);
     assert.equal(created.status,201);const id=created.data.id,version=base+'/versions/'+id;
+    const budgetPath=base+'/workspace?module=budget&version='+id;
+    const full=(await f.call(budgetPath,undefined,entry)).data.current;
+    const screen=(await f.call(budgetPath+'&shape=screen',undefined,entry)).data.current;
+    const metric=screen.budget.approved_budget;
+    assert.equal(metric.hasSources,true);
+    assert.equal(metric.displayValue,full.budget.approved_budget.displayValue);
+    assert.ok(!('upstreamInputs' in metric)&&!('inputs' in screen));
+    const sourcePath=version+'/sources?output='+encodeURIComponent(metric.id)+'&revision=';
+    const provenance=(await f.call(sourcePath+'0',undefined,entry)).data;
+    assert.deepEqual(provenance.inputs,full.budget.approved_budget.upstreamInputs.map((key:string)=>full.inputs[key]));
+    assert.equal((await f.call(sourcePath+'0')).status,401);
+    assert.equal((await f.call(version+'/sources?output=absent&revision=0',undefined,viewer)).status,404);
+    const compressed=await fetch(f.base+'/api/'+budgetPath+'&shape=screen',{headers:{Cookie:entry,'Accept-Encoding':'gzip'}});
+    assert.equal(compressed.headers.get('content-encoding'),'gzip');
+    assert.deepEqual((await compressed.json()).current,screen);
+    const plain=await fetch(f.base+'/api/'+budgetPath+'&shape=screen',{headers:{Cookie:entry,'Accept-Encoding':'gzip;q=0'}});
+    assert.equal(plain.headers.get('content-encoding'),null);await plain.arrayBuffer();
     assert.equal((await f.call(version)).status,401);
     assert.equal((await f.call(version+'/preview',command('anonymous-preview',sampleFinance(),0))).status,401);
     assert.equal((await f.call(version,command('anonymous-write',sampleFinance(),0),'','PUT')).status,401);
@@ -36,6 +53,7 @@ test('P04 HTTP authorizes reads, candidate previews and writes; public cards omi
     assert.equal((await f.call(version+'/changes',undefined,viewer)).status,200);
     assert.equal((await f.call(version,command('viewer-write',sampleFinance(),0),viewer,'PUT')).status,403);
     const candidate=sampleFinance();candidate.inputs[0].value.coefficient='36';
+    candidate.events[0].amount.coefficient='120000';
     assert.equal((await f.call(version+'/preview',command('viewer-preview',candidate,0),viewer)).status,403);
     assert.equal((await f.call(version+'/preview',command('entry-preview',candidate,0),entry)).data.persisted,false);
     const foreign='projects/'+other+'/finance/versions/'+id;
@@ -46,6 +64,11 @@ test('P04 HTTP authorizes reads, candidate previews and writes; public cards omi
       f.call(version,command('parallel-b',candidate,0),entry,'PUT')
     ]);
     assert.deepEqual([a.status,b.status].sort(),[200,409]);
+    assert.equal((await f.call(sourcePath+'0',undefined,viewer)).status,409);
+    assert.equal((await f.call(sourcePath+'1',undefined,viewer)).status,200);
+    const refreshed=(await f.call(budgetPath+'&shape=screen',undefined,viewer)).data.current;
+    assert.equal(refreshed.details.revision,1);
+    assert.notEqual(refreshed.budget.approved_budget.value,metric.value);
     const winner=a.status===200?'parallel-a':'parallel-b',saved=a.status===200?a.data:b.data;
     assert.deepEqual((await f.call(version,command(winner,candidate,0),entry,'PUT')).data,saved);
     assert.equal((await f.call(version,command(winner,sampleFinance(),0),entry,'PUT')).status,409);
@@ -65,6 +88,8 @@ test('P04 HTTP authorizes reads, candidate previews and writes; public cards omi
     assert.equal((await f.call(version,command(winner,candidate,0),entry,'PUT')).status,404);
     assert.equal((await f.call(version+'/preview',command('revoked-preview',candidate,2),entry)).status,404);
     assert.equal((await f.call(version,undefined,entry)).status,404);
+    assert.equal((await f.call(budgetPath+'&shape=screen',undefined,entry)).status,404);
+    assert.equal((await f.call(sourcePath+'1',undefined,entry)).status,404);
   }finally{await f.stop();}
 });
 test('P04 HTTP rechecks authority after a slow financial request body finishes',async()=>{

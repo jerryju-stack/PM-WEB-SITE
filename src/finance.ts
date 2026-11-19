@@ -3,6 +3,8 @@ import type {Dictionary,FinanceLink,FinanceReport,Workspace} from '/finance-view
 import {inputDecimal,mountImpactPanel} from '/finance-impact.js';
 import type {FinanceApi} from '/finance-impact.js';
 import type {CalculationOutput} from '../lib/finance-calculation-types.ts';
+import type {ScreenMetric} from '../lib/finance-workspace.ts';
+import type {financeService} from '../lib/finance.ts';
 import {operationsEditor,operationsPage} from '/finance-operations.js';
 import {developmentEditor,developmentPage} from '/finance-development.js';
 import type {DevelopmentModule} from '../lib/finance-development.ts';
@@ -26,6 +28,18 @@ type HelpMode='hover'|'focus'|'pinned';
 const historyPosition=():Position|undefined=>history.state?.[stateKey];
 const updateHistory=(position:Position,url=location.href)=>history.replaceState({...history.state,[stateKey]:position},'',url);
 const supportedModule:Record<string,string>={operations:'operations',bom:'bom',commercial:'commercial','factory-costs':'factory',returns:'returns'};
+function screenRequest(match:RegExpExecArray,params:URLSearchParams) {
+  const section=match[2]??'';
+  const keys=['baseline','version','displayCurrency','traceKind','traceKey','tracePeriod','traceRevision'];
+  if(section==='compare')keys.push('from','to','cutoff','compareProduct','fxMode');
+  if(['commercial','bom','operations','factory-costs','engineering','prototypes','validation'].includes(section))keys.push('period');
+  if(['operations','engineering','prototypes','validation','investment','returns'].includes(section))keys.push('product');
+  const request=new URLSearchParams({shape:'screen'});
+  for(const key of keys)if(params.has(key))request.set(key,params.get(key)!);
+  if(section)request.set('module',section);
+  if(match[3])request.set('source',match[3]);
+  return 'projects/'+encodeURIComponent(match[1])+'/finance/workspace?'+request;
+}
 
 export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;api:FinanceApi;user:unknown;login:()=>void}) {
   let sequence=0,stopped=false,position=historyPosition()?.index??0,restoring=false,approvedBack=false;
@@ -33,7 +47,8 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
   let fxEditor:ReturnType<typeof mountVersionFx>;
   let settingsOpen=false;
   let dictionaryPromise:Promise<Dictionary>|undefined;
-  let rendered:Workspace|null=null,displayedOutputs=new Map<string,CalculationOutput>();
+  let rendered:Workspace|null=null,renderedRequest='';
+  const displayedOutputs=new Map<string,CalculationOutput|ScreenMetric>();
   let activeHelp:{button:HTMLButtonElement;box:HTMLElement;mode:HelpMode}|undefined;
   const oldScrollRestoration=history.scrollRestoration;history.scrollRestoration='manual';
   if(!historyPosition())updateHistory({index:position});
@@ -45,14 +60,14 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     savePosition(focus);
     const parent=location.pathname+location.search;
     history.pushState({[stateKey]:{index:++position,parent}},'',href);
-    void load(false);
+    void load(false,true);
   }
   function pop() {
     if(restoring){restoring=false;return;}
     const approved=approvedBack;approvedBack=false;
     const target=historyPosition()?.index;
     if(!approved&&!leave()&&target!==undefined&&target!==position){restoring=true;history.go(position-target);return;}
-    position=target??0;void load(true);
+    position=target??0;void load(true,true);
   }
   function unloading(event:BeforeUnloadEvent) {
     if(impact?.dirty()||impact?.saving()||fxEditor?.dirty()||fxEditor?.saving()){event.preventDefault();event.returnValue='';}
@@ -103,19 +118,25 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
       box.querySelector('button')?.focus({preventScroll:true});
     } else button.setAttribute('aria-describedby',box.id);
   }
-  function showSources(button:HTMLElement) {
+  async function showSources(button:HTMLElement) {
     const report=button.dataset.side==='baseline'?rendered?.baseline:rendered?.current;
     const output=displayedOutputs.get(button.dataset.side+':'+button.dataset.source);
-    if(!report||!output)return;
+    if(!report||!output||!rendered)return;
+    const path='projects/'+encodeURIComponent(rendered.projectId)+'/finance/versions/'+encodeURIComponent(report.details.id)+'/sources?'+
+      new URLSearchParams({revision:String(report.details.revision),output:output.id});
     const dialog=document.createElement('dialog');dialog.className='fin-source-dialog';
     dialog.setAttribute('aria-label','Calculation sources');
-    const records=output.upstreamInputs.map(id=>report.inputs[id]).filter(Boolean);
     const displayFx=output.details.displayFx as {from:string;to:string;rate:string}|undefined;
-    dialog.innerHTML='<form method="dialog"><button class="small-btn">Close</button></form><h2>'+metricLabel(glossary,output.metricKey)+' · Sources</h2>'+
-      '<p>'+html(report.details.name)+' · '+html(output.basis)+' · '+html(output.calculationVersion)+'</p><p>'+html(output.formula)+'</p>'+
-      (displayFx?'<p>Display conversion · 1 '+html(displayFx.from)+' = '+html(displayFx.rate)+' '+html(displayFx.to)+'</p>':'')+
-      '<ul>'+evidenceRows(records,key=>report.periods.find(item=>item.key===key)?.label??key)+'</ul>';
+    dialog.innerHTML='<form method="dialog"><button class="small-btn">Close</button></form><h2>'+metricLabel(glossary,output.metricKey)+' · Sources</h2><div role="status">Loading sources…</div>';
     root.append(dialog);dialog.addEventListener('close',()=>{if(activeHelp&&dialog.contains(activeHelp.button))closeHelp();dialog.remove();button.focus({preventScroll:true});});dialog.showModal();
+    const body=dialog.querySelector<HTMLElement>('[role=status]')!;
+    try {
+      const evidence:ReturnType<ReturnType<typeof financeService>['outputSources']>=await api(path);
+      if(!dialog.open||!dialog.isConnected)return;
+      body.innerHTML='<p>'+html(report.details.name)+' · '+html(evidence.basis)+' · '+html(evidence.calculationVersion)+'</p><p>'+html(evidence.formula)+'</p>'+
+        (displayFx?'<p>Display conversion · 1 '+html(displayFx.from)+' = '+html(displayFx.rate)+' '+html(displayFx.to)+'</p>':'')+
+        '<ul>'+evidenceRows(evidence.inputs,key=>report.periods.find(item=>item.key===key)?.label??key)+'</ul>';
+    }catch(error){body.textContent=(error as Error).message;}
   }
   const onFocus=(event:FocusEvent)=>{
     if(event.target instanceof HTMLButtonElement&&event.target.matches('[data-definition]:focus-visible'))openHelp(event.target,'focus');
@@ -155,11 +176,13 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
   root.addEventListener('pointerenter',onHover,true);root.addEventListener('pointerleave',onLeave,true);
   document.addEventListener('keydown',onKey);
 
-  async function load(restore:boolean) {
+  async function load(restore:boolean,reuseScreen=false) {
     const token=++sequence,params=new URLSearchParams(location.search),match=route();
+    const request=match?screenRequest(match,params):'';
+    const available=reuseScreen&&request===renderedRequest?rendered:null;
     resetView();
     if(!user){root.innerHTML='<h1>Project Finance</h1>'+empty('Sign in to view project finance','Use your Project Station account to open the projects you can access.')+'<button type="button" class="primary" data-finance-login>Sign in</button>';return;}
-    root.innerHTML='<p role="status">Loading project finance…</p>';
+    if(!available)root.innerHTML='<p role="status">Loading project finance…</p>';
     try {
       if(!match){
         const {projects}=await api('finance/projects');
@@ -175,12 +198,10 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
             empty('No finance projects available','Your account has no projects with finance access.'));
       } else {
         dictionaryPromise??=fetch('/finance-dictionary.json').then(response=>{if(!response.ok)throw Error('Metric definitions could not load.');return response.json();});
-        const request=new URLSearchParams(params);
-        if(match[2])request.set('module',match[2]);
-        if(match[3])request.set('source',match[3]);
-        const [workspace,dictionary]=await Promise.all([api('projects/'+encodeURIComponent(match[1])+'/finance/workspace?'+request),dictionaryPromise]);
+        const [workspace,dictionary]=await Promise.all([available??api(request),dictionaryPromise]);
         if(stopped||token!==sequence)return;
         glossary=dictionary;rendered=workspace;renderProject(workspace,match,params);
+        renderedRequest=screenRequest(match,params);
       }
       if(restore){const target=historyPosition();requestAnimationFrame(()=>{if(!stopped&&token===sequence){const focus=document.getElementById(target?.focus??'');
         for(let parent=focus?.parentElement;parent;parent=parent.parentElement)if(parent instanceof HTMLDetailsElement)parent.open=true;
@@ -256,7 +277,7 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     const labelPeriod=(key:string)=>periods.find(item=>item.key===key)?.label??key;
     const labelProduct=(key:string)=>products.find(item=>item.key===key)?.label??key;
     const labelMarket=(key:string|null)=>key?workspace.markets.find(item=>item.key===key)?.label??key:'All markets';
-    const side=(value:CalculationOutput|undefined,version:'baseline'|'current')=>{
+    const side=(value:CalculationOutput|ScreenMetric|undefined,version:'baseline'|'current')=>{
       if(value)displayedOutputs.set(version+':'+value.id,value);
       return amountCell(value,false,version==='baseline'?'No baseline':'No forecast')+trace(value,version);
     };
@@ -500,9 +521,9 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     };
     if(!section&&active){
       const keys=[...groups.flatMap(group=>group.keys),'total_cost','cqa.mpbitri','full_cost_management_profit'];
-      const selection={period:period||null,product:product||null,
-        metrics:Object.fromEntries(keys.map(key=>[key,{baseline:reportMetric(baseline,key)??null,forecast:reportMetric(current,key)??null,
-          difference:metricDelta(key)??null}]))};
+      const selection=(full:Workspace)=>({period:period||null,product:product||null,
+        metrics:Object.fromEntries(keys.map(key=>[key,{baseline:reportMetric(full.baseline,key)??null,forecast:reportMetric(full.current,key)??null,
+          difference:metricDelta(key)??null}]))});
       fxEditor=mountVersionFx(root,workspace,active,api,'projects/'+encodeURIComponent(projectId)+'/finance',glossary,selection,()=>void load(false));
     }
     const comparisonExport=root.querySelector<HTMLButtonElement>('#fin-export-comparison');
@@ -536,7 +557,7 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
       savePosition(filter.id);
       const pathname=sourceKey&&(businessSection||operations||development||capital||budgetExecution)?base+'/'+section:location.pathname;
       history.pushState({[stateKey]:{index:++position,parent:historyPosition()?.parent}},'',pathname+(next.size?'?'+next:''));
-      void load(false);
+      void load(false,true);
     };
     const chartNode=root.querySelector<HTMLElement>('.fin-chart');
     if(isComparison)cleanChart=mountComparisonChart(root,compareReport,fxComparison);

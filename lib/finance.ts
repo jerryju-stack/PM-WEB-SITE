@@ -12,7 +12,7 @@ import {financeSnapshot,financeCommand,financeRevision,financeKey} from './finan
 import type {FinanceSnapshot,FinanceModule,FinanceProjectState,FinanceVersionSummary,FinanceWriteResult} from './finance-contracts.ts';
 import {calculateFinance,compareCalculations,financeCalculationVersion} from './finance-calculation.ts';
 import {applyFinanceChanges,previewImpact,replacedFinanceDriver,supportsFinanceDriver} from './finance-preview.ts';
-import {workspaceComparison,workspaceReport} from './finance-workspace.ts';
+import {screenReport,workspaceComparison,workspaceReport} from './finance-workspace.ts';
 import {archived,businessFields,businessFx,businessInputs,hasBusinessModel,isBusiness,isBusinessSource} from './finance-business.ts';
 import {commercialWorkspace,factoryCostWorkspace,materialCostSchedule} from './finance-commercial-workspace.ts';
 import {Decimal} from './finance-decimal.ts';
@@ -82,6 +82,39 @@ export function financeService(store:Store) {
       updatedUid:row.updated_uid,approvedUid:row.approved_uid,createdAt:row.created_at,updatedAt:row.updated_at,approvedAt:row.approved_at};
   }
   const snapshot=(p:string,id:string)=>readFinanceSnapshot(db,p,id);
+  // Keep only committed workspace reads. Authorization and version metadata are read fresh on every request.
+  type Calculated={source:FinanceSnapshot;calculation:ReturnType<typeof calculateFinance>;bridge?:FinanceBridgeInputs};
+  const recent=new Map<string,{revision:number;result:Calculated}>();
+  function calculated(p:string,id:string,revision:number,withBridge=false):Calculated {
+    const key=JSON.stringify([p,id]),cached=recent.get(key);
+    recent.delete(key);
+    if(cached?.revision===revision&&(!withBridge||cached.result.bridge)){
+      recent.set(key,cached);return cached.result;
+    }
+    const source=snapshot(p,id),bridge=withBridge?new FinanceBridgeInputs():undefined;
+    const calculation=calculateFinance(source,bridge),result={source,calculation,bridge};
+    // Very large graphs can be served once without keeping them resident on the workstation.
+    let references=0;
+    for(const out of Object.values(calculation.outputs))references+=1+out.upstreamInputs.length+out.dependencies.length;
+    if(references<=1_000_000&&source.inputs.length+source.sources.length+source.events.length<=12000){
+      if(recent.size>=2)recent.delete(recent.keys().next().value!);
+      recent.set(key,{revision,result});
+    }
+    return result;
+  }
+  function outputSources(user:any,p:string,id:string,query:URLSearchParams) {
+    return store.transaction(()=>{
+      authorize(user,p);
+      const v=version(p,id),requested=query.get('revision');
+      if(requested===null||!/^\d+$/.test(requested))invalid('A version revision is required.');
+      revision(v,Number(requested));
+      const {calculation}=calculated(p,id,v.revision),key=query.get('output')??'';
+      if(!Object.hasOwn(calculation.outputs,key))invalid('Finance output unavailable',404);
+      const output=calculation.outputs[key];
+      return {revision:v.revision,formula:output.formula,basis:output.basis,calculationVersion:output.calculationVersion,
+        inputs:output.upstreamInputs.map(input=>calculation.inputs[input]).filter(Boolean)};
+    });
+  }
   function get(user:any,p:string,id:string) {authorize(user,p);return {...summary(version(p,id)),snapshot:snapshot(p,id),...state(p)};}
   function project(user:any,p:string) {
     authorize(user,p);
@@ -330,14 +363,17 @@ export function financeService(store:Store) {
       const baselineId=projectInfo.versions.find(v=>v.id===requestedBaseline&&v.status==='frozen')?.id??projectInfo.approvedBaselineId;
       const currentId=projectInfo.versions.find(v=>v.id===requestedVersion)?.id??projectInfo.currentVersionId;
       const module=query.get('module'),isComparison=module==='compare',isDashboard=!module;
+      const screen=query.get('shape')==='screen';
+      const projectReport=(source:FinanceSnapshot,report:ReturnType<typeof calculateFinance>)=>
+        screen?screenReport(source,report,module??''):workspaceReport(source,report);
       const currencyOptions={...financeCurrencyScales,...projectInfo.versions.reduce<Record<string,number>>((codes,item)=>
         ({...codes,[item.currency]:item.currencyScale}),{})};
       const requestedDisplay=query.get('displayCurrency');
       const cache=new Map<string,ReturnType<typeof load>>();
       function load(id:string) {
         const details=projectInfo.versions.find(v=>v.id===id)!;
-        const source=snapshot(p,id),bridge=isComparison?new FinanceBridgeInputs():undefined,calculation=calculateFinance(source,bridge);
-        return {source,calculation,bridge,view:{details,fxBasis:financeFxBasis(source),...workspaceReport(source,calculation)}};
+        const result=calculated(p,id,details.revision,isComparison);
+        return {...result,view:{details,fxBasis:financeFxBasis(result.source),...projectReport(result.source,result.calculation)}};
       }
       function selected(id:string|null) {
         if(!id)return null;
@@ -358,7 +394,7 @@ export function financeService(store:Store) {
       const shown=(item:typeof active)=>{
         if(!item||!isDashboard||!displayCurrency)return item;
         const calculation=displayFinance(item.calculation,item.source,displayCurrency,item.source,currencyOptions);
-        return {...item,calculation,view:{details:item.view.details,fxBasis:item.view.fxBasis,...workspaceReport(item.source,calculation)}};
+        return {...item,calculation,view:{details:item.view.details,fxBasis:item.view.fxBasis,...projectReport(item.source,calculation)}};
       };
       const displayedBaseline=shown(baseline),displayedCurrent=shown(current);
       const mode=financeFxMode(query.get('fxMode'));
@@ -424,7 +460,10 @@ export function financeService(store:Store) {
         const items=scopedBusiness.get(group)??new Map();
         items.set(row.conversion.businessField,row);scopedBusiness.set(group,items);
       }
-      const legacy=active?.source.inputs.filter(input=>!isBusiness(input)&&supportsFinanceDriver(active.source,input.metricKey)&&!replacedFinanceDriver(active.source,input))??[];
+      const legacy=active?.source.inputs.filter(input=>(!screen||input.module===businessModule)&&!isBusiness(input)&&supportsFinanceDriver(active.source,input.metricKey)&&!replacedFinanceDriver(active.source,input))??[];
+      const previewAllowed=access.can(live,'financePreview',p);
+      const editableModules=new Set([...new Set([...legacy,...visibleBusiness].map(input=>input.module))]
+        .filter(name=>previewAllowed&&access.can(live,financeEditCapabilities[name],p)));
       const inputs=[...legacy,...visibleBusiness].map(input=>{
         const source=sources.get(input.sourceKey);
         const business=isBusiness(input)?input.conversion:null;
@@ -443,7 +482,7 @@ export function financeService(store:Store) {
             (active?.source.policy.fx&&input.currency!==(archived(active.source)?'CNY':active.source.currency)?'Version FX snapshot':null)}:null,
           overrides:input.conversion.p06Overrides??{},acrossPeriods:input.metricKey.startsWith('cqa.operations.'),
           source:source?{key:source.key,sheet:source.sheet,cell:source.cell,observation:source.observation,reference:source.externalKey}:null,
-          canPreview:!business?.referenceOnly&&access.can(live,'financePreview',p)&&access.can(live,financeEditCapabilities[input.module],p)};
+          canPreview:!business?.referenceOnly&&editableModules.has(input.module)};
       });
       const canAdd=active&&active.view.details.status==='draft'&&businessSections.includes(businessModule??'')&&
         (archived(active.source)?businessModule==='bom':active.source.policy.rules.model==='manufacturing')&&
@@ -461,7 +500,7 @@ export function financeService(store:Store) {
         displayFxMissing:isDashboard&&[displayedBaseline,displayedCurrent].some(item=>item?.calculation.issues.some(issue=>issue.code==='missing_fx')),
         markets:active?.source.markets.map(({key,label,metadata})=>({key,label,productKey:metadata.productKey??null}))??[],
         currencies:active?.source.policy.currencyScales??{},
-        comparison:!isComparison&&displayedBaseline&&displayedCurrent?workspaceComparison(displayedBaseline.calculation,displayedCurrent.calculation):null,
+        comparison:!isComparison&&(!screen||isDashboard||module==='budget')&&displayedBaseline&&displayedCurrent?workspaceComparison(displayedBaseline.calculation,displayedCurrent.calculation):null,
         selectionAdjusted:!!((requestedBaseline&&requestedBaseline!==baselineId)||(requestedVersion&&requestedVersion!==currentId))};
     });
   }
@@ -535,6 +574,6 @@ export function financeService(store:Store) {
       beforeSha256:r.before_sha256,afterSha256:r.after_sha256,payload:parse(r.payload_json)
     }))};
   }
-  return {projects,project,get,create,save,preview,previewFx,panelPreview,calculation,projectCalculations,workspace,compare,changes,importBaseline,freeze:(u:any,p:string,id:string,b:unknown,c:WriteContext)=>transition(u,p,id,b,c,'freeze'),
+  return {projects,project,get,create,save,preview,previewFx,panelPreview,calculation,projectCalculations,workspace,outputSources,compare,changes,importBaseline,freeze:(u:any,p:string,id:string,b:unknown,c:WriteContext)=>transition(u,p,id,b,c,'freeze'),
     activate:(u:any,p:string,id:string,b:unknown,c:WriteContext)=>transition(u,p,id,b,c,'activate')};
 }

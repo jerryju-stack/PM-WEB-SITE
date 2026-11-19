@@ -56,7 +56,7 @@ export function downloadFinanceJson(filename:string,data:unknown){
 }
 
 export function mountVersionFx(root:HTMLElement,workspace:Workspace,report:FinanceReport,api:FinanceApi,path:string,dictionary:Dictionary,
-  dashboardSelection:unknown,onSaved:()=>void) {
+  dashboardSelection:(full:Workspace)=>unknown,onSaved:()=>void) {
   const form=root.querySelector<HTMLFormElement>('#fin-fx-form'),status=root.querySelector<HTMLElement>('#fin-business-status')!;
   const revision=report.details.revision,versionPath=path+'/versions/'+encodeURIComponent(report.details.id);
   const exportButton=root.querySelector<HTMLButtonElement>('#fin-export-snapshot')!;
@@ -69,9 +69,24 @@ export function mountVersionFx(root:HTMLElement,workspace:Workspace,report:Finan
     } catch(error){status.textContent=(error as Error).message;}
     finally{exportButton.disabled=false;}
   };
-  root.querySelector<HTMLButtonElement>('#fin-export-dashboard')!.onclick=()=>downloadFinanceJson('finance-dashboard.json',{
-    format:'finance-dashboard-v1',displayCurrency:workspace.displayCurrency,fxMode:'own',
-    selection:dashboardSelection,baseline:workspace.baseline,current:workspace.current,comparison:workspace.comparison});
+  const exportDashboard=root.querySelector<HTMLButtonElement>('#fin-export-dashboard')!;
+  exportDashboard.onclick=async()=>{
+    exportDashboard.disabled=true;
+    try{
+      const query=new URLSearchParams();
+      if(workspace.baseline)query.set('baseline',workspace.baseline.details.id);
+      if(workspace.current)query.set('version',workspace.current.details.id);
+      if(workspace.displayCurrency)query.set('displayCurrency',workspace.displayCurrency);
+      const full:Workspace=await api(path+'/workspace?'+query);
+      for(const side of ['current','baseline'] as const){
+        if(full[side]?.details.id!==workspace[side]?.details.id||full[side]?.details.revision!==workspace[side]?.details.revision)
+          throw Error('The version changed. Reload the dashboard before exporting.');
+      }
+      downloadFinanceJson('finance-dashboard.json',{format:'finance-dashboard-v1',displayCurrency:full.displayCurrency,fxMode:'own',
+        selection:dashboardSelection(full),baseline:full.baseline,current:full.current,comparison:full.comparison});
+    }catch(error){status.textContent=(error as Error).message;}
+    finally{exportDashboard.disabled=false;}
+  };
   if(!form)return;
   const preview=root.querySelector<HTMLElement>('[data-fx-preview]')!,message=root.querySelector<HTMLElement>('[data-fx-status]')!;
   const base=form.elements.namedItem('base') as HTMLSelectElement;

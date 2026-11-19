@@ -1,5 +1,6 @@
 import type {financeService} from '../lib/finance.ts';
 import type {CalculationOutput, InputEvidence} from '../lib/finance-calculation-types.ts';
+import type {ScreenMetric} from '../lib/finance-workspace.ts';
 
 export type Workspace=ReturnType<ReturnType<typeof financeService>['workspace']>;
 export type FinanceReport=NonNullable<Workspace['current']>;
@@ -240,8 +241,8 @@ export function varianceCell(amount:FinanceAmount|undefined,key:string,missing='
 export const help=(dictionary:Dictionary,key:string)=>definition(dictionary,key)?
   '<button type="button" class="fin-help" data-definition="'+escapeHtml(key)+'" aria-label="About '+escapeHtml(nameOf(dictionary,key))+'" aria-expanded="false">?</button>':'<span hidden data-finance-metric="'+escapeHtml(key)+'"></span>';
 export const metricLabel=(dictionary:Dictionary,key:string)=>'<span data-finance-metric="'+escapeHtml(key)+'">'+escapeHtml(nameOf(dictionary,key))+'</span> '+help(dictionary,key);
-export function trace(output:CalculationOutput|undefined,side:'baseline'|'current') {
-  return output?.upstreamInputs.length?'<button type="button" class="fin-link fin-trace" data-source="'+escapeHtml(output.id)+'" data-side="'+side+'">Sources</button>':'';
+export function trace(output:CalculationOutput|ScreenMetric|undefined,side:'baseline'|'current') {
+  return output&&('hasSources' in output?output.hasSources:output.upstreamInputs.length)?'<button type="button" class="fin-link fin-trace" data-source="'+escapeHtml(output.id)+'" data-side="'+side+'">Sources</button>':'';
 }
 export function evidenceRows(inputs:InputEvidence[],periodLabel:(key:string)=>string) {
   return inputs.map(input=>'<li><strong>'+escapeHtml([input.sheet,input.cell].filter(Boolean).join('!')||input.sourceKey||input.id)+'</strong><span>'+

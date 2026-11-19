@@ -4,6 +4,7 @@ import { readFile, mkdir, open } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { randomBytes } from 'node:crypto';
+import { gzip } from 'node:zlib';
 import { stripTypeScriptTypes } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -57,7 +58,26 @@ const esc=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','
 
 const server=http.createServer(async(req,res)=>{
   const trace=requestId();res.setHeader('X-Request-Id',trace);
-  const json=(status:number,value:any)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
+  const json=(status:number,value:any)=>{
+    const body=JSON.stringify(value);
+    res.statusCode=status;
+    res.setHeader('Content-Type','application/json; charset=utf-8');
+    res.setHeader('Cache-Control','no-store');
+    res.setHeader('X-Content-Type-Options','nosniff');
+    const path=(req.url??'').split('?',1)[0];
+    if(!/(?:^|\/)finance(?:\/|$)|^\/finance-dictionary\.json$/.test(path)||Buffer.byteLength(body)<1024){res.end(body);return;}
+    res.setHeader('Vary','Accept-Encoding');
+    const acceptsGzip=req.headers['accept-encoding']?.split(',').some(entry=>{
+      const [encoding,quality]=entry.trim().toLowerCase().split(/\s*;\s*q=/);
+      return encoding==='gzip'&&(quality===undefined||Number(quality)>0);
+    });
+    if(!acceptsGzip){res.end(body);return;}
+    gzip(body,{level:1},(error,compressed)=>{
+      if(res.destroyed)return;
+      if(error){res.end(body);return;}
+      res.setHeader('Content-Encoding','gzip');res.end(compressed);
+    });
+  };
   const cancellation=new AbortController(),disconnected=()=>cancellation.abort(fileCancelled()),closed=()=>{if(!res.writableFinished)disconnected();};
   req.on('aborted',disconnected);res.on('close',closed);
   let releaseFileRequest:(()=>void)|undefined,fileDeadline:ReturnType<typeof setTimeout>|undefined,fileDeadlineAt=0;
@@ -144,6 +164,7 @@ const server=http.createServer(async(req,res)=>{
           if(v&&parts.length===7) {
             if(parts[6]==='changes'&&method==='GET')return json(200,finance.changes(user,p,v));
             if(parts[6]==='calculation'&&method==='GET')return json(200,finance.calculation(user,p,v));
+            if(parts[6]==='sources'&&method==='GET')return json(200,finance.outputSources(user,p,v,url.searchParams));
             if(parts[6]==='compare'&&method==='POST')return json(200,finance.compare(user,p,v,body));
             if(parts[6]==='preview'&&method==='POST')return json(200,url.searchParams.get('view')==='panel'?finance.panelPreview(user,p,v,body):finance.preview(user,p,v,body));
             if(parts[6]==='fx-preview'&&method==='POST')return json(200,finance.previewFx(user,p,v,body));

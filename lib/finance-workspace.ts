@@ -6,6 +6,30 @@ const periodFields=['cash_flow','cumulative_cash','present_value','reported_reve
 const selectRows=(rows:Record<string,CalculationOutput>[])=>rows.map(row=>Object.fromEntries(periodFields.filter(key=>row[key]).map(key=>[key,row[key]])));
 const labels=(items:FinanceSnapshot['periods'])=>items.map(({key,label})=>({key,label}));
 
+// Sources and the full export use the original report. A screen only needs amounts and trace handles.
+const dashboardMetrics=['revenue','total_cost','cqa.mpbitri','full_cost_management_profit','operating_profit','operating_margin',
+  'npv','irr','payback_period','peak_funding_requirement'];
+export type ScreenMetric=Pick<CalculationOutput,'id'|'metricKey'|'value'|'displayValue'|'status'|'unit'|'details'>&{hasSources:boolean};
+function screenRow(row:Record<string,CalculationOutput>,keys:string[]):Record<string,ScreenMetric> {
+  return Object.fromEntries(keys.filter(key=>row[key]).map(key=>{
+    const {id,metricKey,value,displayValue,status,unit,details,upstreamInputs}=row[key];
+    return [key,{id,metricKey,value,displayValue,status,unit,details,hasSources:upstreamInputs.length>0}];
+  }));
+}
+
+export function screenReport(snapshot:FinanceSnapshot,report:CalculationReport,section:string) {
+  const dashboard=section==='',cash=dashboard||section==='returns';
+  const measures=dashboard?dashboardMetrics:section==='returns'?['peak_funding_requirement','payback_period']:[];
+  const rows=(values:CalculationReport['periodic'])=>cash?values.map(row=>screenRow(row,periodFields)):[];
+  return {asOf:report.asOf,currency:report.currency,basis:report.basis,calculationVersion:report.calculationVersion,
+    model:snapshot.policy.rules.model,periods:report.periods.map(key=>({key,label:snapshot.periods.find(p=>p.key===key)?.label??key})),
+    productLabels:labels(snapshot.products.filter(product=>report.productScope.includes(product.key))),
+    metrics:screenRow(report.metrics,measures),
+    budget:screenRow(report.budget,section==='budget'?Object.keys(report.budget):dashboard?['draft_allocation','draft_cost']:[]),
+    periodic:rows(report.periodic),products:cash?Object.fromEntries(Object.entries(report.products).map(([key,product])=>
+      [key,{metrics:screenRow(product.metrics,measures),periodic:rows(product.periodic)}])):{}};
+}
+
 // Deliver dashboard detail and traceable sources without shipping the raw imported workbook or the entire graph.
 export function workspaceReport(snapshot:FinanceSnapshot,report:CalculationReport) {
   const periodic=selectRows(report.periodic);
