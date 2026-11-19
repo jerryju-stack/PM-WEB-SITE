@@ -60,9 +60,11 @@
   --ds-accent: #5743a1;
   --ds-primary: #5743a1;
   --ds-success: #14796c;
+  --ds-success-bg: #e4f3ed;
   --ds-danger: #a03849;
   --ds-danger-bg: #fae9ed;
   --ds-warning: #80531b;
+  --ds-warning-bg: #faf0df;
   --ds-accent-text: #453575;
   --ds-primary-hover: #483582;
   --ds-control-border: #7d8595;
@@ -347,6 +349,87 @@
   .workspace-ui .side-bottom { display: block; margin-top: 8px; }
   .workspace-ui .side-bottom :is(.side-note,.profile) { display: none; }
   .workspace-ui .admin-nav { width: auto; min-height: 36px; padding: 7px 10px; border: 0; }
+}
+/* Light surfaces and states shared by project, knowledge and administration views. */
+:root[data-theme="light"] .workspace-ui .shell > header { background: var(--ds-sidebar); }
+:root[data-theme="light"] .workspace-ui main h1 {
+  font-size: var(--ds-title);
+  line-height: var(--ds-title-leading);
+  font-weight: 700;
+}
+:root[data-theme="light"] .workspace-ui :is(.lead,.card-description,.lesson-row p,.panel p) {
+  font-size: var(--ds-body);
+  line-height: var(--ds-body-leading);
+}
+:root[data-theme="light"] .workspace-ui :is(.count,.project-symbol,.lesson-icon,.lesson-empty > span,.big-icon) {
+  background: var(--ds-selected);
+  color: var(--ds-accent-text);
+}
+:root[data-theme="light"] .workspace-ui .project-symbol.tone-1 {
+  background: var(--ds-success-bg);
+  color: var(--ds-success);
+}
+:root[data-theme="light"] .workspace-ui :is(.project-symbol.tone-2,.avatar,.mini-avatar) {
+  background: var(--ds-warning-bg);
+  color: var(--ds-warning);
+}
+:root[data-theme="light"] .workspace-ui .badge { background: var(--ds-hover); color: var(--ds-secondary); }
+:root[data-theme="light"] .workspace-ui .badge.doing { background: var(--ds-selected); color: var(--ds-accent-text); }
+:root[data-theme="light"] .workspace-ui .badge.done { background: var(--ds-success-bg); color: var(--ds-success); }
+:root[data-theme="light"] .workspace-ui .progress { background: var(--ds-divider); }
+:root[data-theme="light"] .workspace-ui .project-card:hover { border-color: var(--ds-control-border); }
+:root[data-theme="light"] .workspace-ui .add-card:not(:hover) { border-color: var(--ds-control-border); }
+:root[data-theme="light"] .workspace-ui .lesson-row:hover { background: var(--ds-hover); }
+:root[data-theme="light"] .workspace-ui :is(
+  .card-edit,.bottom-note button,.project-card h3 button:hover,
+  .lesson-category,.lesson-row h2 button:hover,.markdown a,.keyword
+) { color: var(--ds-accent); }
+:root[data-theme="light"] .workspace-ui .markdown code {
+  color: var(--ds-accent-text);
+  background: var(--ds-selected);
+}
+:root[data-theme="light"] .workspace-ui .markdown pre code { background: none; color: var(--ds-secondary); }
+:root[data-theme="light"] .workspace-ui .dialog { scrollbar-color: auto; }
+:root[data-theme="light"] .workspace-ui .dialog :is(input:not([type="file"]),select,textarea) {
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  border-color: var(--ds-control-border);
+  accent-color: var(--ds-accent);
+}
+:root[data-theme="light"] .workspace-ui .dialog :is(input,select,textarea):focus {
+  border-color: var(--ds-accent);
+  outline: 2px solid var(--ds-accent);
+  outline-offset: 1px;
+}
+:root[data-theme="light"] .workspace-ui .dialog :is(input,select,textarea):disabled {
+  background: var(--ds-hover);
+  color: var(--ds-muted);
+  border-color: var(--ds-border);
+}
+:root[data-theme="light"] .workspace-ui .dialog:has(#login-form) {
+  width: min(100%, 29rem);
+  padding: clamp(20px, 4vw, 32px);
+}
+:root[data-theme="light"] #login-form input {
+  font-size: var(--ds-body);
+  line-height: var(--ds-body-leading);
+}
+:root[data-theme="light"] #login-form .primary { min-height: 40px; min-width: 6rem; }
+@media(max-width:760px) {
+  :root[data-theme="light"] .workspace-ui main h1 { font-size: 1.625rem; line-height: 2.125rem; }
+  :root[data-theme="light"] .workspace-ui:not(.finance-project-workspace) .shell > header .breadcrumb {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  :root[data-theme="light"] .workspace-ui:not(.finance-project-workspace) .header-right { flex-shrink: 0; }
+  :root[data-theme="light"] .workspace-ui:not(.finance-project-workspace) .header-right #login {
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 @media(prefers-reduced-motion:reduce) {
   .workspace-ui *, .workspace-ui *::before, .workspace-ui *::after { transition: none !important; scroll-behavior: auto !important; }

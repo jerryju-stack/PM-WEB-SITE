@@ -26,7 +26,7 @@ Pair color with text or shape. Use purple for active work, green for completion,
 
 ## Typography and spacing
 
-Use the existing system font stack. The finance sample uses 32/40px page titles, 26/34px on mobile, 18/26px section headings, 15/24px body and controls, 14/22px table body and 13/20px supporting labels. The key figures use 26/34px on desktop and scale down to fit two cards across on mobile. Use tabular numerals and right-align numeric cells. The existing workspaces use 24/32px page titles, 17/26px project and article titles, and 15/24px task names. Markdown reading paragraphs use 15px with 1.85 line height.
+Use the existing system font stack. Light workspaces use 32/40px page titles and 26/34px on mobile. Finance uses 18/26px section headings, 15/24px body and controls, 14/22px table body and 13/20px supporting labels. Its key figures use 26/34px on desktop and scale down to fit two cards across on mobile. Use tabular numerals and right-align numeric cells. Outside finance, dark workspaces use 24/32px page titles. Project and article titles use 17/26px and Timing task names use 15/24px. Markdown reading paragraphs use 15px with 1.85 line height.
 
 The finance dashboard groups current metrics in one panel with internal dividers. Each metric displays the name, figure, currency and reporting scope in that order. The annual sales table uses two rows per product, one for volume and another for unit price. Keep product names visible while scrolling across years on narrow screens.
 
@@ -56,4 +56,10 @@ The APQP preview project is retained with its existing tasks, dependencies and a
 
 The baseline is commit `a1cced2`. Local baseline captures are under `.deploy/site-theme-review/` and use the isolated CASE-001 review dataset. Compare the project finance dashboard and its `/commercial` route with the same version selected at 1440×960 and 390×844. On mobile, the screenshots extend down to the main table to show its layout.
 
-Run `scripts/verify-finance-workbench-browser.mjs` against the isolated review server with `FINANCE_REVIEW_THEME` set to `light` and then `dark`. Each pass checks 26 route and workflow combinations, including mobile widths, the equipment register, display currencies and the cash-only version. The current review covers the dashboard and annual sales table as the design samples. The Timing route uses the shared switch while its page-specific palette is scheduled for the later rollout.
+Run `scripts/verify-finance-workbench-browser.mjs` against the isolated review server with `FINANCE_REVIEW_THEME` set to `light` and then `dark`. Each pass checks 26 route and workflow combinations, including mobile widths, the equipment register, display currencies and the cash-only version.
+
+## Light workspaces and Timing
+
+Light login and editor fields use the white surface, the shared input border and a purple focus indicator. Timing date and select controls inherit the effective color scheme from the page. Keep enabled fields white and give read-only controls a pale neutral fill.
+
+Use the same light table header for Timing's task columns and timeline. A pale purple row identifies a summary, and the stronger selection tint identifies the current task. Use purple for scheduled work, green for completed work and red for overdue work. Keep the corresponding task bars, milestone diamonds, dependency arrows and legend visible against the white timeline. Apply light-specific changes only when the root theme is light.

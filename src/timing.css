@@ -195,7 +195,7 @@
 .timing-workspace .dialog .close { color: var(--ds-muted); }
 .timing-workspace .dialog .form-error,.timing-workspace #login-error { color: #eb929c; }
 .timing-workspace:has(.task-drawer) { overflow: hidden; }
-.timing-workspace .task-drawer { width: 520px; max-width: 100vw; height: 100dvh; min-height: 0; color: var(--ds-text); color-scheme: dark; background: var(--ds-surface); border-left: 1px solid var(--ds-border); box-shadow: -16px 0 64px #0005; }
+.timing-workspace .task-drawer { width: 520px; max-width: 100vw; height: 100dvh; min-height: 0; color: var(--ds-text); background: var(--ds-surface); border-left: 1px solid var(--ds-border); box-shadow: -16px 0 64px #0005; }
 .timing-workspace .drawer-backdrop { background: #0006; backdrop-filter: blur(2px); }
 .timing-workspace .drawer-top { padding: 20px 24px; border-color: var(--ds-border); align-items: flex-start; }
 .timing-workspace .drawer-top>div:first-child { min-width: 0; }
@@ -298,7 +298,7 @@
 .timing-workspace .project-timeline .timeline-rows { background-image: none; }
 .project-grid-line { position: absolute; top: 0; bottom: 0; border-left: 1px solid #ffffff09; pointer-events: none; }
 
-/* D4: paired colors for Timing's dark rows and native form controls only. */
+/* Timing-specific colors preserve the original dark palette. */
 .timing-workspace {
   --timing-row-summary: #252d40;
   --timing-row-selected: #263b59;
@@ -317,7 +317,7 @@
 }
 .timing-workspace .summary-row .task-name { color: var(--timing-control-text); font-weight: 700; }
 .timing-workspace .task-table tr:hover td { background: var(--timing-row-hover); color: var(--ds-text); }
-.timing-workspace .task-table tr.selected-row td { background: var(--timing-row-selected); color: #fff; }
+.timing-workspace .task-table tr.selected-row td { background: var(--timing-row-selected); color: var(--timing-selection-text, #fff); }
 .timing-workspace .task-table tr.selected-row td:first-child { box-shadow: inset 3px 0 var(--timing-selection-line); }
 .timing-workspace .task-table :is(.summary-row,.selected-row) :is(.task-name,.wbs-number,.fold-task,.task-kind-symbol,.add-child,.unit,.predecessor-cell,.attachment-count) { color: inherit; }
 .timing-workspace :is(.task-table,.task-drawer,.timing-history,.dialog) :is(input,select,textarea),
@@ -325,14 +325,13 @@
   background: var(--timing-control-bg);
   color: var(--timing-control-text);
   border-color: var(--timing-control-border);
-  color-scheme: dark;
 }
 .timing-workspace :is(.task-table,.task-drawer,.timing-history,.dialog) :is(input,textarea)::placeholder { color: var(--ds-secondary); opacity: 1; }
 .timing-workspace :is(.task-table,.task-drawer,.timing-history,.dialog) :is(input,select,textarea):focus { border-color: var(--ds-accent); }
 .timing-workspace :is(.task-table,.task-drawer,.timing-history,.dialog) option { background: var(--timing-control-bg); color: var(--timing-control-text); }
 .timing-workspace :is(.task-table,.task-drawer,.timing-history,.dialog) option:checked {
   background: var(--timing-option-selected) linear-gradient(var(--timing-option-selected),var(--timing-option-selected));
-  color: #fff;
+  color: var(--timing-selection-text, #fff);
 }
 .timing-workspace .import-preview { background: var(--ds-surface); color: var(--ds-text); border-color: var(--ds-border); }
 .timing-workspace .import-preview .schedule-shift,
@@ -406,3 +405,139 @@ body.panning-timeline,body.panning-timeline * { cursor: grabbing !important; use
 .recovery-comparisons table{width:100%;table-layout:fixed;border-collapse:collapse}
 .recovery-comparisons th,.recovery-comparisons td{padding:9px;border:1px solid rgba(128,128,128,.3);text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;vertical-align:top}
 .recovery-comparisons th:first-child{width:18%}
+
+/* The light schedule uses the shared palette at the existing row and header sizes. */
+:root[data-theme="light"] .timing-workspace {
+  --timing-row-summary: #f2effa;
+  --timing-row-selected: var(--ds-selected);
+  --timing-row-hover: var(--ds-hover);
+  --timing-control-bg: var(--ds-surface);
+  --timing-control-text: var(--ds-text);
+  --timing-control-border: var(--ds-control-border);
+  --timing-option-selected: var(--ds-selected);
+  --timing-selection-line: var(--ds-accent);
+  --timing-selection-text: var(--ds-accent-text);
+  --timing-warning-bg: var(--ds-warning-bg);
+  --timing-warning-text: var(--ds-warning);
+  --timing-grid: #e9ebf1;
+  --timing-dependency: #746b85;
+  --timing-summary-bar: #7b699f;
+  --timing-summary-fill: #5e4597;
+  --timing-task-fill: #b9abe3;
+}
+:root[data-theme="light"] .timing-workspace :is(.task-table th,.time-header,.version-list th,.recovery-comparisons th) {
+  background: var(--ds-table-head);
+  color: var(--ds-secondary);
+  font-weight: 600;
+}
+:root[data-theme="light"] .timing-workspace .project-state { color: var(--ds-accent-text); }
+:root[data-theme="light"] .timing-workspace .project-state[data-state="计划中"] {
+  background: var(--ds-hover);
+  color: var(--ds-secondary);
+}
+:root[data-theme="light"] .timing-workspace .project-state[data-state="已完成"] {
+  background: var(--ds-success-bg);
+  color: var(--ds-success);
+}
+:root[data-theme="light"] .timing-workspace :is(.project-state[data-state="已暂停"],.owner-bubble) {
+  background: var(--ds-warning-bg);
+  color: var(--ds-warning);
+}
+:root[data-theme="light"] .timing-workspace :is(.zoom-switch .chosen,.file-icon,.today-line span) {
+  background: var(--ds-selected);
+  color: var(--ds-accent-text);
+}
+:root[data-theme="light"] .timing-workspace :is(
+  .station-nav a:first-child,.add-child,.offscreen-task,.attachment-row a
+) { color: var(--ds-accent); }
+:root[data-theme="light"] .timing-workspace .attachment-row a:hover { color: var(--ds-accent-text); }
+:root[data-theme="light"] .timing-workspace .mini-progress { background: var(--ds-divider); }
+:root[data-theme="light"] .timing-workspace .primary:is(:hover,:active) {
+  background: var(--ds-primary-hover);
+  border-color: var(--ds-primary-hover);
+}
+:root[data-theme="light"] .timing-workspace :is(.task-pane,.timeline-pane,.drawer-scroll) {
+  scrollbar-color: var(--ds-control-border) var(--ds-surface);
+}
+:root[data-theme="light"] .timing-workspace .timeline-rows {
+  background-image: linear-gradient(to right, var(--timing-grid) 1px, transparent 1px);
+}
+:root[data-theme="light"] .timing-workspace .project-timeline .timeline-rows { background-image: none; }
+:root[data-theme="light"] .timing-workspace .project-grid-line { border-color: var(--timing-grid); }
+:root[data-theme="light"] .timing-workspace .weekend-band { background: #747e9610; }
+:root[data-theme="light"] .timing-workspace .summary-timeline-row { background: #e7e0f53d; }
+:root[data-theme="light"] .timing-workspace .timeline-row:hover { background: #d7dce945; }
+:root[data-theme="light"] .timing-workspace .timeline-row.selected-row { background: #8061c323; }
+:root[data-theme="light"] .timing-workspace .task-bar {
+  --timing-bar-bg: #e2daf5;
+  --timing-bar-fill: var(--timing-task-fill);
+  --timing-bar-text: #382566;
+  background: var(--timing-bar-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--timing-bar-text) 35%, transparent);
+}
+:root[data-theme="light"] .timing-workspace .task-bar:hover {
+  box-shadow: inset 0 0 0 1px var(--timing-bar-text);
+}
+:root[data-theme="light"] .timing-workspace .task-bar.finished-bar {
+  --timing-bar-bg: var(--ds-success-bg);
+  --timing-bar-fill: #8ac8b0;
+  --timing-bar-text: #12473c;
+}
+:root[data-theme="light"] .timing-workspace .task-bar.late-bar {
+  --timing-bar-bg: var(--ds-danger-bg);
+  --timing-bar-fill: #e9acb8;
+  --timing-bar-text: #6a2736;
+}
+:root[data-theme="light"] .timing-workspace .task-bar .bar-fill { background: var(--timing-bar-fill); }
+:root[data-theme="light"] .timing-workspace .task-bar .bar-text { color: var(--timing-bar-text); }
+:root[data-theme="light"] .timing-workspace .summary-bar { background: var(--timing-summary-bar); }
+:root[data-theme="light"] .timing-workspace .summary-bar::before,
+:root[data-theme="light"] .timing-workspace .summary-bar::after { border-top-color: var(--timing-summary-bar); }
+:root[data-theme="light"] .timing-workspace :is(.summary-bar .bar-fill,.summary-legend) { background: var(--timing-summary-fill); }
+:root[data-theme="light"] .timing-workspace .task-legend { background: var(--timing-task-fill); }
+:root[data-theme="light"] .timing-workspace .milestone-bar:not(.finished-bar,.late-bar) { background: var(--ds-accent); }
+:root[data-theme="light"] .timing-workspace .diamond-legend { color: var(--ds-accent); }
+:root[data-theme="light"] .timing-workspace :is(.milestone-bar.late-bar,.late-legend) { background: var(--ds-danger); }
+:root[data-theme="light"] .timing-workspace .dependency-lines > path { stroke: var(--timing-dependency); }
+:root[data-theme="light"] .timing-workspace .dependency-lines marker path { fill: var(--timing-dependency); }
+:root[data-theme="light"] .timing-workspace :is(.overlay,.drawer-backdrop),
+:root[data-theme="light"] .timing-workspace .timing-draft-choice::backdrop { background: var(--ds-overlay); }
+:root[data-theme="light"] .timing-workspace .dialog { box-shadow: 0 24px 80px var(--ds-shadow); }
+:root[data-theme="light"] .timing-workspace .task-drawer { box-shadow: -16px 0 64px var(--ds-shadow); }
+:root[data-theme="light"] .timing-workspace :is(.task-table,.task-drawer,.timing-history) :is(input,select,textarea):disabled {
+  color: var(--ds-muted);
+  background: var(--ds-hover);
+  border-color: var(--ds-border);
+}
+:root[data-theme="light"] .timing-workspace .attachment-empty { border-color: var(--ds-border); }
+:root[data-theme="light"] .timing-workspace .summary-explanation {
+  background: var(--ds-selected);
+  color: var(--ds-accent-text);
+  border-color: var(--ds-border);
+  border-left-color: var(--ds-accent);
+}
+:root[data-theme="light"] .timing-workspace :is(.metric-late,.task-drawer .danger,.form-error,#login-error,.delete-attachment) {
+  color: var(--ds-danger);
+}
+:root[data-theme="light"] .timing-workspace :is(.task-drawer .danger,.delete-attachment):hover { background: var(--ds-danger-bg); }
+:root[data-theme="light"] .timing-workspace :is(.timing-draft-choice,#toast) {
+  background: var(--ds-surface);
+  border-color: var(--ds-border);
+}
+@media(max-width:760px) {
+  :root[data-theme="light"] .timing-workspace .drawer-top {
+    position: relative;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  :root[data-theme="light"] .timing-workspace .drawer-top > div:first-child {
+    flex-basis: 100%;
+    padding-inline-end: 36px;
+  }
+  :root[data-theme="light"] .timing-workspace .drawer-actions { flex-wrap: wrap; gap: 6px; }
+  :root[data-theme="light"] .timing-workspace .drawer-close {
+    position: absolute;
+    inset-block-start: 16px;
+    inset-inline-end: 16px;
+  }
+}
