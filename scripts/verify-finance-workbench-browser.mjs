@@ -10,6 +10,8 @@ const account=JSON.parse(await readFile(run.credentials,'utf8'));
 const evidence=process.env.FINANCE_REVIEW_EVIDENCE??join(run.directory,'acceptance');
 const base='http://127.0.0.1:'+run.port;
 const project='/projects/'+run.project+'/finance';
+const theme=process.env.FINANCE_REVIEW_THEME??'dark';
+assert(['light','dark'].includes(theme));
 const packages=process.env.PLAYWRIGHT_MODULES??join(homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules');
 const {chromium}=createRequire(join(packages,'playwright/package.json'))('playwright');
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH??'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -24,7 +26,7 @@ const results=[];
 try{
   await mkdir(evidence,{recursive:true});
   for(const [device,width,height] of [['desktop',1440,960],['mobile',390,844]]){
-    const context=await browser.newContext({viewport:{width,height},hasTouch:device==='mobile'});
+    const context=await browser.newContext({viewport:{width,height},hasTouch:device==='mobile',colorScheme:theme});
     const page=await context.newPage(),errors=[];
     page.on('pageerror',error=>errors.push(error.message));
     const waitHeading=heading=>page.getByRole('heading',{name:heading,exact:true}).waitFor();
@@ -49,7 +51,8 @@ try{
       await waitHeading(heading);
       assert.equal(await page.locator('.fin-sections [aria-current=page]').count(),1);
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width,device+' overflow in '+section);
-      assert.equal(await page.locator('.fin-sections').evaluate(node=>getComputedStyle(node).backgroundColor),'rgb(29, 30, 35)');
+      assert.equal(await page.locator('.fin-sections').evaluate(node=>getComputedStyle(node).backgroundColor),
+        theme==='light'?'rgb(255, 255, 255)':'rgb(29, 30, 35)');
       if(device==='desktop'&&section==='')await screenshot('desktop-dashboard');
       if(device==='desktop'&&section==='commercial')await screenshot('desktop-commercial');
       results.push({device,section:section||'dashboard',verified:true});
@@ -78,7 +81,7 @@ try{
     await page.locator('#fin-display-currency').waitFor();
     for(const currency of ['USD','EUR','CNY']){
       await page.locator('#fin-display-currency').selectOption(currency);
-      await page.waitForFunction(code=>document.querySelector('#metric-npv')?.parentElement?.innerText.includes(code),currency);
+      await page.waitForFunction(code=>document.querySelector('#metric-npv')?.closest('.fin-metric')?.textContent?.includes(code),currency);
     }
     await page.locator('#fin-filter-version').selectOption(run.cash);
     await page.getByText(/Cash-flow reconciliation version/).waitFor();

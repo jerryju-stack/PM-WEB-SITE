@@ -17,6 +17,7 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "paths": {
+      "/theme-control.js": ["./src/theme-control.ts"],
       "/finance.js": ["./src/finance.ts"],
       "/finance-view.js": ["./src/finance-view.ts"],
       "/finance-impact.js": ["./src/finance-impact.ts"],

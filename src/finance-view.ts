@@ -217,18 +217,22 @@ const statusText:Record<string,string>={missing_input:'Data missing',pending_fin
   zero_denominator:'Zero denominator',not_recovered:'Not recovered',no_irr:'No meaningful IRR',
   ambiguous_irr:'IRR is not unique',solver_failed:'IRR could not be resolved',recrossed:'Funding gap recurs',
   invalid_rate:'Invalid discount rate',missing_fx:'Exchange rate required',incompatible_scope:'Incompatible scope',unavailable:'Unavailable'};
+const amountUnit=(unit:string)=>unit==='fraction'?'%':unit==='percentage_point'?' pp':unit==='year'?' yr':unit?' '+unit:'';
 export function amountText(amount?:FinanceAmount|null,delta=false) {
   if(!amount?.displayValue)return '—';
   const [whole,fraction]=amount.displayValue.split('.');
   const number=whole.replace(/\B(?=(\d{3})+(?!\d))/g,',')+(fraction?'.'+fraction:'');
-  const unit=amount.unit==='fraction'?'%':amount.unit==='percentage_point'?' pp':amount.unit==='year'?' yr':amount.unit?' '+amount.unit:'';
+  const unit=amountUnit(amount.unit);
   if(delta&&!Number(amount.displayValue)&&Number(amount.value))return (Number(amount.value)>0?'+':'−')+
     (fraction?'<0.'+'1'.padStart(fraction.length,'0'):'<1')+unit;
   return (delta&&Number(amount.value)>0?'+':'')+number+unit;
 }
-export function amountCell(amount?:FinanceAmount|null,delta=false,missing='Unavailable') {
+export function amountCell(amount?:FinanceAmount|null,delta=false,missing='Unavailable',stackUnit=false) {
   const status=amount&&statusText[amount.status];
-  return '<span class="fin-value">'+escapeHtml(amountText(amount,delta))+'</span>'+
+  const text=amountText(amount,delta);
+  const unit=stackUnit&&amount?.displayValue?amountUnit(amount.unit):'';
+  return '<span class="fin-value">'+escapeHtml(unit?text.slice(0,-unit.length):text)+'</span>'+
+    (unit?'<small class="fin-value-unit">'+escapeHtml(unit.trim())+'</small>':'')+
     (status||!amount?'<small class="fin-state">'+escapeHtml(status||missing)+'</small>':'');
 }
 export function varianceCell(amount:FinanceAmount|undefined,key:string,missing='No comparison') {
@@ -269,7 +273,8 @@ export function cashChart(container:HTMLElement,series:{name:string;values:(numb
     const x=(index:number)=>left+(right-left)*(labels.length===1?0.5:index/(labels.length-1));
     const y=(value:number)=>bottom-(value-min)/range*(bottom-top);
     const compact=new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1});
-    surface.font='12px system-ui';surface.textAlign='right';surface.textBaseline='middle';
+    surface.font=style.getPropertyValue('--ds-meta').trim()+' '+style.fontFamily;
+    surface.textAlign='right';surface.textBaseline='middle';
     for(const value of new Set([min,(min+max)/2,max,0])) {
       surface.strokeStyle=style.getPropertyValue(value===0?'--ds-muted':'--ds-divider').trim();
       surface.beginPath();surface.moveTo(left,y(value));surface.lineTo(right,y(value));surface.stroke();
@@ -281,10 +286,10 @@ export function cashChart(container:HTMLElement,series:{name:string;values:(numb
     series.forEach(({values,bars},j)=>{
       if(bars){
         const barWidth=Math.min(30,(right-left)/Math.max(1,labels.length)*.55),zero=y(0);
-        const positive=style.getPropertyValue('--ds-success').trim();
+        const positive=style.getPropertyValue('--ds-success').trim(),negative=style.getPropertyValue('--ds-chart-negative').trim();
         values.forEach((value,i)=>{
           if(value===null||value===0||!Number.isFinite(value))return;
-          surface.fillStyle=value>0?positive:colors[0];
+          surface.fillStyle=value>0?positive:negative;
           surface.fillRect(x(i)-barWidth/2,Math.min(y(value),zero),barWidth,Math.abs(y(value)-zero));
         });
         return;
@@ -299,5 +304,7 @@ export function cashChart(container:HTMLElement,series:{name:string;values:(numb
   }
   canvas.setAttribute('aria-label',series.map(item=>item.name).join(' and ')+', '+currency+'. Exact values are in the Project Returns table.');
   const resize=new ResizeObserver(draw);resize.observe(canvas);draw();
-  return ()=>resize.disconnect();
+  const theme=new MutationObserver(draw);
+  theme.observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  return ()=>{resize.disconnect();theme.disconnect();};
 }

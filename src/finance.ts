@@ -277,9 +277,9 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     const labelPeriod=(key:string)=>periods.find(item=>item.key===key)?.label??key;
     const labelProduct=(key:string)=>products.find(item=>item.key===key)?.label??key;
     const labelMarket=(key:string|null)=>key?workspace.markets.find(item=>item.key===key)?.label??key:'All markets';
-    const side=(value:CalculationOutput|ScreenMetric|undefined,version:'baseline'|'current')=>{
+    const side=(value:CalculationOutput|ScreenMetric|undefined,version:'baseline'|'current',stackUnit=false)=>{
       if(value)displayedOutputs.set(version+':'+value.id,value);
-      return amountCell(value,false,version==='baseline'?'No baseline':'No forecast')+trace(value,version);
+      return amountCell(value,false,version==='baseline'?'No baseline':'No forecast',stackUnit)+trace(value,version);
     };
     const scopedDifference=product?workspace.comparison?.products[product]:workspace.comparison;
     const rowIndex=periods.findIndex(item=>item.key===period);
@@ -307,8 +307,8 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
         {key:'peak_funding_requirement',title:'Peak funding requirement',route:'returns',scope:'Full horizon'}
       ];
       return '<div class="fin-metrics fin-overview-metrics" aria-label="Key financial metrics">'+metrics.map(({key,title,route,scope})=>
-        '<section class="fin-metric">'+financeUrl(link(route),title,'metric-'+(key===managementKey?'operating_profit':key))+help(glossary,key)+
-        '<div class="fin-summary-value">'+side(reportMetric(active,key),dashboardVersion)+'</div><small class="fin-state">'+html(scope)+'</small></section>'
+        '<section class="fin-metric"><div class="fin-metric-label">'+financeUrl(link(route),title,'metric-'+(key===managementKey?'operating_profit':key))+help(glossary,key)+
+        '</div><div class="fin-summary-value">'+side(reportMetric(active,key),dashboardVersion,true)+'</div><small class="fin-state">'+html(scope)+'</small></section>'
       ).join('')+'</div>';
     };
     const comparison=()=>{
@@ -356,14 +356,14 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     const productContribution=()=>{
       const rows=products.filter(item=>!product||item.key===product);
       if(cashOnly||!rows.length)return '';
-      return sectionPanel('Product contribution <small>· Full horizon</small>',table(['Product','Revenue','Total cost',profitTitle,'Margin'],rows.map(item=>{
+      return sectionPanel('Product contribution <small>· Full horizon</small>','<div class="fin-product-contribution">'+table(['Product','Revenue','Total cost',profitTitle,'Margin'],rows.map(item=>{
         const values=scopeFor(active,item.key)?.metrics,revenue=values?.revenue,profit=values?.[managementKey];
         const margin=revenue?.value&&profit?.value!==null&&profit?.value!==undefined&&Number(revenue.value)>0?
           new Intl.NumberFormat('en',{style:'percent',maximumFractionDigits:2}).format(Number(profit.value)/Number(revenue.value)):'—';
         return '<tr><th scope="row">'+financeUrl(capitalLink('commercial','',{product:item.key,period:null,market:null}),item.label)+'</th>'+
           [revenue,values?.total_cost,profit].map(value=>'<td>'+side(value,dashboardVersion)+'</td>').join('')+
           '<td>'+html(margin)+'</td></tr>';
-      }).join('')));
+      }).join(''))+'</div>');
     };
     const reviewItems=()=>{
       const operating=reportMetric(active,'operating_profit'),irr=focusReturns?.irr;
@@ -491,15 +491,17 @@ export function mountFinanceWorkspace({root,api,user,login}:{root:HTMLElement;ap
     const backLabel=safeOrigin?titleFor(originPath!.slice(base.length+1).split('/')[0]):comparisonOrigin?'Version Comparison':
       equipmentView?(sourceKey?'Equipment & Tooling Details':titleFor(section)):sourceKey?titleFor(section):'Finance Dashboard';
     const pageTitle=equipmentView?'Equipment & Tooling Details':section?titleFor(section):'Project Finance Dashboard';
-    root.innerHTML='<div class="fin-heading"><div><p class="fin-muted">'+html(workspace.title)+'</p><h1>'+html(pageTitle)+'</h1></div>'+
+    const scope=active&&!isComparison?'<p class="fin-scope">'+html(product?labelProduct(product):'All products')+' · '+html(period?labelPeriod(period):'All periods')+
+      ' · '+html(active.currency)+(!section?' · As of '+html(active.asOf):'')+'</p>':'';
+    const heading='<div class="fin-heading fin-project-heading"><div><p class="fin-project-name">'+html(workspace.title)+'</p><h1>'+html(pageTitle)+'</h1>'+scope+'</div>'+
       '<div class="fin-actions">'+financeUrl('/finance?choose=1','Switch Project','fin-switch')+'<a class="small-btn" href="/#projects">Project Overview</a>'+
-      '<a class="small-btn" href="/projects/'+encodeURIComponent(projectId)+'/timing">Timing ↗</a></div></div>'+
-      '<div class="fin-workbench">'+navigation+'<div class="fin-workbench-content">'+(isComparison?context:'')+
+      '<a class="small-btn" href="/projects/'+encodeURIComponent(projectId)+'/timing">Timing</a></div></div>';
+    root.innerHTML='<div class="fin-workbench">'+navigation+'<div class="fin-workbench-content">'+heading+(isComparison?context:'')+
       (section?'<a class="fin-link fin-back" data-finance-nav data-finance-back href="'+html(backHref)+'">← Back to '+html(backLabel==='Dashboard'?'Finance Dashboard':backLabel)+'</a>':'')+
-      (isComparison?comparisonFilters(workspace,params):filters)+(workspace.selectionAdjusted?'<p role="status">An unavailable version selection was reset.</p>':'')+
+      (isComparison?comparisonFilters(workspace,params):'<div class="fin-toolbar">'+filters+(!section?settings():'')+'</div>')+
+      (workspace.selectionAdjusted?'<p role="status">An unavailable version selection was reset.</p>':'')+
       (isComparison?comparisonPage(compareReport,base,params,glossary,fxComparison):unavailable+comparisonSource(workspace,params.has('traceKey'))+
-        (!section?settings():'')+(active?'<p class="fin-scope">'+html(product?labelProduct(product):'All products')+' · '+html(period?labelPeriod(period):'All periods')+
-        (!section?' · '+html(active.currency)+' · As of '+html(active.asOf):'')+'</p>'+
+        (active?
         (!section?dashboard():
           (section==='returns'?details+(fullReturns&&capital?'':chart()+cashRows()):section==='budget'?budget():details)+
           (section==='budget'?details:'')+

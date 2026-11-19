@@ -4,29 +4,31 @@ The product name remains **Project Station**. The knowledge section is **Lesson 
 
 ## Theme and scope
 
-`workspace-ui` on the body provides shared tokens, navigation, panels, forms and dialogs across every route. Page classes (`project-workspace`, `lesson-workspace`, `timing-workspace`) scope page-specific layouts. Reuse tokens rather than introducing independent page palettes.
+`workspace-ui` on the body provides shared navigation, panels, forms and dialogs. Page classes scope layouts. Define shared colors on `html` and set `data-theme` to the effective `light` or `dark` theme. The browser preference is `system`, `light` or `dark`. It takes effect before first paint, and the shared appearance control applies changes in place.
 
-| Token | Value | Purpose |
-| --- | --- | --- |
-| `--ds-bg` | `#141518` | Page background |
-| `--ds-sidebar` | `#18191D` | Navigation background |
-| `--ds-surface` | `#1D1E23` | Panels, cards, dialogs |
-| `--ds-hover` | `#25262C` | Hover state |
-| `--ds-selected` | `#2B2942` | Selection |
-| `--ds-border` | `#303138` | Component boundaries |
-| `--ds-divider` | `#27282E` | Subtle separators |
-| `--ds-text` | `#ECEDEF` | Titles and essential content |
-| `--ds-secondary` | `#B6B8C2` | Body content and metadata |
-| `--ds-muted` | `#9699A6` | Supporting labels |
-| `--ds-accent` | `#8580F5` | Links, focus and progress |
-| `--ds-primary` | `#6862D9` | Primary actions |
-| `--ds-success` | `#80C4A2` | Completion |
+| Token | Dark | Light | Purpose |
+| --- | --- | --- | --- |
+| `--ds-bg` | `#141518` | `#F5F6F8` | Page background |
+| `--ds-sidebar` | `#18191D` | `#FFFFFF` | Navigation background |
+| `--ds-surface` | `#1D1E23` | `#FFFFFF` | Panels, cards, dialogs |
+| `--ds-hover` | `#25262C` | `#EEF0F5` | Hover state |
+| `--ds-selected` | `#2B2942` | `#EBE6FB` | Selection |
+| `--ds-border` | `#303138` | `#DCE0E8` | Component boundaries |
+| `--ds-divider` | `#27282E` | `#DCE0E8` | Subtle separators |
+| `--ds-text` | `#ECEDEF` | `#191C2B` | Titles and essential content |
+| `--ds-secondary` | `#B6B8C2` | `#484A59` | Body content |
+| `--ds-muted` | `#9699A6` | `#555C70` | Supporting labels |
+| `--ds-accent` | `#8580F5` | `#5743A1` | Links, focus and progress |
+| `--ds-primary` | `#6862D9` | `#5743A1` | Primary actions |
+| `--ds-success` | `#80C4A2` | `#14796C` | Completion and positive cash flow |
 
-Status colors supplement text: purple for active work, green for completion, neutral for planned work, amber for paused work, red (`#EB929C`) for overdue work and destructive actions.
+Pair color with text or shape. Use purple for active work, green for completion, neutral for planned work, amber for paused work and red for overdue work and destructive actions. Use `--ds-control-border` for inputs, `--ds-table-head` for table headers, and `--ds-overlay` for modal backdrops.
 
 ## Typography and spacing
 
-Use the existing system font stack; no external font dependency. Page titles: 24/32px, section titles: 18/26px, project and article titles: 17/26px, task names: 15/24px, body/controls: 14px, dates and metadata: 13px. Markdown reading paragraphs: 15px with 1.85 line height. Use tabular numerals for aligned metrics and dates. Essential content must not use 9–11px text.
+Use the existing system font stack. The finance sample uses 32/40px page titles, 26/34px on mobile, 18/26px section headings, 15/24px body and controls, 14/22px table body and 13/20px supporting labels. The key figures use 26/34px on desktop and scale down to fit two cards across on mobile. Use tabular numerals and right-align numeric cells. The existing workspaces use 24/32px page titles, 17/26px project and article titles, and 15/24px task names. Markdown reading paragraphs use 15px with 1.85 line height.
+
+The finance dashboard groups current metrics in one panel with internal dividers. Each metric displays the name, figure, currency and reporting scope in that order. The annual sales table uses two rows per product, one for volume and another for unit price. Keep product names visible while scrolling across years on narrow screens.
 
 Spacing scale: 4, 8, 12, 16, 24, 32px. Default card radius: 8px; controls: 6px; dialogs: 12px. Controls are typically 36–40px high. Cards use borders instead of strong shadows; drawers and dialogs use restrained black shadows.
 
@@ -46,6 +48,12 @@ Statistics pair labels and values and do not pad counts with zeroes. Large numer
 
 ## Implementation boundary
 
-Styling and presentation changes live in `src/styles.css`, `src/timing.css`, `src/app.ts`, `src/timing.ts` and the HTML theme-color declaration. API contracts, database schema, authentication, permissions and scheduling rules remain unchanged. No UI framework or new dependency is required.
+The same-origin `src/theme-bootstrap.js` loads before the stylesheets in `src/index.html`. The shared appearance control is rendered in the site and Timing headers. The finance sample uses `src/finance.css` and the production finance renderers. The cash-flow canvas observes the effective theme so its colors update while the current view stays mounted. See the [implementation plan](site-theme-rollout-plan.md) for page-by-page rollout.
 
 The APQP preview project is retained with its existing tasks, dependencies and attachment. Preview content is isolated from production data. Deploying source must not replace production databases or upload directories with preview data.
+
+## Finance sample review
+
+The baseline is commit `a1cced2`. Local baseline captures are under `.deploy/site-theme-review/` and use the isolated CASE-001 review dataset. Compare the project finance dashboard and its `/commercial` route with the same version selected at 1440×960 and 390×844. On mobile, the screenshots extend down to the main table to show its layout.
+
+Run `scripts/verify-finance-workbench-browser.mjs` against the isolated review server with `FINANCE_REVIEW_THEME` set to `light` and then `dark`. Each pass checks 26 route and workflow combinations, including mobile widths, the equipment register, display currencies and the cash-only version. The current review covers the dashboard and annual sales table as the design samples. The Timing route uses the shared switch while its page-specific palette is scheduled for the later rollout.

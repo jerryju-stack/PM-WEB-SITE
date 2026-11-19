@@ -6,7 +6,7 @@ import { TimingLayout, readLayoutPreference } from '/timing-layout.js';
 import type { TimingVersion } from '../lib/timing-versions.ts';
 import type { Task } from '../lib/schedule.ts';
 import type {TimingSnapshot,TaskMutationResponse,DraftMetadata,EditorLease} from './timing-types.ts';
-type Options={projectId:string;user:any;settings:any;login:()=>void;editProject:()=>void;manageMembers:(editable:boolean)=>void};
+type Options={projectId:string;user:any;settings:any;login:()=>void;editProject:()=>void;manageMembers:(editable:boolean)=>void;themeControl?:()=>string};
 type Row={task:Task;wbs:string;depth:number};
 const escape=(v:any='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const today=()=>new Date().toLocaleDateString('sv-SE');
@@ -105,7 +105,7 @@ export async function mountTiming(options:Options){
  signal.addEventListener('abort',()=>{endPan?.();resizeObserver.disconnect();layout?.destroy();timelineEvents?.abort();renderEvents?.abort();},{once:true});
  const state=viewStates.get(projectId)||{collapsed:new Set<string>(),zoom:'week',start:null};viewStates.set(projectId,state);
  const notify=(message:string)=>{const node=document.querySelector('#toast')!;node.textContent=message;node.classList.add('show');setTimeout(()=>node.classList.remove('show'),3500);};
- const shell=(content:string)=>`<div class="timing-app"><header class="station-header"><a class="timing-brand" href="/"><span class="station-logo">P<span>.</span></span><span>Project Station<small>PLAN · ALIGN · DELIVER</small></span></a><nav class="station-nav"><a href="/">项目空间</a><a href="/#articles">Lesson Learn</a><a href="/#team">团队</a></nav><div class="station-account"><span class="green-dot"></span>${escape(user?.name||'访客')}<span class="role-chip">${user?({admin:'管理员',editor:'编辑者',viewer:'只读成员'}[user.role]):'尚未登录'}</span></div></header>${content}</div>`;
+ const shell=(content:string)=>`<div class="timing-app"><header class="station-header"><a class="timing-brand" href="/"><span class="station-logo">P<span>.</span></span><span>Project Station<small>PLAN · ALIGN · DELIVER</small></span></a><nav class="station-nav"><a href="/">项目空间</a><a href="/#articles">Lesson Learn</a><a href="/#team">团队</a></nav><div class="station-account">${options.themeControl?.()??''}<span class="green-dot"></span>${escape(user?.name||'访客')}<span class="role-chip">${user?({admin:'管理员',editor:'编辑者',viewer:'只读成员'}[user.role]):'尚未登录'}</span></div></header>${content}</div>`;
  if(!user){root.innerHTML=shell('<main class="timing-gate"><span class="gate-icon">▦</span><div class="eyebrow">PROJECT TIMING</div><h1>登录，进入项目工作空间。</h1><p>项目排期与附件仅对登录成员开放。</p><button class="primary" id="timing-login">登录并继续 →</button><a href="/">返回项目列表</a></main>');document.querySelector('#timing-login')!.addEventListener('click',login,{signal});return;}
  root.innerHTML=shell('<main class="timing-gate"><p>正在载入项目排期…</p></main>');
  async function request(path:string,body?:any,method='POST'){

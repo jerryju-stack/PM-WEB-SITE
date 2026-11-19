@@ -19,10 +19,10 @@ export function commercialOverview(data:NonNullable<Workspace['commercial']>,pro
   const scoped=data.products.filter(row=>!product||row.key===product);
   const rows=scoped.map(row=>{
     const values=row.years.map(year=>market?variants.find(item=>item.product===row.key&&item.period===year.period):year);
-    const label=(value:string)=>'<th scope="row">'+html(row.label)+'</th><th>'+value+'</th>';
-    return '<tr>'+label('Volume (pieces)')+values.map(cellValue=>cell(format(cellValue?.volume??null))).join('')+'</tr>'+
-      '<tr>'+label(market?'Market price':'Weighted unit price')+
-      values.map(cellValue=>cell(format(cellValue?.unitPrice??null,2))).join('')+'</tr>';
+    return '<tbody><tr><th class="fin-annual-product" scope="rowgroup" rowspan="2">'+html(row.label)+'</th>'+
+      '<th scope="row">Volume</th>'+values.map(cellValue=>cell(format(cellValue?.volume??null))).join('')+'</tr>'+
+      '<tr><th scope="row">'+(market?'Market price':'Unit price')+'</th>'+
+      values.map(cellValue=>cell(format(cellValue?.unitPrice??null,2))).join('')+'</tr></tbody>';
   }).join('');
   const productionPeriods=new Set(data.periods.map(item=>item.key));
   const marketRows=variants.filter(row=>period?row.period===period:productionPeriods.has(row.period));
@@ -36,11 +36,12 @@ export function commercialOverview(data:NonNullable<Workspace['commercial']>,pro
         '<td>'+quoteLink+'</td>'+cell(row.revenue===null?'—':format(row.revenue,2)+' '+data.currency)+'</tr>';
     }).join('')):'<p class="fin-muted">There are no market quotes for this scope.</p>';
   return panel('Volume and selling price by year',
-    '<p class="fin-muted">Prices in '+html(data.currency)+' per piece. Quoted prices remain available when market volume is zero.</p>'+
-    (rows&&data.periods.length?table('Annual volume and selling prices',['Product','Metric',...data.periods.map(item=>item.label)],rows):
+    '<p class="fin-muted">Volume in pieces · '+(market?'Prices':'Volume-weighted prices')+' in '+html(data.currency)+' per piece.</p>'+
+    (rows&&data.periods.length?'<div class="fin-table-scroll fin-annual-scroll" tabindex="0" role="region" aria-label="Annual volume and selling prices">'+
+      '<table class="fin-annual-table"><thead><tr>'+head(['Product','Metric',...data.periods.map(item=>item.label)])+'</tr></thead>'+rows+'</table></div>':
       '<p class="fin-muted">No production forecast is available for this version.</p>'))+
     panel('Market assumptions and quotes','<details'+(market||period?' open':'')+'><summary>View market details</summary>'+
-      '<p class="fin-muted">Open a quoted price to preview a change for its market and period.</p>'+details+'</details>');
+      '<p class="fin-muted">Quoted prices remain available when market volume is zero. Open a quoted price to preview a change for its market and period.</p>'+details+'</details>');
 }
 
 export function purchasingOverview(inputs:Input[],term:string,periodName:string,marketLabel:(key:string|null)=>string,
